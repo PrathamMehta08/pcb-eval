@@ -28,12 +28,15 @@ const IP_PER_DAY = Number(process.env.IP_PER_DAY || 160); // ~20 reviews
 
 const MAX_PROMPT_CHARS = 40000; // the distilled board plus instructions
 
-// `gpt-oss-120b` is a reasoning model: this budget covers the thinking as well
-// as the answer, and the real sweep averages 2339 output tokens a call. The
-// first version allowed 2600, so roughly half of all calls ran out mid-answer.
-// 4000 is what harness/llm.py has always used, across 48 calls without a
-// failure, and this now matches it.
-const MAX_OUTPUT_TOKENS = Number(process.env.MAX_OUTPUT_TOKENS || 4000);
+// `gpt-oss-120b` is a reasoning model, so this budget covers the thinking as
+// well as the answer. The sweep averages 2339 output tokens a call, but the
+// average is not what matters: a single call over the limit is a whole review
+// lost, and the heaviest prompts measured here ran past 5000. The first version
+// allowed 2600 and failed about one call in two.
+//
+// Nothing is charged for headroom, only for tokens actually produced, so the
+// ceiling is set well clear of the worst case rather than close to the mean.
+const MAX_OUTPUT_TOKENS = Number(process.env.MAX_OUTPUT_TOKENS || 8000);
 const TIMEOUT_MS = 45000;
 
 /**
@@ -152,7 +155,10 @@ export default async function handler(req, res) {
         // failure. It also refuses any prompt not containing the word "json".
         // The prompts already demand JSON only, and `extractJson` below reads
         // it back the same lenient way harness/llm.py does.
-        max_completion_tokens: MAX_OUTPUT_TOKENS,
+        // `max_tokens`, not `max_completion_tokens`: the harness has always sent
+        // the former through the OpenAI SDK and never had a call truncated,
+        // while the latter left answers cut off at a limit it was not given.
+        max_tokens: MAX_OUTPUT_TOKENS,
         temperature: 0,
       }),
       signal: controller.signal,
