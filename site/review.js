@@ -118,10 +118,14 @@ export const budget = {
   },
 };
 
-let lastCallAt = 0;
+// The interval lives in localStorage rather than in a module variable, so a
+// reload does not hand the viewer a fresh ten seconds — and so two open copies
+// of the page share one clock.
+const LAST_KEY = "pcb-eval.lastReview.v1";
 
 export function coolingDownMs() {
-  return Math.max(0, MIN_INTERVAL_MS - (Date.now() - lastCallAt));
+  const last = Number(readJSON(LAST_KEY, 0)) || 0;
+  return Math.max(0, Math.min(MIN_INTERVAL_MS, MIN_INTERVAL_MS - (Date.now() - last)));
 }
 
 // -------------------------------------------------------------------- grading
@@ -203,7 +207,7 @@ export async function review(sample, board, { focusRefs = [], onText, signal } =
   }
 
   const distilled = distill(board, focusRefs);
-  lastCallAt = Date.now();
+  writeJSON(LAST_KEY, Date.now());
   budget.spend();
 
   let answer;

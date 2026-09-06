@@ -310,11 +310,19 @@ def check_ops_parity(c: Check) -> None:
         apply_edits(work, case["edits"])
         c.equals(board_hash(work), case["hash"], f"python {case['id']} hash")
 
+    run_node(c, "ops_parity.mjs", "distill_parity.mjs")
+
+
+def run_node(c: Check, *scripts: str) -> None:
+    """Run browser-side checks under node and fold their output into this one."""
+    import shutil
+    import subprocess
+
     node = shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
     if not Path(node).exists():
-        c.note("node not found; skipped the browser half of the parity check")
+        c.note("node not found; skipped the browser-side checks")
         return
-    for script in ("ops_parity.mjs", "distill_parity.mjs"):
+    for script in scripts:
         proc = subprocess.run(
             [node, str(ROOT / "tests" / script)],
             capture_output=True,
@@ -325,6 +333,84 @@ def check_ops_parity(c: Check) -> None:
         report = (proc.stdout + proc.stderr).strip()
         if c.that(proc.returncode == 0, f"{script}:\n{report}"):
             c.note(report.splitlines()[-1] if report else f"{script} ok")
+
+
+def built_page(c: Check) -> str | None:
+    page = ROOT / "dist" / "pcb-eval.html"
+    if not c.that(page.exists(), "dist/pcb-eval.html exists (build: python tools/build_site.py)"):
+        return None
+    return page.read_text(encoding="utf-8")
+
+
+# --------------------------------------------------------------------------- 7
+
+
+@step(7, "site/render.js draws all three views from the board, on KiCad's own geometry")
+def check_render(c: Check) -> None:
+    run_node(c, "render_parity.mjs")
+
+    page = built_page(c)
+    if page is None:
+        return
+    for marker, label in (
+        ('data-view="schematic"', "the schematic tab"),
+        ('data-view="layout"', "the layout tab"),
+        ('data-view="routing"', "the routing tab"),
+        ("renderSchematic", "the schematic renderer"),
+        ("renderBoard", "the layout and routing renderer"),
+        ("attachPanZoom", "pan and zoom"),
+    ):
+        c.that(marker in page, f"the built page carries {label}")
+
+    # The schematic view is KiCad's own plot nested inside ours, so the plot
+    # has to actually be in the file rather than merely referenced.
+    paths = page.count("<path")
+    c.that(paths > 15000, f"KiCad's schematic plot is inlined: {paths} paths")
+
+    board = load_board()
+    c.that(
+        f'"{board["layout"]["tracks"][0]["id"]}"' in page,
+        "the board data is inlined, with the track ids the edit log needs",
+    )
+    size = len(page.encode("utf-8")) / 1024 / 1024
+    c.that(size < 16, f"the page is {size:.2f} MB, under the 16 MB artifact budget")
+    c.note(f"{size:.2f} MB, {paths} schematic paths")
+
+
+# --------------------------------------------------------------------------- 9
+
+
+@step(9, "the editing UI records every change and undo restores the board")
+def check_editing(c: Check) -> None:
+    # tests/edit_cycle.mjs drives the three edits this step names through the
+    # very modules the page calls, and checks every operation is reachable from
+    # a control. Pointer events themselves are the browser's, and were driven by
+    # hand: the ground-stranded preset took the board from 63 vias and 5 pours
+    # to 22 and 4, and undoing its 42 edits put all of them back.
+    run_node(c, "edit_cycle.mjs")
+
+
+# -------------------------------------------------------------------------- 10
+
+
+@step(10, "site/review.js returns findings, caches them, and enforces the limits")
+def check_review(c: Check) -> None:
+    run_node(c, "review_limits.mjs")
+
+    page = built_page(c)
+    if page is None:
+        return
+    # Requirement four from PLAN.md section 5.4: never on load. The only call
+    # site must be the button's handler.
+    c.that(
+        page.count("sample.json(") == 1,
+        "there is exactly one place that calls Claude",
+    )
+    c.that(
+        'id("go").addEventListener("click", runReview)' in page.replace("$(", "id("),
+        "the only path to it is an explicit click",
+    )
+    c.that("getSample()" in page, "the capability is resolved, not assumed")
 
 
 # ---------------------------------------------------------------------------

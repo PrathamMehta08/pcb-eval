@@ -282,6 +282,15 @@ input, select {
   text-overflow: ellipsis;
 }
 
+.swap {
+  font-family: var(--mono); font-size: 12px; line-height: 1; cursor: pointer;
+  padding: 4px 6px; margin-left: 4px; border-radius: var(--radius);
+  background: var(--raised); color: var(--ink-dim); border: 1px solid var(--line);
+}
+.swap:hover { color: var(--ink); }
+.swap.armed { color: var(--mint-ink); background: var(--mint); border-color: var(--mint); }
+.armed-hint { color: var(--mint); }
+
 .preset {
   display: block; width: 100%; text-align: left; cursor: pointer;
   padding: 8px 10px; margin-bottom: 4px; border-radius: var(--radius);

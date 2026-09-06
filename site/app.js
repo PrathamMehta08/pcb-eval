@@ -40,6 +40,8 @@ const state = {
   verdict: null,
   reviewing: false,
   presetId: null,
+  //: The first half of a pin swap, waiting for the pin to swap it with.
+  armed: null,
 };
 
 let panzoom = null;
@@ -192,6 +194,7 @@ function applyPreset(preset) {
 // ------------------------------------------------------------------ selection
 
 function select(selection) {
+  state.armed = null;
   state.selection = selection;
   applySelectionToSvg();
   renderInspector();
@@ -316,8 +319,9 @@ function renderPartInspector(panel, ref) {
     <table class="pins">
       <tbody>
         ${pins
-          .map(
-            (pin) => `<tr>
+          .map((pin) => {
+            const armed = state.armed && state.armed.ref === ref && state.armed.pin === pin.pin;
+            return `<tr>
               <th>${escapeHtml(pin.pin)}</th>
               <td class="fn">${escapeHtml(pin.function || "")}</td>
               <td>
@@ -330,11 +334,17 @@ function renderPartInspector(panel, ref) {
                     .join("")}
                 </select>
               </td>
-            </tr>`
-          )
+              <td><button class="swap${armed ? " armed" : ""}" data-swap="${escapeHtml(pin.pin)}"
+                title="Swap this pin with another">&#8646;</button></td>
+            </tr>`;
+          })
           .join("")}
       </tbody>
     </table>
+    ${state.armed && state.armed.ref === ref
+      ? html`<p class="hint armed-hint">Pin ${state.armed.pin} is armed. Pick the pin to swap it with.</p>`
+      : `<p class="hint">The ⇆ buttons swap two pins in one move, which is how a
+         connector gets wired the wrong way round.</p>`}
     <p class="hint">Changing a net here edits the schematic only. The copper keeps
       the routing it was laid out with, which is what a board looks like after a
       change nobody re-routed.</p>
@@ -353,6 +363,25 @@ function renderPartInspector(panel, ref) {
     picker.addEventListener("change", () =>
       record({ op: "move_pin", args: { ref, pin: picker.dataset.pin, to_net: picker.value } })
     );
+  }
+  // A swap takes two clicks: arm one pin, then pick the one to exchange it
+  // with. Two move_pins would leave both on one net in between, which is not
+  // what a crossed connector looks like.
+  for (const button of panel.querySelectorAll(".swap")) {
+    button.addEventListener("click", () => {
+      const pin = button.dataset.swap;
+      if (state.armed && state.armed.ref === ref && state.armed.pin !== pin) {
+        const pin_a = state.armed.pin;
+        state.armed = null;
+        record({ op: "swap_pins", args: { ref, pin_a, pin_b: pin } });
+        return;
+      }
+      state.armed =
+        state.armed && state.armed.ref === ref && state.armed.pin === pin
+          ? null
+          : { ref, pin };
+      renderInspector();
+    });
   }
 }
 
