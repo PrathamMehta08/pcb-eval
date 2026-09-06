@@ -289,13 +289,16 @@ def check_distill(c: Check) -> None:
 # --------------------------------------------------------------------------- 8
 
 
-@step(8, "site/ops.js matches harness/ops.py on the shared fixture")
+@step(8, "site/ops.js and site/distill.js match the Python on the shared fixtures")
 def check_ops_parity(c: Check) -> None:
     import shutil
     import subprocess
 
     fixture = ROOT / "tests" / "fixtures" / "ops.json"
-    if not c.that(fixture.exists(), "tests/fixtures/ops.json exists (regenerate: python -m tests.fixture)"):
+    if not c.that(
+        fixture.exists(),
+        "tests/fixtures/ops.json exists (regenerate: python -m tests.fixture)",
+    ):
         return
 
     from harness.ops import apply_edits, board_hash
@@ -311,15 +314,17 @@ def check_ops_parity(c: Check) -> None:
     if not Path(node).exists():
         c.note("node not found; skipped the browser half of the parity check")
         return
-    proc = subprocess.run(
-        [node, str(ROOT / "tests" / "ops_parity.mjs")],
-        capture_output=True,
-        text=True,
-        cwd=str(ROOT),
-    )
-    if not c.that(proc.returncode == 0, f"node parity run failed:\n{proc.stdout}\n{proc.stderr}"):
-        return
-    c.note(proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else "node ok")
+    for script in ("ops_parity.mjs", "distill_parity.mjs"):
+        proc = subprocess.run(
+            [node, str(ROOT / "tests" / script)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            cwd=str(ROOT),
+        )
+        report = (proc.stdout + proc.stderr).strip()
+        if c.that(proc.returncode == 0, f"{script}:\n{report}"):
+            c.note(report.splitlines()[-1] if report else f"{script} ok")
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,439 @@
+<title>PCB Eval</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;450;500&display=swap">
+<style>
+/* --------------------------------------------------------------- tokens ---
+   Dark first: this is an instrument, and copper only reads on a dark ground.
+   The chrome follows the viewer's theme; the board well does not, the same way
+   a photograph or a map does not invert. Every colour is declared here before
+   any media query or [data-theme] block redefines it. */
+:root {
+  --ground: #08090c;
+  --panel: #0d0f14;
+  --raised: #12151c;
+  --line: #1d212b;
+  --line-soft: #14171f;
+  --ink: #e6eae7;
+  --ink-mid: #9aa3a9;
+  --ink-dim: #6d757d;
+  --mint: #4fd39a;
+  --mint-ink: #08090c;
+  --crit: #ff7061;
+  --warn: #e9b657;
+  --focus: #4fd39a;
+
+  /* The board well and everything drawn in it. Theme-independent. */
+  --well: #06090b;
+  --substrate: #0a1310;
+  --edge: #cbb98a;
+  --f-cu: #c8564a;
+  --b-cu: #4f83c6;
+  --pad: #dcae52;
+  --hole: #06090b;
+  --via: #97a3ae;
+  --silk: #b3bfb8;
+  --label: #7f9089;
+  --paper: #f4f1e6;
+  --paper-ink: #b0392b;
+
+  --radius: 3px;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ground: #f2f3f1;
+    --panel: #ffffff;
+    --raised: #f7f8f6;
+    --line: #dfe3df;
+    --line-soft: #ebeeea;
+    --ink: #14171a;
+    --ink-mid: #4e565c;
+    --ink-dim: #767e85;
+    --mint: #0d8f63;
+    --mint-ink: #ffffff;
+    --crit: #c0392b;
+    --warn: #a2740f;
+    --focus: #0d8f63;
+  }
+}
+:root[data-theme="light"] {
+  --ground: #f2f3f1;
+  --panel: #ffffff;
+  --raised: #f7f8f6;
+  --line: #dfe3df;
+  --line-soft: #ebeeea;
+  --ink: #14171a;
+  --ink-mid: #4e565c;
+  --ink-dim: #767e85;
+  --mint: #0d8f63;
+  --mint-ink: #ffffff;
+  --crit: #c0392b;
+  --warn: #a2740f;
+  --focus: #0d8f63;
+}
+
+* { box-sizing: border-box; }
+/* The artifact wrapper's reset carries this; repeating it keeps the file
+   self-sufficient, and `display: flex` on a floating overlay beats the user
+   agent's [hidden] rule without it. */
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ----------------------------------------------------------------- shell --- */
+.app { display: flex; flex-direction: column; height: 100vh; min-height: 560px; }
+
+header {
+  display: flex; align-items: baseline; gap: 20px;
+  padding: 10px 16px; border-bottom: 1px solid var(--line);
+  background: var(--panel); flex: none;
+}
+.brand {
+  font-family: var(--mono); font-weight: 600; font-size: 12px;
+  letter-spacing: .14em; text-transform: uppercase;
+}
+.brand em { color: var(--mint); font-style: normal; }
+.board-id {
+  font-family: var(--mono); color: var(--ink-dim); font-size: 11px;
+  letter-spacing: .04em;
+}
+.tabs { display: flex; gap: 2px; margin-left: auto; }
+.tab {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; padding: 5px 12px; cursor: pointer;
+  background: none; border: 1px solid transparent; color: var(--ink-dim);
+  border-radius: var(--radius);
+}
+.tab:hover { color: var(--ink); }
+.tab.on { color: var(--mint); border-color: var(--line); background: var(--raised); }
+.stats {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-dim);
+  font-variant-numeric: tabular-nums; margin-left: 20px;
+}
+
+main { display: flex; flex: 1; min-height: 0; }
+
+/* -------------------------------------------------------------- viewport --- */
+.viewport { position: relative; flex: 1; min-width: 0; background: var(--well); }
+#stage { position: absolute; inset: 0; }
+.board-svg { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.board-svg.panning { cursor: grabbing; }
+
+.overlay-tl, .overlay-br {
+  position: absolute; display: flex; gap: 6px; align-items: center;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+}
+.overlay-tl { left: 12px; bottom: 12px; }
+.overlay-br { right: 12px; bottom: 12px; color: #56626a; }
+.chip {
+  padding: 3px 8px; cursor: pointer; text-transform: uppercase;
+  background: rgba(10, 14, 18, .82); color: #c3ccd2;
+  border: 1px solid #232a31; border-radius: var(--radius);
+}
+.chip::before {
+  content: ""; display: inline-block; width: 7px; height: 7px;
+  margin-right: 6px; vertical-align: 0; border-radius: 50%;
+  background: var(--dot, #97a3ae);
+}
+.chip[data-layer="f-cu"] { --dot: var(--f-cu); }
+.chip[data-layer="b-cu"] { --dot: var(--b-cu); }
+.chip[data-layer="silk"] { --dot: var(--silk); }
+.chip[data-layer="labels"] { --dot: var(--label); }
+.chip.off { color: #5c666d; }
+.chip.off::before { background: #333b42; }
+
+#flash {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  padding: 7px 14px; border-radius: var(--radius); font-family: var(--mono);
+  font-size: 11px; background: var(--crit); color: #120706;
+  opacity: 0; pointer-events: none; transition: opacity .18s;
+}
+#flash.on { opacity: 1; }
+
+/* ------------------------------------------------------------ board paint --- */
+.substrate { fill: var(--substrate); }
+.edge { fill: none; stroke: var(--edge); stroke-width: .16; opacity: .8; }
+.paper { fill: var(--paper); }
+
+.zone { stroke: none; }
+.zone.f-cu { fill: var(--f-cu); opacity: .17; }
+.zone.b-cu { fill: var(--b-cu); opacity: .15; }
+.track { stroke-linecap: round; }
+.track.f-cu { stroke: var(--f-cu); }
+.track.b-cu { stroke: var(--b-cu); }
+.pad { fill: var(--pad); stroke: none; }
+.pad-hole { fill: #2c3238; }
+.drill, .via-drill { fill: var(--hole); }
+.via { fill: var(--via); }
+.fp-silk { fill: none; stroke: var(--silk); stroke-width: .1; opacity: .5; }
+.ref-label {
+  fill: var(--label); font-family: var(--mono); font-size: .95px;
+  letter-spacing: .02px; pointer-events: none; user-select: none;
+}
+
+.hide-f-cu .f-cu, .hide-b-cu .b-cu { display: none; }
+.hide-silk .fp-silk { display: none; }
+.hide-labels .ref-label { display: none; }
+
+/* Selection and net highlighting. Dimming the rest reads better than lighting
+   one thing up, because a net is a shape spread across the whole board. */
+.footprint.selected .pad { stroke: var(--mint); stroke-width: .09; }
+.pad.selected, .via.selected { stroke: var(--mint); stroke-width: .12; }
+.track.selected { stroke: var(--mint); }
+.zone.selected { stroke: var(--mint); stroke-width: .12; opacity: .3; }
+.board-svg:has(.net-lit) .track:not(.net-lit),
+.board-svg:has(.net-lit) .zone:not(.net-lit),
+.board-svg:has(.net-lit) .via:not(.net-lit) { opacity: .12; }
+.board-svg:has(.net-lit) .pad:not(.net-lit) { opacity: .3; }
+
+.sym-hit { fill: transparent; stroke: none; cursor: pointer; }
+.sym-hit:hover { fill: rgba(13, 143, 99, .13); }
+.sym-hit.selected { fill: rgba(13, 143, 99, .18); stroke: #0d8f63; stroke-width: .3; }
+
+.mark { fill: none; stroke: var(--crit); stroke-width: .25; }
+.schematic-svg .mark { stroke: var(--paper-ink); stroke-width: .45; }
+.footprint { cursor: move; }
+
+/* ------------------------------------------------------------------ rail --- */
+.rail {
+  width: 372px; flex: none; overflow-y: auto; background: var(--panel);
+  border-left: 1px solid var(--line);
+}
+.panel { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); }
+.panel > h3 {
+  margin: 0 0 10px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--ink-dim);
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.panel > h3 span { color: var(--mint); letter-spacing: .06em; }
+.lede { margin: 0; color: var(--ink-mid); max-width: 60ch; }
+.lede b { color: var(--ink); font-weight: 500; }
+.muted { color: var(--ink-dim); margin: 0; }
+.hint { color: var(--ink-dim); font-size: 12px; margin: 10px 0 0; }
+.eyebrow {
+  margin: 14px 0 6px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim);
+}
+
+.btn {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+  padding: 6px 11px; cursor: pointer; border-radius: var(--radius);
+  background: var(--raised); color: var(--ink); border: 1px solid var(--line);
+}
+.btn:hover:not(:disabled) { border-color: var(--ink-dim); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.danger:hover:not(:disabled) { border-color: var(--crit); color: var(--crit); }
+.row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+.primary {
+  width: 100%; font-family: var(--mono); font-size: 12px; letter-spacing: .08em;
+  padding: 9px; cursor: pointer; border-radius: var(--radius);
+  background: var(--mint); color: var(--mint-ink); border: 1px solid var(--mint);
+  font-weight: 600;
+}
+.primary:disabled { opacity: .45; cursor: default; }
+
+/* --------------------------------------------------------- inspector bits --- */
+.ins-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.ins-head .ref {
+  font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--ink);
+}
+.ins-head .val { font-family: var(--mono); font-size: 12px; color: var(--mint); }
+.desc { margin: 0 0 10px; color: var(--ink-mid); font-size: 12px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0 0 12px; }
+.facts dt {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-dim); align-self: center;
+}
+.facts dd {
+  margin: 0; font-family: var(--mono); font-size: 11.5px;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+
+.field { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.field span {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-dim); width: 78px; flex: none;
+}
+input, select {
+  font-family: var(--mono); font-size: 11.5px; padding: 5px 7px; width: 100%;
+  background: var(--raised); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+
+.pins { width: 100%; border-collapse: collapse; }
+.pins th {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-mid);
+  text-align: right; padding: 2px 8px 2px 0; width: 26px; font-weight: 500;
+}
+.pins td { padding: 2px 0; }
+.pins td.fn {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim);
+  padding-right: 8px; white-space: nowrap; max-width: 78px; overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preset {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  padding: 8px 10px; margin-bottom: 4px; border-radius: var(--radius);
+  background: var(--raised); border: 1px solid var(--line-soft); color: inherit;
+}
+.preset:hover { border-color: var(--line); }
+.preset.on { border-color: var(--mint); }
+.preset-title {
+  display: block; font-family: var(--mono); font-size: 11.5px; color: var(--ink);
+}
+.preset-why {
+  display: block; margin-top: 3px; font-size: 11.5px; color: var(--ink-dim);
+  line-height: 1.45;
+}
+
+#log { list-style: none; margin: 0; padding: 0; }
+#log li {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-mid);
+  padding: 3px 0 3px 10px; border-left: 2px solid var(--line);
+}
+#log li.muted { border-left-color: transparent; padding-left: 0; }
+
+/* ---------------------------------------------------------------- review --- */
+#review-stream {
+  margin: 10px 0 0; padding: 8px; max-height: 120px; overflow: hidden;
+  font-family: var(--mono); font-size: 10px; line-height: 1.4; color: var(--ink-dim);
+  background: var(--raised); border-radius: var(--radius); white-space: pre-wrap;
+  word-break: break-word;
+}
+.score { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 12px 0 4px; }
+.score-cell {
+  padding: 8px 10px; border-radius: var(--radius); background: var(--raised);
+  border: 1px solid var(--line-soft);
+}
+.score-cell b {
+  display: block; font-family: var(--mono); font-size: 20px; font-weight: 600;
+  line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--ink-dim);
+}
+.score-cell span {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-dim);
+}
+.score-cell.good { border-color: var(--mint); }
+.score-cell.good b { color: var(--mint); }
+.score-cell.bad { border-color: var(--crit); }
+.score-cell.bad b { color: var(--crit); }
+.score-cell.warn { border-color: var(--warn); }
+.score-cell.warn b { color: var(--warn); }
+.cached { margin: 6px 0 0; font-size: 11.5px; color: var(--ink-dim); }
+
+.findings { list-style: none; margin: 0; padding: 0; }
+.findings li {
+  padding: 7px 0 7px 10px; border-left: 2px solid var(--line);
+  border-bottom: 1px solid var(--line-soft);
+}
+.findings li:last-child { border-bottom: none; }
+.findings li.sev-critical { border-left-color: var(--crit); }
+.findings li.sev-major { border-left-color: var(--warn); }
+.findings li.missed { border-left-color: var(--crit); }
+.findings b { display: block; font-weight: 500; color: var(--ink); font-size: 12.5px; }
+.findings .why { display: block; color: var(--ink-mid); font-size: 12px; margin-top: 2px; }
+.findings .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.findings code {
+  font-family: var(--mono); font-size: 10px; padding: 1px 5px;
+  background: var(--raised); color: var(--ink-dim); border-radius: 2px;
+}
+#budget {
+  margin: 10px 0 0; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .06em; color: var(--ink-dim);
+}
+
+@media (max-width: 900px) {
+  .app { height: auto; }
+  main { flex-direction: column; }
+  .viewport { height: 62vh; min-height: 340px; }
+  .rail { width: auto; border-left: none; border-top: 1px solid var(--line); }
+  header { flex-wrap: wrap; gap: 10px 14px; }
+  .stats { margin-left: 0; width: 100%; }
+}
+</style>
+
+<div class="app">
+  <header>
+    <div class="brand">PCB<em>·</em>EVAL</div>
+    <div class="board-id">stm32-good · pillmate rev 1</div>
+    <nav class="tabs" role="tablist" aria-label="View">
+      <button class="tab" role="tab" data-view="schematic" aria-selected="false">Schematic</button>
+      <button class="tab" role="tab" data-view="layout" aria-selected="false">Layout</button>
+      <button class="tab" role="tab" data-view="routing" aria-selected="true">Routing</button>
+    </nav>
+    <div class="stats" id="board-stats"></div>
+  </header>
+
+  <main>
+    <section class="viewport">
+      <div id="stage"></div>
+      <div class="overlay-tl" id="layer-chips">
+        <button class="chip" data-layer="f-cu">F.Cu</button>
+        <button class="chip" data-layer="b-cu">B.Cu</button>
+        <button class="chip" data-layer="silk">Silk</button>
+        <button class="chip" data-layer="labels">Refs</button>
+      </div>
+      <div class="overlay-br">
+        <button class="chip" id="fit">Fit</button>
+        <span>scroll to zoom · drag to pan</span>
+      </div>
+      <div id="flash" role="status" aria-live="polite"></div>
+    </section>
+
+    <aside class="rail">
+      <section class="panel">
+        <h3>What this is</h3>
+        <p class="lede">A real board, broken on purpose, to measure whether a
+          language model notices. <b>Every defect here is one this board's first
+          revision actually shipped with</b> — including the last one, where every
+          ground pad on the top layer is stranded because there are no stitching
+          vias and no top pour. ERC passed it. DRC passed it. The board did not work.</p>
+      </section>
+
+      <section class="panel">
+        <h3>Inspector</h3>
+        <div id="inspector"></div>
+      </section>
+
+      <section class="panel">
+        <h3>Break something</h3>
+        <div id="presets"></div>
+      </section>
+
+      <section class="panel">
+        <h3>Edits <span id="log-count">none</span></h3>
+        <ul id="log"></ul>
+        <div class="row">
+          <button class="btn" id="undo" disabled>Undo</button>
+          <button class="btn" id="reset" disabled>Reset board</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Review</h3>
+        <button class="primary" id="go" hidden>Review this board</button>
+        <pre id="review-stream" hidden></pre>
+        <div id="review"></div>
+        <p id="budget"></p>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<template id="sheet-svg"><!--@SCHEMATIC@--></template>
+<script type="application/json" id="board-data">/*@BOARD@*/</script>
+<script type="application/json" id="preset-data">/*@PRESETS@*/</script>
+<script type="module">
+/*@MODULES@*/
+</script>

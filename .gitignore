@@ -5,3 +5,4 @@ __pycache__/
 results/*.json
 .cache/
 boards/*.min.json
+dist/

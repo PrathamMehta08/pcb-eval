@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import math
 import re
+from decimal import ROUND_HALF_UP, Decimal
 
 from harness.checks import base_type, copper_items, islands
 
@@ -38,6 +39,19 @@ _LIB_BOILERPLATE = re.compile(
     r"(,?\s*script generated.*$)|(^Generic connector,\s*)|(\s*\(kicad-library-utils.*\)$)",
     re.I,
 )
+
+
+def fixed(value: float, places: int) -> str:
+    """`"%.*f"` with JavaScript's rounding, so site/distill.js agrees exactly.
+
+    Python's format rounds half to even and JavaScript's `toFixed` rounds half
+    away from zero, which puts a pad at x = 30.25 mm at 30.2 in one and 30.3 in
+    the other. Quantising the exact binary value half-up is what `toFixed` is
+    specified to do, so this matches it including the cases where a decimal
+    that looks like a tie is not one.
+    """
+    quantum = Decimal(1).scaleb(-places)
+    return str(Decimal(float(value)).quantize(quantum, rounding=ROUND_HALF_UP))
 
 
 def approx_tokens(text: str) -> int:
@@ -171,7 +185,8 @@ def _copper_section(board: dict) -> list[str]:
 
     size = layout["size"]
     lines = [
-        f"COPPER  board {size['w']:.0f} x {size['h']:.0f} mm, two layers: F.Cu top, B.Cu bottom",
+        f"COPPER  board {fixed(size['w'], 0)} x {fixed(size['h'], 0)} mm, "
+        "two layers: F.Cu top, B.Cu bottom",
         "columns: net, pads, copper islands, total track mm, narrowest track mm, vias, pour layers",
     ]
     for net in sorted(set(pads_by_net) | set(tracks) | set(vias) | set(pours)):
@@ -187,8 +202,8 @@ def _copper_section(board: dict) -> list[str]:
                     net,
                     str(pads_by_net.get(net, 0)),
                     str(island_count),
-                    f"{total:.0f}" if segs else "none",
-                    f"{narrowest:.2f}" if segs else "-",
+                    fixed(total, 0) if segs else "none",
+                    fixed(narrowest, 2) if segs else "-",
                     str(vias.get(net, 0)),
                     "+".join(sorted(pours[net])) if pours.get(net) else "none",
                 ]
@@ -219,8 +234,8 @@ def _placement_section(board: dict, refs: list[str]) -> list[str]:
     for ref, distance in sorted(near.items(), key=lambda kv: kv[1]):
         fp = fps[ref]
         lines.append(
-            f"  {ref} ({fp['x']:.1f}, {fp['y']:.1f}) {fp['rot']:g} deg {fp['layer']}.Cu"
-            + (f", {distance:.1f} mm away" if distance else ", edited")
+            f"  {ref} ({fixed(fp['x'], 1)}, {fixed(fp['y'], 1)}) {fp['rot']:g} deg "
+            f"{fp['layer']}.Cu" + (f", {fixed(distance, 1)} mm away" if distance else ", edited")
         )
     return lines
 
@@ -232,7 +247,8 @@ def distill(board: dict, focus_refs: list[str] | None = None) -> str:
             f"BOARD {meta['name']}",
             f"{len(board['components'])} components, {len(board['nets'])} nets, "
             f"{len(board['layout']['footprints'])} footprints on a "
-            f"{board['layout']['size']['w']:.0f} x {board['layout']['size']['h']:.0f} mm two-layer board.",
+            f"{fixed(board['layout']['size']['w'], 0)} x "
+            f"{fixed(board['layout']['size']['h'], 0)} mm two-layer board.",
         ],
         _components_section(board),
         _nets_section(board),

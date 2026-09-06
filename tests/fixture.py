@@ -20,10 +20,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from console import utf8  # noqa: E402
+from harness.distill import distill  # noqa: E402
 from harness.ops import apply_edits, board_hash, undo  # noqa: E402
 from harness.presets import PRESETS, edits_for  # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "ops.json"
+DISTILL_OUT = ROOT / "tests" / "fixtures" / "distill.json"
 
 
 def _edit(op: str, **args) -> dict:
@@ -98,7 +100,30 @@ def main() -> int:
         if case["undo_hash"] != clean:
             raise SystemExit(f"{case['id']}: undo did not restore the board")
 
+    # The distilled text is what a review actually reads, so the browser copy
+    # has to produce it character for character or the harness would be scoring
+    # a board the page never sent.
+    distilled = []
+    for preset in [None] + PRESETS:
+        work = json.loads(json.dumps(board))
+        edits = [] if preset is None else edits_for(preset, work)
+        apply_edits(work, edits)
+        focus = ["U3", "S1"] if preset is None else preset.get("refs", [])
+        distilled.append(
+            {
+                "id": "clean" if preset is None else preset["id"],
+                "edits": edits,
+                "focus": focus,
+                "text": distill(work, focus),
+            }
+        )
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    DISTILL_OUT.write_text(json.dumps({"cases": distilled}, indent=1), encoding="utf-8")
+    print(
+        f"wrote {DISTILL_OUT.relative_to(ROOT)}: {len(distilled)} boards, "
+        f"{max(len(d['text']) for d in distilled)} characters at most"
+    )
     OUT.write_text(
         json.dumps({"clean_hash": clean, "cases": cases}, indent=1), encoding="utf-8"
     )
