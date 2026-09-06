@@ -23,7 +23,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from console import utf8  # noqa: E402
-from harness.presets import PRESETS, edits_for  # noqa: E402
 
 SITE = ROOT / "site"
 DIST = ROOT / "dist"
@@ -84,25 +83,6 @@ def minify_svg(markup: str) -> str:
     return markup.strip()
 
 
-def presets_for_page() -> list[dict]:
-    """Presets with their edits resolved against the board the page will hold."""
-    board = json.loads((ROOT / "boards" / "stm32-good.json").read_text(encoding="utf-8"))
-    out = []
-    for preset in PRESETS:
-        out.append(
-            {
-                "id": preset["id"],
-                "title": preset["title"],
-                "view": preset["view"],
-                "breaks": preset["breaks"],
-                "refs": preset["refs"],
-                "nets": preset["nets"],
-                "edits": edits_for(preset, board),
-            }
-        )
-    return out
-
-
 def build(out: Path, schematic: Path) -> Path:
     # The page is meant to be the `single` detector the README scores, so it
     # must not ship a prompt that has drifted from graph/prompts.py.
@@ -126,7 +106,6 @@ def build(out: Path, schematic: Path) -> Path:
     for marker, payload in (
         ("<!--@SCHEMATIC@-->", sheet),
         ("/*@BOARD@*/", json.dumps(board, separators=(",", ":"))),
-        ("/*@PRESETS@*/", json.dumps(presets_for_page(), separators=(",", ":"))),
         ("/*@MODULES@*/", bundle_modules()),
     ):
         if marker not in page:

@@ -16,8 +16,9 @@ SCHEMA = """{"findings": [{
   "severity": "critical" | "major" | "minor",
   "refs": ["S1"],
   "nets": ["/FB", "VBST"],
-  "title": "one line naming the defect",
-  "why": "one sentence on the consequence"
+  "problem": "one line naming the defect",
+  "why": "one sentence on the consequence",
+  "fix": "one sentence naming the change that would correct it"
 }]}"""
 
 SYSTEM = """You review printed circuit boards before they are manufactured. You

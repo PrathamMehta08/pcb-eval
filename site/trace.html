@@ -235,26 +235,18 @@ ul.dropped b { font-weight: 500; font-size: 12.5px; }
 
   <main>
     <aside class="rail">
-      <h3 class="eyebrow">What this is</h3>
-      <p class="lede">A review of a real circuit board, run through a LangGraph
-        pipeline of three specialists and an adjudicator — with everything it
-        thought kept, not just what it concluded.</p>
-
       <h3 class="eyebrow">The graph</h3>
       <div id="pipeline"></div>
-      <p class="legend"><b>Mint steps ask no model anything.</b> They run rule
-        checks and walk copper geometry. Everything else is a model talking, and
-        the gate never asks it whether it is finished — if it did, it would
-        always say yes, and the harness would launder bad boards as checked.</p>
+      <p class="legend"><b>Mint steps ask no model anything</b> — they run rule
+        checks and walk copper geometry. The gate never asks the model whether it
+        is finished; it would always say yes.</p>
 
       <h3 class="eyebrow">Boards</h3>
       <div id="chips"></div>
 
-      <h3 class="eyebrow">The board itself</h3>
-      <p class="lede">Every defect below was made by editing a real board in the
+      <p class="lede" style="margin-top:14px">Each board was broken in the
         <a class="link" href="https://claude.ai/code/artifact/57369783-5bbd-45c9-a3fa-fa314b956d0d"
-           target="_blank" rel="noopener">PCB Eval tool</a> — three views, and a
-        routing view you can break yourself.</p>
+           target="_blank" rel="noopener">PCB Eval tool</a>.</p>
     </aside>
 
     <section class="run">
@@ -262,8 +254,8 @@ ul.dropped b { font-weight: 500; font-size: 12.5px; }
       <h3 class="eyebrow">The run, in order</h3>
       <div id="steps"></div>
       <h3 class="eyebrow">What every node was sent</h3>
-      <p class="lede">The same distilled board, whole, to each of them — none of
-        these calls remembers the last one. This is the entire input.</p>
+      <p class="lede">The same distilled board, whole, to each of them. None of
+        these calls remembers the last one.</p>
       <pre class="board" id="distilled"></pre>
     </section>
   </main>

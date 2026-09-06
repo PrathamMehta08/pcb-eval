@@ -34,7 +34,6 @@ const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 const SAMPLE = JSON.parse($("board-data").textContent);
-const PRESETS = JSON.parse($("preset-data").textContent);
 
 // The board the page is currently working on, and the one Reset goes back to.
 // It starts as the sample and is replaced whole when a project is loaded.
@@ -54,7 +53,6 @@ const state = {
   //: Which board view the review tab is showing underneath its report.
   reviewSub: "routing",
   reviewing: false,
-  presetId: null,
   //: The first half of a pin swap, waiting for the pin to swap it with.
   armed: null,
 };
@@ -163,7 +161,6 @@ function record(edit) {
     flash(error.message);
     return false;
   }
-  state.presetId = null;
   state.verdict = null;
   state.focused = null;
   state.reviewError = null;
@@ -177,13 +174,11 @@ function afterChange() {
   renderLog();
   renderInspector();
   renderReview();
-  renderPresets();
 }
 
 function undoLast() {
   if (!state.log.length) return;
   undo(state.board, state.log);
-  state.presetId = null;
   state.verdict = null;
   afterChange();
 }
@@ -191,7 +186,6 @@ function undoLast() {
 function resetBoard() {
   state.board = clone(ORIGINAL);
   state.log = [];
-  state.presetId = null;
   state.verdict = null;
   state.reviewError = null;
   state.focused = null;
@@ -211,7 +205,6 @@ function loadBoard(board, notes = [], files = null) {
   custom = board ? { notes, files, name: board.meta.name } : null;
   state.board = clone(ORIGINAL);
   state.log = [];
-  state.presetId = null;
   state.verdict = null;
   state.reviewError = null;
   state.focused = null;
@@ -233,9 +226,8 @@ function renderSource() {
     : "stm32-good · pillmate rev 1";
 
   if (!custom) {
-    panel.innerHTML = `<p class="muted">Reviewing the sample board — a real
-      STM32 controller, with the seven defects below to try. Load a KiCad
-      project to review your own instead.</p>`;
+    panel.innerHTML = `<p class="muted">A real STM32 controller. Edit it, or load
+      your own KiCad project.</p>`;
   } else {
     panel.innerHTML = `
       <p class="loaded"><b>${escapeHtml(custom.name)}</b> ${escapeHtml(summarise(state.board))}</p>
@@ -243,25 +235,8 @@ function renderSource() {
       <button class="btn" id="unload">Back to the sample board</button>`;
     panel.querySelector("#unload").addEventListener("click", () => loadBoard(null));
   }
-  $("presets-panel").hidden = Boolean(custom);
 }
 
-function applyPreset(preset) {
-  resetBoard();
-  for (const edit of preset.edits) {
-    try {
-      state.log.push(applyEdit(state.board, edit));
-    } catch (error) {
-      flash(`${preset.id}: ${error.message}`);
-      break;
-    }
-  }
-  state.presetId = preset.id;
-  state.view = preset.view === "schematic" ? "schematic" : "routing";
-  setView(state.view);
-  select(preset.refs?.length ? { kind: "part", ref: preset.refs[0] } : null);
-  afterChange();
-}
 
 // ------------------------------------------------------------------ selection
 
@@ -332,6 +307,12 @@ function html(strings, ...values) {
   );
 }
 
+/** One labelled line of a finding. Empty ones are left out rather than shown blank. */
+function bullet(label, text) {
+  if (!text) return "";
+  return `<span class="bullet"><em>${label}</em>${escapeHtml(text)}</span>`;
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(
     /[&<>"']/g,
@@ -343,8 +324,8 @@ function renderInspector() {
   const panel = $("inspector");
   const sel = state.selection;
   if (!sel) {
-    panel.innerHTML = `<p class="muted">Click a part, a track, a via or a pour.
-      Drag a part to move it. Everything you change is listed under Edits.</p>`;
+    panel.innerHTML = `<p class="muted">Click a part, a track, a via or a pour to
+      edit it. Drag a part to move it.</p>`;
     return;
   }
   if (sel.kind === "part") return renderPartInspector(panel, sel.ref);
@@ -415,11 +396,9 @@ function renderPartInspector(panel, ref) {
     </table>
     ${state.armed && state.armed.ref === ref
       ? html`<p class="hint armed-hint">Pin ${state.armed.pin} is armed. Pick the pin to swap it with.</p>`
-      : `<p class="hint">The ⇆ buttons swap two pins in one move, which is how a
-         connector gets wired the wrong way round.</p>`}
-    <p class="hint">Changing a net here edits the schematic only. The copper keeps
-      the routing it was laid out with, which is what a board looks like after a
-      change nobody re-routed.</p>
+      : `<p class="hint">⇆ swaps two pins in one move.</p>`}
+    <p class="hint">A net change edits the schematic only. The copper keeps its
+      routing, and the board shows where the two now disagree.</p>
   `;
 
   const value = $("ins-value");
@@ -551,20 +530,6 @@ function renderZoneInspector(panel, id) {
 
 // --------------------------------------------------------------------- panels
 
-function renderPresets() {
-  $("presets").innerHTML = PRESETS.map(
-    (preset) => `<button class="preset${state.presetId === preset.id ? " on" : ""}"
-        data-id="${escapeHtml(preset.id)}">
-        <span class="preset-title">${escapeHtml(preset.title)}</span>
-        <span class="preset-why">${escapeHtml(preset.breaks)}</span>
-      </button>`
-  ).join("");
-  for (const button of $("presets").querySelectorAll(".preset")) {
-    button.addEventListener("click", () =>
-      applyPreset(PRESETS.find((p) => p.id === button.dataset.id))
-    );
-  }
-}
 
 function renderLog() {
   const list = $("log");
@@ -572,7 +537,8 @@ function renderLog() {
   $("undo").disabled = !state.log.length;
   $("reset").disabled = !state.log.length;
   if (!state.log.length) {
-    list.innerHTML = `<li class="muted">The board is as it was manufactured.</li>`;
+    list.innerHTML = `<li class="muted">Nothing changed yet. Deleting a via on
+      GND, or moving a pin to another net, is a good place to start.</li>`;
     return;
   }
   const shown = state.log.slice(-8).reverse();
@@ -592,12 +558,8 @@ function flash(message) {
 
 // --------------------------------------------------------------------- review
 
+/** What the visitor changed, so a finding can be matched against it. */
 function expectedFromState() {
-  if (state.presetId) {
-    const preset = PRESETS.find((p) => p.id === state.presetId);
-    return [{ id: preset.id, title: preset.title, refs: preset.refs, nets: preset.nets }];
-  }
-  // A hand-made edit is graded the same way: what did it touch?
   return state.log.map((entry, i) => {
     const args = entry.args || {};
     const refs = [args.ref].filter(Boolean);
@@ -827,17 +789,16 @@ function renderOverlay() {
         (finding, i) => `<button class="ro-item sev-${escapeHtml(finding.severity)}${
           state.focused === i ? " on" : ""
         }" data-finding="${i}">
-          <b>${escapeHtml(finding.title)}</b>
-          <span class="why">${escapeHtml(finding.why)}</span>
+          ${bullet("Problem", finding.title)}
+          ${bullet("Why", finding.why)}
+          ${bullet("Solution", finding.fix)}
           <span class="tags">${[...finding.refs, ...finding.nets]
             .map((tag) => html`<code>${tag}</code>`)
             .join("")}</span>
-          <span class="where">shown in ${escapeHtml(viewForFinding(finding))}</span>
         </button>`
       )
       .join("")}</div>
-    <div class="ro-foot">Click a finding to put it on the board. The parts it
-      names are ringed and its nets are lit.</div>`;
+    <div class="ro-foot">Click a finding to put it on the board.</div>`;
 
   for (const button of overlay.querySelectorAll(".ro-item")) {
     button.addEventListener("click", () => focusFinding(Number(button.dataset.finding)));
@@ -920,10 +881,8 @@ function renderReview() {
   if (!state.sample) {
     // Only the review needs Claude. Say which part, and say it without
     // implying the page is broken — everything that makes the board is here.
-    panel.innerHTML = `<p class="muted">The review runs on Claude, and this view
-      cannot reach it — open the page inside Claude to use it. Nothing else
-      depends on it: breaking the board, the copper analysis above, the edit log
-      and undo all run here.</p>`;
+    panel.innerHTML = `<p class="muted">The review runs on Claude and this view
+      cannot reach it. Everything else works.</p>`;
     button.hidden = true;
     stream.hidden = true;
     return;
@@ -953,7 +912,7 @@ function renderReview() {
         <span class="review-error-code">${escapeHtml(code)}</span>
         <p>${escapeHtml(message)}</p>
       </div>
-      <p class="hint">Everything else on the page runs here and is unaffected.</p>`;
+      <p class="hint">Nothing else on the page depends on it.</p>`;
     return;
   }
 
@@ -961,12 +920,15 @@ function renderReview() {
     const counts = islandCounts(state.board);
     const broken = [...counts.entries()].filter(([, n]) => n > 1);
     panel.innerHTML = state.log.length
-      ? `<p class="muted">${state.log.length} edit${state.log.length === 1 ? "" : "s"} pending.
-         ${broken.length ? `The copper already disagrees with the net list on
-         ${broken.length} net${broken.length === 1 ? "" : "s"}.` : ""}</p>`
-      : `<p class="muted">Review the board untouched first. A reviewer that
-         flags a clean board is worth nothing, and that is the number worth
-         knowing before any of the others.</p>`;
+      ? `<p class="muted">${state.log.length} edit${state.log.length === 1 ? "" : "s"} pending.${
+          broken.length
+            ? ` The copper disagrees with the net list on ${broken.length} net${
+                broken.length === 1 ? "" : "s"
+              }.`
+            : ""
+        }</p>`
+      : `<p class="muted">Reviewing the board untouched tells you the false-alarm
+         rate, which is worth knowing first.</p>`;
     return;
   }
 
@@ -993,11 +955,9 @@ function renderReview() {
               state.focused === i ? " focused" : ""
             }">
               <button class="finding" data-finding="${i}">
-                <b>${escapeHtml(finding.title)}</b>
-                <span class="why">${escapeHtml(finding.why)}</span>
-                <span class="tags">${[...finding.refs, ...finding.nets]
-                  .map((tag) => html`<code>${tag}</code>`)
-                  .join("")}</span>
+                ${bullet("Problem", finding.title)}
+                ${bullet("Why", finding.why)}
+                ${bullet("Solution", finding.fix)}
               </button>
             </li>`
           )
@@ -1070,7 +1030,6 @@ function boot() {
 
   renderSource();
   setView("routing");
-  renderPresets();
   renderLog();
   renderInspector();
   renderReview();

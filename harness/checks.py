@@ -54,7 +54,7 @@ def rule(rule_id: str, severity: str = "major"):
     return wrap
 
 
-def finding(rule_id: str, title: str, why: str, refs: Iterable[str] = (), nets: Iterable[str] = (), severity: str = "major") -> dict:
+def finding(rule_id: str, title: str, why: str, refs: Iterable[str] = (), nets: Iterable[str] = (), severity: str = "major", fix: str = "") -> dict:
     return {
         "rule": rule_id,
         "severity": severity,
@@ -62,6 +62,7 @@ def finding(rule_id: str, title: str, why: str, refs: Iterable[str] = (), nets: 
         "nets": sorted(set(nets)),
         "title": title,
         "why": why,
+        "fix": fix,
     }
 
 
@@ -136,6 +137,7 @@ def check_power_pin_miswired(board: dict) -> list[dict]:
                     refs=[node["ref"]],
                     nets=[net["name"], expected],
                     severity="critical",
+                    fix=f"Move {node['ref']} pin {node['pin']} back to {expected}.",
                 )
             )
     return out
@@ -167,6 +169,7 @@ def check_connector_no_reference(board: dict) -> list[dict]:
                 refs=[ref],
                 nets=names,
                 severity="critical",
+                fix=f"Give {ref} a ground pin, a supply pin, or both.",
             )
         )
     return out
@@ -214,6 +217,10 @@ def check_connector_power_order(board: dict) -> list[dict]:
                 refs=[ref],
                 nets=list(by_pin.values()),
                 severity="critical",
+                fix=(
+                    f"Swap {ref} pins {supplies[0]} and 2, so the supply is in the "
+                    "middle and ground is on an end."
+                ),
             )
         )
     return out
@@ -271,6 +278,7 @@ def check_sensor_pinout_order(board: dict) -> list[dict]:
                 refs=[ref],
                 nets=list(by_pin.values()),
                 severity="critical",
+                fix=f"Rewire {ref} as supply, signal, signal, ground on pins 1 to 4.",
             )
         )
     return out
@@ -344,6 +352,10 @@ def check_floating_driver_input(board: dict) -> list[dict]:
                 "until then, and what it drives can energise.",
                 refs=[n["ref"] for n in net["nodes"]],
                 nets=[net["name"]],
+                fix=(
+                    f"Add a pull resistor from {net['name']} to a rail, so the input "
+                    "has a level before firmware runs."
+                ),
             )
         )
     return out
@@ -372,6 +384,7 @@ def check_unbuildable_value(board: dict) -> list[dict]:
                 "There is no magnitude here, so the line cannot be ordered and "
                 "nobody assembling the board knows what to fit.",
                 refs=[comp["ref"]],
+                fix=f"Give {comp['ref']} a value that can be ordered.",
             )
         )
     return out
@@ -610,6 +623,10 @@ def check_net_island(board: dict) -> list[dict]:
                 refs=sorted(refs),
                 nets=[net],
                 severity="critical",
+                fix=(
+                    f"Stitch the {net} islands together: vias between the layers "
+                    "where the pads are, and a pour on both."
+                ),
             )
         )
     return out

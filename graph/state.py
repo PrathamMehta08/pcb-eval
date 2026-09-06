@@ -75,6 +75,7 @@ def finding(
     refs: list[str] | None = None,
     nets: list[str] | None = None,
     severity: str = "major",
+    fix: str = "",
 ) -> dict:
     clean_refs, clean_nets = tidy(refs, nets)
     return {
@@ -84,6 +85,7 @@ def finding(
         "nets": clean_nets,
         "title": str(title).strip(),
         "why": str(why).strip(),
+        "fix": str(fix).strip(),
     }
 
 
@@ -93,7 +95,9 @@ def normalise(items, source: str) -> list[dict]:
     for item in items or []:
         if not isinstance(item, dict):
             continue
-        title = str(item.get("title", "")).strip()
+        # The schema calls it `problem`; older replies and the rule checks call
+        # the same thing `title`.
+        title = str(item.get("problem") or item.get("title") or "").strip()
         if not title:
             continue
         out.append(
@@ -104,6 +108,7 @@ def normalise(items, source: str) -> list[dict]:
                 [r for r in item.get("refs", []) or [] if isinstance(r, (str, int))],
                 [n for n in item.get("nets", []) or [] if isinstance(n, (str, int))],
                 str(item.get("severity", "major")).lower(),
+                item.get("fix", ""),
             )
         )
     return out

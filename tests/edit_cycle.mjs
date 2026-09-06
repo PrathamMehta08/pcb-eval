@@ -85,7 +85,7 @@ for (const name of Object.keys(OPS)) {
 check(/applyEdit\(/.test(app), "app.js goes through applyEdit rather than touching the board");
 check(!/board\.layout\.tracks\.splice|board\.components\.find\([^)]*\)\.value\s*=/.test(app),
   "app.js must not mutate the board outside an operation");
-for (const id of ["undo", "reset", "log", "inspector", "presets", "go", "stage"]) {
+for (const id of ["undo", "reset", "log", "inspector", "go", "stage", "review-overlay"]) {
   check(page.includes(`id="${id}"`), `index.html has no #${id}`);
 }
 check(/pointerdown|startDrag/.test(app), "app.js wires dragging");

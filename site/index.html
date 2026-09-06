@@ -214,8 +214,17 @@ main { display: flex; flex: 1; min-height: 0; }
 .ro-item.sev-critical { border-left-color: var(--crit); }
 .ro-item.sev-major { border-left-color: var(--warn); }
 .ro-item.on.sev-critical, .ro-item.on.sev-major { border-left-color: var(--mint); }
-.ro-item b { display: block; font-weight: 500; font-size: 12.5px; color: #e6eae7; }
-.ro-item .why { display: block; margin-top: 3px; font-size: 12px; color: #9aa3a9; }
+.ro-item .bullet {
+  display: block; font-size: 12.5px; color: #9aa3a9; margin-bottom: 4px;
+  padding-left: 58px; text-indent: -58px;
+}
+.ro-item .bullet:first-child { color: #e6eae7; }
+.ro-item .bullet em {
+  display: inline-block; width: 54px; margin-right: 4px; text-indent: 0;
+  font-family: var(--mono); font-size: 9px; font-style: normal;
+  letter-spacing: .1em; text-transform: uppercase; color: #6d757d;
+  vertical-align: 1px;
+}
 .ro-item .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .ro-item code {
   font-family: var(--mono); font-size: 10px; padding: 1px 5px; border-radius: 2px;
@@ -512,11 +521,20 @@ input, select {
   display: block; width: 100%; text-align: left; cursor: pointer;
   background: none; border: 0; padding: 0; color: inherit; font: inherit;
 }
-.finding:hover b { color: var(--mint); }
+.finding:hover .bullet:first-child { color: var(--mint); }
 .findings li.focused { background: var(--raised); }
-.findings li.focused b { color: var(--mint); }
-.findings b { display: block; font-weight: 500; color: var(--ink); font-size: 12.5px; }
-.findings .why { display: block; color: var(--ink-mid); font-size: 12px; margin-top: 2px; }
+.findings li.focused .bullet:first-child { color: var(--mint); }
+.findings .bullet {
+  display: block; font-size: 12.5px; color: var(--ink-mid); margin-bottom: 3px;
+  padding-left: 58px; text-indent: -58px;
+}
+.findings .bullet:first-child { color: var(--ink); }
+.findings .bullet em {
+  display: inline-block; width: 54px; margin-right: 4px; text-indent: 0;
+  font-family: var(--mono); font-size: 9px; font-style: normal;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-dim);
+  vertical-align: 1px;
+}
 .findings .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 .findings code {
   font-family: var(--mono); font-size: 10px; padding: 1px 5px;
@@ -571,15 +589,6 @@ input, select {
 
     <aside class="rail">
       <section class="panel">
-        <h3>What this is</h3>
-        <p class="lede">A real board, broken on purpose, to measure whether a
-          language model notices. <b>Every defect here is one this board's first
-          revision actually shipped with</b> — including the last one, where every
-          ground pad on the top layer is stranded because there are no stitching
-          vias and no top pour. ERC passed it. DRC passed it. The board did not work.</p>
-      </section>
-
-      <section class="panel">
         <h3>Board</h3>
         <div id="source"></div>
         <div class="row" style="margin-top:10px">
@@ -589,18 +598,13 @@ input, select {
                    accept=".kicad_pcb,.kicad_sch">
           </label>
         </div>
-        <p class="hint">Or drop the folder onto the board. Nothing is uploaded —
-          the files are read and parsed here, and no API is involved.</p>
+        <p class="hint">Or drop the folder on the board. Files are read in your
+          browser and never uploaded.</p>
       </section>
 
       <section class="panel">
         <h3>Inspector</h3>
         <div id="inspector"></div>
-      </section>
-
-      <section class="panel" id="presets-panel">
-        <h3>Break something</h3>
-        <div id="presets"></div>
       </section>
 
       <section class="panel">
@@ -626,7 +630,6 @@ input, select {
 
 <template id="sheet-svg"><!--@SCHEMATIC@--></template>
 <script type="application/json" id="board-data">/*@BOARD@*/</script>
-<script type="application/json" id="preset-data">/*@PRESETS@*/</script>
 <script type="module">
 /*@MODULES@*/
 </script>

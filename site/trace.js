@@ -103,8 +103,8 @@ function stepBody(step) {
                 <span class="why">${esc(r.why)}</span></li>`
             )
             .join("")}</ul>`
-        : `<p class="muted">Nothing for the loop to chase. The gate will stop after one pass
-             whatever the reviewers say.</p>`}`;
+        : `<p class="muted">Nothing for the loop to chase, so the gate stops after
+             one pass whatever the reviewers say.</p>`}`;
   }
 
   if (step.node === "gate") {
@@ -162,9 +162,7 @@ function renderBoard(name) {
     <h2>${esc(board.title)}</h2>
     ${defect
       ? `<p class="lede">${esc(defect.breaks)}</p>`
-      : `<p class="lede">Nothing was changed. What the reviewers say here is what
-           they say about a board with no seeded defect at all, which is the number
-           that decides whether any of the others mean anything.</p>`}
+      : `<p class="lede">Nothing was changed — this is the false-alarm rate.</p>`}
     <dl class="facts">
       <dt>board hash</dt><dd>${esc(board.board_hash)}</dd>
       <dt>sent</dt><dd>${board.distilled_tokens} tokens</dd>
