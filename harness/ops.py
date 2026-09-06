@@ -333,41 +333,63 @@ def undo(board: dict, log: list[dict]) -> dict | None:
     return entry
 
 
-def canonical(board: dict) -> Any:
-    """The board's meaning, independent of list order and of `meta`.
+def mm(value: float) -> str:
+    """One millimetre format, agreed with `site/ops.js`.
 
-    Operations append rather than re-sort, so two boards that differ only in the
-    order nodes were added must still hash the same. Normalising here is what
-    makes `undo` provably exact, and what lets `site/ops.js` agree with this
-    file without also copying its insertion order.
+    JSON round-tripping cannot be the basis for a cross-language hash: Python
+    writes 61.0 where JavaScript writes 61, and neither is wrong. A fixed
+    four-decimal string is identical in both, and the extractor already rounds
+    to four places, so nothing is being lost here that was not lost already.
+    """
+    number = float(value)
+    if abs(number) < 5e-5:
+        number = 0.0  # -0.0 formats as "-0.0000" and would differ by sign alone
+    return f"{number:.4f}"
+
+
+def canonical(board: dict) -> str:
+    """The board's meaning as one text, independent of list order and of `meta`.
+
+    Every field an operation can change appears exactly once. Operations append
+    rather than re-sort, so two boards that differ only in the order nodes were
+    added must still come out identical; sorting here is what makes `undo`
+    provably exact, and what lets `site/ops.js` agree without also copying this
+    file's insertion order.
     """
     layout = board["layout"]
-    return {
-        "components": sorted(board["components"], key=lambda c: c["ref"]),
-        "nets": sorted(
-            (
-                {
-                    "name": net["name"],
-                    "nodes": sorted(
-                        ({"ref": n["ref"], "pin": n["pin"]} for n in net["nodes"]),
-                        key=lambda n: (n["ref"], n["pin"]),
-                    ),
-                }
-                for net in board["nets"]
-            ),
-            key=lambda n: n["name"],
-        ),
-        "layout": {
-            "size": layout["size"],
-            "outline": layout["outline"],
-            "footprints": sorted(layout["footprints"], key=lambda f: f["ref"]),
-            "tracks": sorted(layout["tracks"], key=lambda t: t["id"]),
-            "vias": sorted(layout["vias"], key=lambda v: v["id"]),
-            "zones": sorted(layout["zones"], key=lambda z: z["id"]),
-        },
-    }
+    lines = [f"size {mm(layout['size']['w'])} {mm(layout['size']['h'])}"]
+
+    for comp in sorted(board["components"], key=lambda c: c["ref"]):
+        lines.append(f"C {comp['ref']} {comp['value']} {comp['footprint']}")
+
+    for net in sorted(board["nets"], key=lambda n: n["name"]):
+        nodes = sorted(f"{n['ref']}.{n['pin']}" for n in net["nodes"])
+        lines.append(f"N {net['name']} {' '.join(nodes)}")
+
+    for fp in sorted(layout["footprints"], key=lambda f: f["ref"]):
+        lines.append(
+            f"F {fp['ref']} {mm(fp['x'])} {mm(fp['y'])} {mm(fp['rot'])} {fp['layer']}"
+        )
+
+    for track in sorted(layout["tracks"], key=lambda t: t["id"]):
+        lines.append(
+            f"T {track['id']} {mm(track['x1'])} {mm(track['y1'])} "
+            f"{mm(track['x2'])} {mm(track['y2'])} {mm(track['width'])} "
+            f"{track['layer']} {track['net']}"
+        )
+
+    for via in sorted(layout["vias"], key=lambda v: v["id"]):
+        lines.append(
+            f"V {via['id']} {mm(via['x'])} {mm(via['y'])} "
+            f"{mm(via['size'])} {mm(via['drill'])} {via['net']}"
+        )
+
+    for zone in sorted(layout["zones"], key=lambda z: z["id"]):
+        state = "off" if zone.get("disabled") else "on"
+        lines.append(f"Z {zone['id']} {zone['net']} {zone['layer']} {state}")
+
+    return "\n".join(lines)
 
 
 def board_hash(board: dict) -> str:
-    blob = json.dumps(canonical(board), sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(canonical(board).encode("utf-8")).hexdigest()[:16]

@@ -56,7 +56,13 @@ def tokenize(text: str):
 
 
 def parse(text: str) -> list:
-    """Parse the whole document and return its single top-level list."""
+    """Parse the whole document and return its single top-level list.
+
+    A KiCad file is exactly one form. Anything else — two top-level forms, an
+    unclosed paren, a stray close paren, an atom outside any list — is a
+    malformed file, and saying so beats quietly returning whichever form
+    happened to come last.
+    """
     stack: list[list] = []
     root = None
     for tok in tokenize(text):
@@ -66,14 +72,21 @@ def parse(text: str) -> list:
                 stack[-1].append(node)
             stack.append(node)
         elif tok == ")":
+            if not stack:
+                raise ValueError("s-expression closes a list that was never opened")
             node = stack.pop()
             if not stack:
+                if root is not None:
+                    raise ValueError("s-expression has more than one top-level form")
                 root = node
+        elif stack:
+            stack[-1].append(tok)
         else:
-            if stack:
-                stack[-1].append(tok)
+            raise ValueError(f"atom {tok!r} outside any list")
+    if stack:
+        raise ValueError(f"s-expression ends with {len(stack)} list(s) still open")
     if root is None:
-        raise ValueError("unbalanced s-expression")
+        raise ValueError("s-expression is empty")
     return root
 
 

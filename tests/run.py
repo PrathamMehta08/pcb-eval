@@ -12,6 +12,7 @@ with nothing but the KiCad Python that ships with the board tools.
 from __future__ import annotations
 
 import json
+import math
 import sys
 import traceback
 from pathlib import Path
@@ -133,9 +134,23 @@ def check_layout(c: Check) -> None:
 
 @step(3, "extract/build.py writes boards/stm32-good.json")
 def check_build(c: Check) -> None:
+    from extract.build import DEFAULT_NET, build, round_floats
+    from extract.layout import DEFAULT_PCB
+    from extract.schematic import DEFAULT_SCH
+
     if not c.that(BOARD_JSON.exists(), f"{BOARD_JSON} exists"):
         return
+
+    # Run the join for real. Reading the committed JSON alone would pass even
+    # with `build()` sabotaged to raise on its first line.
+    fresh = round_floats(build(DEFAULT_NET, Path(DEFAULT_PCB), Path(DEFAULT_SCH)))
     board = load_board()
+    for key in ("components", "nets", "layout"):
+        c.equals(
+            json.dumps(fresh[key], sort_keys=True),
+            json.dumps(board[key], sort_keys=True),
+            f"committed JSON is current for {key} (rerun: python -m extract.build)",
+        )
     c.equals(len(board["components"]), 53, "components")
     c.equals(len(board["nets"]), 62, "nets")
 
@@ -159,6 +174,33 @@ def check_build(c: Check) -> None:
             if not c.that("sheet" in comp, f"{comp['ref']} has schematic coordinates"):
                 break
     c.note(f"{len(renamed)} footprints carry a silkscreen label, not a designator")
+
+    # place() is the transform every view and every copper check rests on.
+    # These are KiCad's own plotted pad centres out of layer-F_Cu.svg, in
+    # board-relative millimetres.
+    from extract.layout import place
+
+    golden = {
+        ("U1", "1"): (48.100, 31.100),
+        ("U1", "2"): (45.800, 31.100),
+        ("U1", "3"): (43.500, 31.100),
+        ("C2", "1"): (51.300, 36.100),
+        ("R1", "1"): (55.210, 30.200),
+        ("Y1", "1"): (19.500, 10.950),
+    }
+    fp_by_ref = {f["ref"]: f for f in fps}
+    for (ref, pin), (want_x, want_y) in golden.items():
+        fp = fp_by_ref[ref]
+        pad = next((p for p in fp["pads"] if p["num"] == pin), None)
+        if not c.that(pad is not None, f"{ref} has a pad {pin}"):
+            continue
+        dx, dy = place(pad["x"], pad["y"], fp["rot"])
+        got = (fp["x"] + dx, fp["y"] + dy)
+        c.that(
+            math.dist(got, (want_x, want_y)) <= 0.02,
+            f"place() puts {ref}.{pin} at {got[0]:.3f}, {got[1]:.3f}; "
+            f"KiCad plots it at {want_x}, {want_y}",
+        )
 
 
 # --------------------------------------------------------------------------- 4

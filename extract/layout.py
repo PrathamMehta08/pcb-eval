@@ -85,6 +85,11 @@ def parse_outline(doc) -> list[dict]:
 
 
 def outline_bbox(outline: list[dict]) -> tuple[float, float, float, float]:
+    if not outline:
+        raise ValueError(
+            "the board has no Edge.Cuts geometry, so there is no origin to "
+            "make coordinates relative to"
+        )
     xs: list[float] = []
     ys: list[float] = []
     for item in outline:
