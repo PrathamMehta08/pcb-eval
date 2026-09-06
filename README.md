@@ -30,118 +30,132 @@ it, let alone find it.
 ## Results
 
 Eight boards — one clean, seven seeded. Two detectors, given the same distilled
-board, the same output schema, the same model and the same temperature. The only
-difference is that one asks a single flat prompt to do all three jobs, and the
-other splits them across a LangGraph pipeline of three specialists plus an
-adjudicator.
+board, the same output schema, the same model and the same temperature, and
+pointed at the same data sections in the same words. The only thing that varies
+is that one asks a single flat prompt to do all three jobs, and the other splits
+them across a LangGraph pipeline of three specialists plus an adjudicator.
 
-`openai/gpt-oss-120b` · prompts `bab4450ceef8` · schema `234a1c9dd4ac` · corpus `c945775a879c`
+`openai/gpt-oss-120b` · prompts `743e7f6977bd` · schema `234a1c9dd4ac` · corpus `c945775a879c`
 · full record in [`results/latest.json`](results/latest.json)
 
-| board | one prompt | the graph |
+| | one prompt | the graph |
 |---|---|---|
-| clean (no defect) | 4 findings | 6 findings |
-| `vfb-vbst-swap` | caught | caught |
-| `stepper-common-open` | caught | caught |
-| `servo-power-end-pin` | **missed** | caught |
-| `ultrasonic-crossed` | caught | caught |
-| `stepper-in4-floating` | caught | caught |
-| `unbuildable-value` | **missed** | **missed** |
-| `ground-stranded` | caught | caught |
-| **recall** | **5 of 7** | **6 of 7** |
-| **false alarms on the clean board** | **4** | **6** |
-| calls per board | 1 | 4, or 8 when the gate loops |
+| defects matched, of 7 | 6 | 7 |
+| **defects the finding actually names** | **2** | **2** |
+| findings the copper refutes — reported | **1** | **0** |
+| findings the copper refutes — proposed | 1 | 3 |
+| findings on the clean board | 7 | 8 |
+| model calls per board | 1 | 4, or 8 when the gate loops |
 
-By the metric the plan specified — a finding matches a defect when their
-component refs or net names intersect — the graph wins on recall and loses on
-false alarms.
+Read the middle three rows. **The first row — 6 of 7 and 7 of 7 — says
+nothing**, and the second half of this section is the evidence for that.
 
-**Both numbers are softer than they look, and that is the more useful result.**
+### Why the recall row says nothing
 
-## The metric is too generous, and here is the proof
+The plan's rule is that a finding matches a defect when their component refs or
+net names intersect. That rule cannot tell a finding that *identified* a defect
+from one that merely *mentioned a part the defect touches*, so every match here
+records `via` — the identifier it rested on — and `breadth`, how many names the
+finding threw at the board. Reading the pairs is a judgement, not a computation;
+here is the data so you can disagree with mine.
 
-Overlap cannot tell a finding that *identified* a defect from one that merely
-*mentioned a part the defect touches*. So every match records `via`, the
-identifier it rested on, and `breadth`, how many names the finding threw at the
-board. Reading the pairs is a judgement, not a computation — here is the data so
-you can disagree with mine.
+**One prompt: two of its six.**
 
-**One prompt — two of its five catches are real.**
-
-| defect | matched on | the finding that "caught" it | real? |
+| defect | matched on | the finding that "caught" it | names it? |
 |---|---|---|---|
-| `vfb-vbst-swap` | `S1` | Enable pin of buck converter tied to VIN net | no |
-| `stepper-common-open` | `+5V` | Buck feedback network sets output ~3.3 V | no |
-| `ultrasonic-crossed` | `U2` | NRST pin lacks pull-up resistor | no |
-| `stepper-in4-floating` | `U3`, `/STEPPER_IN4` | Missing series resistor on stepper driver input 4 | **yes** |
-| `ground-stranded` | `GND` | GND net split into multiple copper islands | **yes** |
+| `vfb-vbst-swap` | `S1` | EN pin of buck converter tied to VIN net | no |
+| `stepper-common-open` | `+5V` | Trace width on +5 V net insufficient for 3 A buck output | no |
+| `servo-power-end-pin` | `+5V` | Trace width too narrow for high-current rails | no |
+| `ultrasonic-crossed` | `U2` | BOOT0 pin left floating | no |
+| `stepper-in4-floating` | — | missed | — |
+| `unbuildable-value` | `R4` | **Resistor R4 has no value specified** | **yes** |
+| `ground-stranded` | `GND` | **GND net split across 28 copper islands** | **yes** |
 
-**The graph — three of its six.**
+**The graph: two of its seven.**
 
-| defect | matched on | the finding that caught it | real? |
+| defect | matched on | the finding that "caught" it | names it? |
 |---|---|---|---|
-| `vfb-vbst-swap` | `S1`, `/FB`, `VBST` | **Feedback pin wired to VBST net instead of VFB net** | **yes** |
-| `stepper-common-open` | `J11`, `/O5` | Connector J11 provides only control signals with no ground or supply pins | **yes** |
-| `servo-power-end-pin` | `+5V` | Connector J11 provides no ground pin — J11, not J4 | no |
-| `ultrasonic-crossed` | `U2` | NRST pin lacks pull-up resistor to VDD | no |
-| `stepper-in4-floating` | `U3` | Decoupling capacitor far from GND pin | no |
-| `ground-stranded` | `GND` | Ground net not connected between layers (no vias, single-side pour) | **yes** |
+| `vfb-vbst-swap` | `S1` | EN pin of buck converter tied to VIN net | no |
+| `stepper-common-open` | `U3`, `+5V` | Trace width on +5V net insufficient for 3 A buck output | no |
+| `servo-power-end-pin` | `J4`, `+5V`, `GND` | **Servo header J4 pin order incorrect** | **yes** |
+| `ultrasonic-crossed` | `U2` | NRST pin lacks a pull-up resistor | no |
+| `stepper-in4-floating` | `U3` | +5V trace width insufficient for 3 A load *(named 12 things)* | no |
+| `unbuildable-value` | `R4` | BOOT0 lacks defined pull-up | no |
+| `ground-stranded` | `GND` | **Ground net split across 28 islands with no vias and pour only on bottom layer** | **yes** |
 
-So the honest scoreboard is:
+Two each, and each found one the other did not: the flat prompt named the
+unorderable resistor, the graph named the crossed servo header. **On this corpus
+decomposition did not beat a single prompt at finding defects.**
 
-|  | overlap recall | catches that actually name the defect |
-|---|---|---|
-| one prompt | 5 of 7 | **2** |
-| the graph | 6 of 7 | **3** |
+### The row that does mean something
 
-The graph's win is narrow, and the interesting part is *which* one it wins on:
-the feedback-and-bootstrap swap, named exactly — "Feedback pin wired to VBST net
-instead of VFB net". The single prompt has never produced that sentence, in
-either sweep. It is the defect that most needs the datasheet's own pin names,
-which is what the `datasheet` node exists to read.
+A finding that says a net is split into copper islands, on a net whose copper is
+one connected piece, is wrong — and the geometry says so without anyone's
+opinion. `harness/grade.py` measures that for both detectors, over both what
+each *proposed* and what it *reported*, so the graph earns no credit merely for
+having a stage the baseline lacks.
 
-Neither detector found `unbuildable-value`, a resistor whose value is the letter
-`R`. The deterministic rule catches it in a millisecond. That is the division of
-labour the whole design argues for, and it is worth more than the recall column.
+- **The graph proposed three claims the board refutes and reported none.** Its
+  adjudicator dropped all three: `/VIN_LDO`, `/BOOT0` and `GND` each claimed to
+  be disconnected, each one connected piece of copper.
+- **The single prompt proposed one and reported it**, because nothing in that
+  path consults the board. It named a net called `/5V`, which does not exist.
 
-**What this corpus mainly has to say is about the schema, not the model.**
-Grading exactly would need a finding to carry a machine-checkable claim — the
-kind of defect, and the specific pin or net it is about — instead of a sentence
-plus a bag of references. `{"claim": "pin-on-wrong-net", "ref": "S1", "pin": "4"}`
-can be scored. "Feedback pin wired to VBST net instead of VFB net" can only be
-pattern-matched, and pattern-matching on refs is what produced both flattering
-recall numbers above.
+An earlier sweep, before both prompts were pointed at the same sections, made
+this larger and starker: the flat prompt invented a copper split **five times
+across four boards whose copper was intact**, including "Ground net split into
+41 isolated copper islands" on a board where ground is one piece — and two of
+those fabrications are what scored it a match under the overlap rule.
+
+That is the whole design in one number. LLM nodes propose; deterministic checks
+dispose. The referee is the board, and only one of the two detectors asks it
+anything before speaking.
 
 ### What is not being claimed
 
-Seven seeded defects is a small corpus and the sweep has been run twice. Both
-runs put the two detectors within one defect of each other and both showed the
-same pattern of coincidental matches, but one defect of difference on seven
-boards is not a result that would survive a third model or a second board.
+- **Seven defects on one board is a small corpus**, run four times as the
+  harness was corrected. Across those runs the two detectors stayed within one
+  defect of each other on the overlap rule and within one on the honest reading.
+  That is not a result that would survive a second model or a second board.
+- **The clean-board count conflates two different things.** Three of the graph's
+  eight are true measurements it was handed — "Decoupling capacitor for ULN2003
+  GND is 17.2 mm away" is correct, and the distance came out of the board. They
+  are not defects anyone seeded, but they are not inventions either.
+- **The refutation check is narrow.** It catches a part or net that does not
+  exist and a disconnection claim the copper denies. It has nothing to say about
+  a trace-width claim, which is most of what both detectors report.
+- **Neither prompt was edited after a score was seen.** `prompt_hash` makes that
+  checkable, and `tests/run.py` step 13 fails when the committed result predates
+  the current prompts — which is how the stale results in this file were caught
+  twice.
 
-Neither prompt was edited after any score was seen; `prompt_hash` is there to
-make that checkable. Two harness bugs were fixed between the runs and everything
-was re-scored:
+Three harness bugs were fixed between runs, and everything was re-scored:
 
-- **The first sweep was invalid.** The distiller took a list of "focus" refs and
-  printed the geometry around them, ending with the literal word `edited` — so
-  the prompt named the part that had just been broken on a seeded board and said
-  nothing at all on the clean one. `distill()` now takes the board and nothing
-  else, and the plumbing that fed it is gone rather than merely unused.
-- Reviewers write `D2.2` meaning pin 2 of D2, and the adjudicator's
-  contradiction check read that as a part that does not exist, throwing out
-  twenty correct findings.
+1. **The first sweep was invalid.** The distiller took a list of "focus" refs
+   and printed the geometry around them, ending with the literal word `edited` —
+   so the prompt named the part that had just been broken on a seeded board and
+   said nothing on the clean one. `distill()` now takes the board and nothing
+   else, and the plumbing that fed it is gone rather than merely unused.
+2. Reviewers write `D2.2` meaning pin 2 of D2, and the adjudicator's
+   contradiction check read that as a part that does not exist, throwing out
+   twenty correct findings.
+3. The layout node was told to read a `PLACEMENT` section the distiller had
+   stopped emitting, and nothing pointed at the `DECOUPLING` section that
+   replaced it. Both prompts now name the same sections in the same words, so
+   what varies is the decomposition and not who was told where to look.
 
 ### What it cost
 
-The full sweep: 44 model calls, 154k tokens in, 105k out, **$0.086**, 251
-seconds at two concurrent requests. Re-running is free — the disk cache is keyed
-on `(model, prompt)`, so re-scoring after a harness change costs nothing and
-takes four seconds.
+The full sweep from cold: 44 model calls, 155k tokens in, 106k out, **$0.0869**,
+242 seconds at two concurrent requests. That figure comes from the per-call
+token counts rather than from what the run happened to spend, so it does not
+shrink to zero the moment the cache is warm. Re-scoring after a harness change is
+free and takes four seconds — the disk cache is keyed on `(model, prompt)`.
+Four sweeps and all the development around them came to about forty cents.
 
-Every call is logged with its tokens, seconds and dollars. Every sweep is
-stamped with the prompt hash, the schema hash and the corpus hash, because a
-score that outlives the system it measured is worse than no score.
+Every call is logged with its tokens, seconds and dollars. Every sweep carries
+the prompt hash, the schema hash and the corpus hash, because a score that
+outlives the system it measured is worse than no score.
 
 ## What a netlist cannot see
 

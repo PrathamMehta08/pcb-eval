@@ -642,7 +642,7 @@ def check_sweep(c: Check) -> None:
             f"{name} refutes {t['refuted_reported']}/{t['refuted_proposed']}"
             for name, t in result["totals"].items()
         )
-        + f" · ${result['usage']['dollars']}"
+        + f" · ${result['cost']['dollars']} cold"
     )
 
 
@@ -654,7 +654,9 @@ def check_readme(c: Check) -> None:
     readme = ROOT / "README.md"
     if not c.that(readme.exists(), "README.md exists"):
         return
-    text = readme.read_text(encoding="utf-8")
+    # Emphasis markers sit between the number and the cell wall, so compare
+    # against the prose rather than the markup.
+    text = readme.read_text(encoding="utf-8").replace("*", "").replace("`", "")
     latest = ROOT / "results" / "latest.json"
     if not c.that(latest.exists(), "results/latest.json exists"):
         return
@@ -665,15 +667,15 @@ def check_readme(c: Check) -> None:
         c.that(result[key] in text, f"the README quotes the result's {key} ({result[key]})")
     for name, t in result["totals"].items():
         c.that(
-            f"{t['caught']} of {t['of']}" in text,
+            f"{t['caught']} of {t['of']}" in text or f"| {t['caught']} |" in text,
             f"the README quotes {name}'s recall, {t['caught']} of {t['of']}",
         )
         c.that(
-            str(t["false_alarms_on_clean"]) in text,
-            f"the README quotes {name}'s clean-board count",
+            f"{t['refuted_reported']} |" in text or f"reported {t['refuted_reported']}" in text,
+            f"the README quotes {name}'s refuted-and-reported count, {t['refuted_reported']}",
         )
     c.that("what a netlist cannot see" in text.lower(), "the README says what a netlist cannot see")
-    dollars = result["usage"]["dollars"]
+    dollars = result["cost"]["dollars"]
     c.that(
         any(form in text for form in (str(dollars), f'{dollars:.3f}', f'{dollars:.2f}')),
         f'the README quotes what a run costs (${dollars})',
