@@ -36,7 +36,7 @@ const MAX_PROMPT_CHARS = 40000; // the distilled board plus instructions
 //
 // Nothing is charged for headroom, only for tokens actually produced, so the
 // ceiling is set well clear of the worst case rather than close to the mean.
-const MAX_OUTPUT_TOKENS = Number(process.env.MAX_OUTPUT_TOKENS || 8000);
+const MAX_OUTPUT_TOKENS = Number(process.env.MAX_OUTPUT_TOKENS || 16000);
 const TIMEOUT_MS = 45000;
 
 /**
