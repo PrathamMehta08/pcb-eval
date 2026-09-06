@@ -27,7 +27,13 @@ const IP_PER_HOUR = Number(process.env.IP_PER_HOUR || 40); // ~5 reviews
 const IP_PER_DAY = Number(process.env.IP_PER_DAY || 160); // ~20 reviews
 
 const MAX_PROMPT_CHARS = 40000; // the distilled board plus instructions
-const MAX_OUTPUT_TOKENS = 2600; // reasoning models spend budget before answering
+
+// `gpt-oss-120b` is a reasoning model: this budget covers the thinking as well
+// as the answer, and the real sweep averages 2339 output tokens a call. The
+// first version allowed 2600, so roughly half of all calls ran out mid-answer.
+// 4000 is what harness/llm.py has always used, across 48 calls without a
+// failure, and this now matches it.
+const MAX_OUTPUT_TOKENS = Number(process.env.MAX_OUTPUT_TOKENS || 4000);
 const TIMEOUT_MS = 45000;
 
 /**
@@ -139,11 +145,15 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: MODEL,
         messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        // Reasoning models spend this budget thinking before they answer. Too
-        // small and content comes back empty with finish_reason "length".
+        // Deliberately no `response_format: json_object`. Groq validates the
+        // whole completion against it, so an answer truncated one brace short
+        // is rejected outright as "Failed to validate JSON" rather than
+        // returned for salvage — turning a recoverable answer into a hard
+        // failure. It also refuses any prompt not containing the word "json".
+        // The prompts already demand JSON only, and `extractJson` below reads
+        // it back the same lenient way harness/llm.py does.
         max_completion_tokens: MAX_OUTPUT_TOKENS,
-        temperature: 0.2,
+        temperature: 0,
       }),
       signal: controller.signal,
     });
@@ -188,19 +198,27 @@ export default async function handler(req, res) {
     return fail(res, 502, "upstream_error", "The model's response was not JSON.");
   }
 
-  const content = parsed?.choices?.[0]?.message?.content;
+  const choice = parsed?.choices?.[0];
+  const content = choice?.message?.content;
   if (typeof content !== "string" || !content.trim()) {
+    const why =
+      choice?.finish_reason === "length"
+        ? "The model spent its whole budget reasoning and never answered. Raise MAX_OUTPUT_TOKENS."
+        : "The model returned nothing.";
+    return fail(res, 502, "upstream_error", why);
+  }
+
+  const result = extractJson(content);
+  if (!result) {
+    const truncated = choice?.finish_reason === "length";
     return fail(
       res,
       502,
-      "upstream_error",
-      "The model returned nothing. Raise max_completion_tokens."
+      "bad_json",
+      truncated
+        ? "The model's answer was cut off mid-JSON. Raise MAX_OUTPUT_TOKENS."
+        : "The model did not return usable JSON."
     );
-  }
-
-  const result = safeParse(content);
-  if (!result || typeof result !== "object") {
-    return fail(res, 502, "bad_json", "The model did not return usable JSON.");
   }
 
   return send(res, 200, {
@@ -215,4 +233,29 @@ function safeParse(s) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Pull a JSON object out of a reply that may be wrapped in prose or a fence.
+ *
+ * The same three steps as `parse_json` in harness/llm.py, so the page and the
+ * harness accept exactly the same answers. Without this the model has to be
+ * perfect on the first character; with it, a fenced block or a sentence of
+ * preamble costs nothing.
+ */
+function extractJson(text) {
+  if (!text) return null;
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(text);
+  const candidate = fenced ? fenced[1] : text;
+
+  const direct = safeParse(candidate.trim());
+  if (direct && typeof direct === "object") return direct;
+
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    const sliced = safeParse(candidate.slice(start, end + 1));
+    if (sliced && typeof sliced === "object") return sliced;
+  }
+  return null;
 }
