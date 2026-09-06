@@ -163,11 +163,29 @@ export default async function handler(req, res) {
     return fail(res, 429, "rate_limited", "The model is rate limiting requests. Try again shortly.");
   }
 
-  const parsed = await upstream.json().catch(() => null);
-  if (!upstream.ok || !parsed) {
-    // A spending limit reached in the Groq console surfaces here, which is the
-    // intended way for this to stop.
-    return fail(res, 502, "upstream_error", "The model returned an error.");
+  // Read once as text, so a failure can be explained rather than guessed at.
+  // The first version reported every upstream failure as "The model returned an
+  // error", which is true and useless: it covers a spending limit, a context
+  // overflow and a malformed request equally, and gives no way to tell them
+  // apart from the outside. Provider errors carry a real message; pass it on.
+  const rawText = await upstream.text();
+  let parsed = null;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    parsed = null;
+  }
+
+  if (!upstream.ok) {
+    const detail =
+      parsed?.error?.message ||
+      parsed?.message ||
+      rawText.slice(0, 300) ||
+      `HTTP ${upstream.status}`;
+    return fail(res, 502, "upstream_error", `The model refused the request: ${detail}`);
+  }
+  if (!parsed) {
+    return fail(res, 502, "upstream_error", "The model's response was not JSON.");
   }
 
   const content = parsed?.choices?.[0]?.message?.content;
