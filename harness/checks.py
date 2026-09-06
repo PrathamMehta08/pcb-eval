@@ -126,19 +126,18 @@ def check_power_pin_miswired(board: dict) -> list[dict]:
             # not a miswire.
             if is_ground(expected) and is_ground(net["name"]):
                 continue
-            if True:
-                out.append(
-                    finding(
-                        "power-pin-miswired",
-                        f"{node['ref']} pin {node['pin']} ({function}) is on {net['name']}, not {expected}",
-                        f"The part names this pin {declared}, and the board has a net called "
-                        f"{expected}. Wiring it to {net['name']} instead means the pin is "
-                        "doing a different job than the symbol says it does.",
-                        refs=[node["ref"]],
-                        nets=[net["name"], expected],
-                        severity="critical",
-                    )
+            out.append(
+                finding(
+                    "power-pin-miswired",
+                    f"{node['ref']} pin {node['pin']} ({function}) is on {net['name']}, not {expected}",
+                    f"The part names this pin {declared}, and the board has a net called "
+                    f"{expected}. Wiring it to {net['name']} instead means the pin is "
+                    "doing a different job than the symbol says it does.",
+                    refs=[node["ref"]],
+                    nets=[net["name"], expected],
+                    severity="critical",
                 )
+            )
     return out
 
 

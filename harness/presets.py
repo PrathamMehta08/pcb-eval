@@ -23,7 +23,8 @@ from __future__ import annotations
 
 from harness.ops import apply_edits
 
-GND_ZONE_F_CU = "GND_1"  # the F.Cu pour; the B.Cu pour is named plain "GND"
+class AlreadyApplied(ValueError):
+    """This preset is already on the board it was handed."""
 
 
 def _edit(op: str, **args) -> dict:
@@ -161,9 +162,26 @@ def edits_for(preset: dict, board: dict) -> list[dict]:
 
 
 def apply_preset(board: dict, preset_id: str) -> list[dict]:
+    """Apply a preset to a board that has not been edited yet.
+
+    Applying one twice is not idempotent and is not a no-op either. The two
+    `swap_pins` presets are their own inverse, so a second application quietly
+    restores the clean board while leaving edits in the log; `ground-stranded`
+    recomputes its list against the already-broken board, finds no ground vias
+    left to delete, and toggles the top pour back **on** — leaving a board that
+    is neither clean nor the defect it is named after. The page resets before
+    applying; this raises rather than let a script do it by accident.
+    """
+    from harness.checks import run_checks  # local: checks.py is the heavier half
+
     preset = BY_ID.get(preset_id)
     if preset is None:
         raise KeyError(f"no preset {preset_id!r}")
+    if preset["rule"] in {f["rule"] for f in run_checks(board)}:
+        raise AlreadyApplied(
+            f"{preset_id} is already on this board — {preset['rule']} is tripping. "
+            "Start from a clean board."
+        )
     return apply_edits(board, edits_for(preset, board))
 
 

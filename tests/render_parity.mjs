@@ -13,7 +13,9 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const { place } = await import("file://" + join(root, "site", "render.js"));
+// render.js draws with it; copper.js owns it. Importing render.js here would
+// also pull in the DOM calls, which node has no answer for.
+const { place } = await import("file://" + join(root, "site", "copper.js"));
 
 const board = JSON.parse(readFileSync(join(root, "boards", "stm32-good.json"), "utf8"));
 

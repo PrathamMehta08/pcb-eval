@@ -16,6 +16,10 @@
 // already include the footprint's own rotation — so a pad inside a rotated
 // footprint group needs the difference, not the sum.
 
+// `place` is KiCad's RotatePoint and lives in copper.js, which needs it to put
+// pads in board coordinates. One definition, used by both.
+import { place } from "./copper.js";
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 export function el(name, attrs = {}, children = []) {
@@ -28,14 +32,6 @@ export function el(name, attrs = {}, children = []) {
     if (child) node.appendChild(child);
   }
   return node;
-}
-
-export function place(x, y, rotDeg) {
-  if (!rotDeg) return [x, y];
-  const a = (rotDeg * Math.PI) / 180;
-  const ca = Math.cos(a);
-  const sa = Math.sin(a);
-  return [x * ca + y * sa, y * ca - x * sa];
 }
 
 const f = (n) => Number(n).toFixed(3);
