@@ -75,7 +75,10 @@ check(
 while (log.length) undo(work, log);
 check((await boardHash(work)) === before, "undo restores the board exactly");
 
-// The UI half: every operation has to be reachable, or the editor is a demo.
+// Every operation has to have a control that records it. This is a grep, and
+// a grep cannot tell whether the control can be reached — one of these passed
+// while pointer capture was swallowing every click in the board views, which is
+// what tests/pointer.mjs is for.
 for (const name of Object.keys(OPS)) {
   check(app.includes(`op: "${name}"`), `app.js has no control that records ${name}`);
 }
@@ -91,6 +94,6 @@ for (const failure of failures) console.error("  x " + failure);
 console.log(
   failures.length
     ? `${failures.length} edit-cycle checks failed`
-    : `drag, delete and reassign each log one readable entry, undo restores ${before}, and all ${Object.keys(OPS).length} operations are reachable from the UI`
+    : `drag, delete and reassign each log one readable entry, undo restores ${before}, and app.js records all ${Object.keys(OPS).length} operations`
 );
 process.exit(failures.length ? 1 : 0);

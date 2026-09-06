@@ -65,17 +65,16 @@ function drawView({ keepZoom = true } = {}) {
   svg.dataset.view = state.view;
   stage.appendChild(svg);
 
-  panzoom = attachPanZoom(svg, { onPointerDown: startDrag });
+  panzoom = attachPanZoom(svg, {
+    onPointerDown: startDrag,
+    onTap: (target) => select(target ? describe(target) : null),
+  });
   if (keepZoom && keptView && keptView.w) {
     svg.setAttribute(
       "viewBox",
       `${keptView.x} ${keptView.y} ${keptView.w} ${keptView.h}`
     );
   }
-  svg.addEventListener("click", (event) => {
-    const target = event.target.closest("[data-kind]");
-    select(target ? describe(target) : null);
-  });
   applySelectionToSvg();
   if (state.verdict) paintFindings();
   return svg;
@@ -423,7 +422,15 @@ function renderTrackInspector(panel, id) {
   `;
   $("ins-width").addEventListener("change", (event) => {
     const mm = Number(event.target.value);
-    if (mm > 0 && mm !== track.width) record({ op: "set_track_width", args: { track_id: id, mm } });
+    if (mm === track.width) return;
+    // 0.1 mm is about the finest a cheap fabricator will quote, and 5 mm is
+    // wider than this board. Silently accepting 999 was worse than refusing it.
+    if (!(mm >= 0.1 && mm <= 5)) {
+      flash(`A track is between 0.1 and 5 mm. ${event.target.value} is not.`);
+      event.target.value = track.width;
+      return;
+    }
+    record({ op: "set_track_width", args: { track_id: id, mm } });
   });
   panel.querySelector('[data-act="del"]').addEventListener("click", () => {
     record({ op: "delete_track", args: { track_id: id } });

@@ -132,8 +132,13 @@ main { display: flex; flex: 1; min-height: 0; }
   position: absolute; display: flex; gap: 6px; align-items: center;
   font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
 }
-.overlay-tl { left: 12px; bottom: 12px; }
+.overlay-tl { left: 12px; bottom: 12px; flex-wrap: wrap; max-width: calc(100% - 24px); }
 .overlay-br { right: 12px; bottom: 12px; color: #56626a; }
+/* Below about 560px the two rows of chips would sit on top of each other. */
+@media (max-width: 560px) {
+  .overlay-tl { bottom: 44px; }
+  .overlay-br span { display: none; }
+}
 .chip {
   padding: 3px 8px; cursor: pointer; text-transform: uppercase;
   background: rgba(10, 14, 18, .82); color: #c3ccd2;
@@ -174,7 +179,11 @@ main { display: flex; flex: 1; min-height: 0; }
 .pad-hole { fill: #2c3238; }
 .drill, .via-drill { fill: var(--hole); }
 .via { fill: var(--via); }
-.fp-silk { fill: none; stroke: var(--silk); stroke-width: .1; opacity: .5; }
+/* Round caps so a zero-length silkscreen line — four of them on this board,
+   which is how KiCad draws a dot — is a dot rather than nothing. */
+.fp-silk { fill: none; stroke: var(--silk); stroke-width: .1; opacity: .5; stroke-linecap: round; }
+/* Transparent, but it takes the pointer: the whole part is a grab target. */
+.fp-body { fill: transparent; stroke: none; }
 .ref-label {
   fill: var(--label); font-family: var(--mono); font-size: .95px;
   letter-spacing: .02px; pointer-events: none; user-select: none;

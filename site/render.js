@@ -36,6 +36,9 @@ export function el(name, attrs = {}, children = []) {
 
 const f = (n) => Number(n).toFixed(3);
 
+//: How far a pointer may travel and still count as a tap rather than a pan.
+const TAP_SLOP = 3;
+
 // ------------------------------------------------------------------- outline
 
 function arcPath(x1, y1, mx, my, x2, y2) {
@@ -179,6 +182,31 @@ function graphicNode(item) {
   return el("line", { class: cls, x1: f(item.x1), y1: f(item.y1), x2: f(item.x2), y2: f(item.y2) });
 }
 
+/** The footprint's own extent, in its local frame: pads and silkscreen. */
+function footprintBox(fp) {
+  const xs = [];
+  const ys = [];
+  for (const pad of fp.pads) {
+    const half = Math.max(pad.w, pad.h) / 2;
+    xs.push(pad.x - half, pad.x + half);
+    ys.push(pad.y - half, pad.y + half);
+  }
+  for (const item of fp.graphics) {
+    if (item.kind === "poly") {
+      for (const [x, y] of item.pts) {
+        xs.push(x);
+        ys.push(y);
+      }
+    } else {
+      xs.push(item.x1, item.x2);
+      ys.push(item.y1, item.y2);
+    }
+  }
+  if (!xs.length) return null;
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+}
+
+
 function footprintNode(fp, { showSilk = true, showRefs = true } = {}) {
   // A back-layer footprint is mirrored in Y and turns the other way. This board
   // is single-sided so the branch is untested; it is here so the renderer does
@@ -191,6 +219,24 @@ function footprintNode(fp, { showSilk = true, showRefs = true } = {}) {
     (flip ? " scale(1 -1)" : "");
 
   const children = [];
+
+  // A transparent body, so the part can be grabbed anywhere and not only on a
+  // pad or a silkscreen line. Without it, pressing the middle of a two-pad part
+  // hits nothing and pans the view instead of dragging the part.
+  const body = footprintBox(fp);
+  if (body) {
+    const hit = el("rect", {
+      class: "fp-body",
+      x: f(body.x0),
+      y: f(body.y0),
+      width: f(body.x1 - body.x0),
+      height: f(body.y1 - body.y0),
+    });
+    hit.dataset.kind = "footprint";
+    hit.dataset.ref = fp.ref;
+    children.push(hit);
+  }
+
   if (showSilk) {
     for (const item of fp.graphics) {
       if (item.layer.includes("SilkS")) children.push(graphicNode(item));
@@ -433,8 +479,14 @@ export function highlightNets(svg, nets) {
  *
  * A 0.3 mm track on a 61 mm board is a third of a percent of the width, so the
  * views are unreadable without this.
+ *
+ * Selection is reported through `onTap` on pointerup, not through a `click`
+ * listener. Panning takes pointer capture on the root, and capture retargets
+ * the click that follows to the root — so a `click` handler looking for the
+ * element under the cursor finds the SVG and nothing else. That made every
+ * board view read-only: the track, via and pour editors had no way in.
  */
-export function attachPanZoom(svg, { onPointerDown } = {}) {
+export function attachPanZoom(svg, { onPointerDown, onTap } = {}) {
   const [, , w0, h0] = svg.getAttribute("viewBox").split(/\s+/).map(Number);
   const home = { x: 0, y: 0, w: w0, h: h0 };
   let view = { ...home };
@@ -489,6 +541,8 @@ export function attachPanZoom(svg, { onPointerDown } = {}) {
       vx: view.x,
       vy: view.y,
       scale: Math.min(rect.width / view.w, rect.height / view.h),
+      target,
+      moved: false,
     };
     svg.setPointerCapture(event.pointerId);
     svg.classList.add("panning");
@@ -496,6 +550,9 @@ export function attachPanZoom(svg, { onPointerDown } = {}) {
 
   svg.addEventListener("pointermove", (event) => {
     if (!dragging) return;
+    if (Math.hypot(event.clientX - dragging.clientX, event.clientY - dragging.clientY) > TAP_SLOP) {
+      dragging.moved = true;
+    }
     view.x = dragging.vx - (event.clientX - dragging.clientX) / dragging.scale;
     view.y = dragging.vy - (event.clientY - dragging.clientY) / dragging.scale;
     apply();
@@ -503,6 +560,9 @@ export function attachPanZoom(svg, { onPointerDown } = {}) {
 
   const stop = (event) => {
     if (!dragging) return;
+    // A press that went nowhere is a tap on whatever was under it — including
+    // nothing, which is how you clear the selection.
+    if (!dragging.moved && onTap) onTap(dragging.target);
     dragging = null;
     svg.classList.remove("panning");
     if (event.pointerId !== undefined && svg.hasPointerCapture(event.pointerId)) {

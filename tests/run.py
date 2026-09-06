@@ -428,12 +428,12 @@ def check_render(c: Check) -> None:
 
 @step(9, "the editing UI records every change and undo restores the board")
 def check_editing(c: Check) -> None:
-    # tests/edit_cycle.mjs drives the three edits this step names through the
-    # very modules the page calls, and checks every operation is reachable from
-    # a control. Pointer events themselves are the browser's, and were driven by
-    # hand: the ground-stranded preset took the board from 63 vias and 5 pours
-    # to 22 and 4, and undoing its 42 edits put all of them back.
-    run_node(c, "edit_cycle.mjs")
+    # edit_cycle.mjs drives the three edits this step names through the modules
+    # the page calls. pointer.mjs drives the event sequence a browser sends,
+    # because the two are not the same thing: every operation had a control and
+    # none of them could be reached, since pointer capture retargeted the click
+    # to the SVG root and the selection was cleared in the same gesture.
+    run_node(c, "edit_cycle.mjs", "pointer.mjs")
 
 
 # -------------------------------------------------------------------------- 10

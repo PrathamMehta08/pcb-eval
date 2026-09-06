@@ -79,21 +79,31 @@ export function buildPrompt(distilled) {
 
 // ------------------------------------------------------------------- limits
 
+// Everything below is mirrored in module memory as well as in localStorage.
+// Storage can be missing or throw — a private window, blocked site data, an
+// embedder — and when it did, the counter, the interval and the cache all read
+// back empty, so three of the four limits stopped refusing anything: three
+// clicks in one second made three live calls for the same untouched board.
+// Memory alone does not survive a reload; storage does. Together they hold.
+const memory = new Map();
+
 function readJSON(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
+    if (raw !== null) return JSON.parse(raw);
   } catch {
-    return fallback;
+    // fall through to the in-memory copy
   }
+  return memory.has(key) ? memory.get(key) : fallback;
 }
 
 function writeJSON(key, value) {
+  memory.set(key, value);
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // A private window or blocked site data. The page works without a cache;
-    // it just costs the viewer a call it could have replayed.
+    // Kept in memory only. The limits still hold for this page view; they just
+    // reset when it is reloaded.
   }
 }
 
