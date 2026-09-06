@@ -459,6 +459,212 @@ def check_review(c: Check) -> None:
     c.that("getSample()" in page, "the capability is resolved, not assumed")
 
 
+# -------------------------------------------------------------------------- 11
+
+
+@step(11, "the built page is publishable as an Artifact")
+def check_publishable(c: Check) -> None:
+    page = built_page(c)
+    if page is None:
+        return
+
+    # The host wraps the file in its own doctype, head and body, so the file
+    # must not bring those.
+    for tag in ("html", "head", "body"):
+        c.that(
+            not re.search(rf"<{tag}(?:\s|>)", page, re.I),
+            f"the file does not carry its own <{tag}> tag",
+        )
+    c.that("<!doctype" not in page.lower(), "and no doctype")
+    c.that("<title>" in page, "it has a <title>, which names it in the gallery")
+    size = len(page.encode("utf-8")) / 1024 / 1024
+    c.that(size < 16, f"{size:.2f} MB, under the 16 MB budget")
+
+    # The artifact CSP blocks every external host but a short list, and blocks
+    # stylesheets and fetches even on the allowed ones. Everything this page
+    # needs beyond the Google Fonts stylesheet is inlined.
+    external = set(re.findall(r'(?:src|href)="(https?://[^"]+)"', page))
+    allowed = ("https://fonts.googleapis.com/",)
+    for url in external:
+        c.that(url.startswith(allowed), f"external reference not on the CSP allowlist: {url}")
+    c.that(
+        "fonts.googleapis.com" in page,
+        "the one external reference is the Google Fonts stylesheet",
+    )
+    # Other http:// strings do appear — SVG namespaces, and the datasheet URLs
+    # the netlist carries for each part. Neither is fetched; they are inert text
+    # inside the board data, which is why this looks at src and href only.
+
+    # The capability the review needs, and the promise that nothing calls it on
+    # load. Both are the difference between a page that costs a viewer nothing
+    # to open and one that does not.
+    c.that('claude.use("sample")' in page, "it resolves the sample capability")
+    c.that(page.count("sample.json(") == 1, "there is exactly one call site")
+    c.note(f"{size:.2f} MB, {len(external)} external references")
+
+
+# -------------------------------------------------------------------------- 12
+
+
+class StubClient:
+    """A Claude that says what the test tells it to, and counts the asking.
+
+    The graph's wiring, its gate and its contradiction check are all decidable
+    without a network. Only the quality of the findings needs a real model, and
+    that is what harness/run.py measures.
+    """
+
+    def __init__(self, replies: dict) -> None:
+        self.replies = replies
+        self.labels: list[str] = []
+
+    def json(self, prompt: str, label: str = "", system: str = ""):
+        self.labels.append(label)
+        node = label.split("/")[0]
+        return self.replies.get(node, {"findings": []}), {
+            "tokens_in": 0, "tokens_out": 0, "seconds": 0.0, "cached": False, "text": "",
+        }
+
+
+@step(12, "the review graph runs end to end, and the gate stops on measurements")
+def check_graph(c: Check) -> None:
+    from graph.build import MAX_PASSES, run_graph
+    from harness.ops import apply_edits
+    from harness.presets import BY_ID, edits_for
+
+    clean = load_board()
+
+    # A clean board gives the rules nothing to chase, so one pass and stop.
+    client = StubClient({})
+    state = run_graph(json.loads(json.dumps(clean)), client)
+    c.equals(state["stopped"], "stop:nothing-to-chase", "clean board stops immediately")
+    c.equals(state["passes"], 1, "and does it in one pass")
+    c.equals(
+        [label.split("/")[0] for label in client.labels],
+        ["datasheet", "connections", "layout"],
+        "every reviewer node ran",
+    )
+
+    broken = json.loads(json.dumps(clean))
+    apply_edits(broken, edits_for(BY_ID["ground-stranded"], broken))
+
+    # A rule fires and nothing the model says accounts for it: loop, then give up
+    # rather than declare the board fine. The gate must never take the model's
+    # word for being finished.
+    client = StubClient({"datasheet": {"findings": [
+        {"title": "unrelated", "refs": ["R4"], "nets": [], "severity": "minor", "why": ""}
+    ]}})
+    state = run_graph(json.loads(json.dumps(broken)), client)
+    c.equals(state["stopped"], "stop:passes-spent", "an unaccounted rule sends it round again")
+    c.equals(state["passes"], MAX_PASSES, f"and it stops after {MAX_PASSES} passes")
+
+    # A finding that overlaps the rule's own refs and nets ends it after one.
+    client = StubClient({"layout": {"findings": [
+        {"title": "GND is in pieces", "refs": [], "nets": ["GND"], "severity": "critical", "why": ""}
+    ]}})
+    state = run_graph(json.loads(json.dumps(broken)), client)
+    c.equals(state["stopped"], "stop:rules-accounted-for", "a matching finding ends the loop")
+    c.equals(state["passes"], 1, "in one pass")
+
+    # And the board throws out what it can refute, with no model consulted.
+    client = StubClient({"datasheet": {"findings": [
+        {"title": "U9 is wrong", "refs": ["U9"], "nets": [], "severity": "major", "why": ""},
+        {"title": "GND is stranded", "refs": [], "nets": ["GND"], "severity": "critical", "why": ""},
+        {"title": "+3.3V is stranded", "refs": [], "nets": ["+3.3V"], "severity": "major", "why": ""},
+    ]}})
+    state = run_graph(json.loads(json.dumps(broken)), client)
+    dropped = {item["title"]: item["dropped"] for item in state["dropped"]}
+    c.that("U9 is wrong" in dropped, f"a part that does not exist is refuted: {dropped}")
+    c.that(
+        "+3.3V is stranded" in dropped,
+        "a net the copper says is one piece is refuted",
+    )
+    c.that(
+        "GND is stranded" not in dropped,
+        "and the one the copper agrees with survives",
+    )
+    c.note(f"gate reasons exercised: nothing-to-chase, passes-spent, rules-accounted-for")
+
+
+# -------------------------------------------------------------------------- 13
+
+
+@step(13, "harness/run.py leaves a result stamped with all three hashes")
+def check_sweep(c: Check) -> None:
+    from graph.prompts import prompt_hash
+    from harness.grade import corpus_hash, schema_hash
+    from harness.run import corpus
+    from harness.ops import board_hash
+
+    latest = ROOT / "results" / "latest.json"
+    if not c.that(latest.exists(), "results/latest.json exists (run: python -m harness.run)"):
+        return
+    result = json.loads(latest.read_text(encoding="utf-8"))
+
+    for key in ("prompt_hash", "schema_hash", "corpus_hash"):
+        c.that(bool(result.get(key)), f"the result carries a {key}")
+    c.equals(result["prompt_hash"], prompt_hash(), "prompt hash is current (prompts changed since the sweep?)")
+    c.equals(result["schema_hash"], schema_hash(), "schema hash is current")
+
+    cases = corpus()
+    c.equals(len(cases), 8, "eight boards: one clean and seven seeded")
+    c.equals(
+        result["corpus_hash"],
+        corpus_hash([board_hash(case["board"]) for case in cases] * 2),
+        "corpus hash is current (the seeded boards changed since the sweep?)",
+    )
+
+    detectors = {row["detector"] for row in result["rows"]}
+    c.equals(detectors, {"single", "graph"}, "both detectors ran")
+    c.equals(len(result["rows"]), 16, "eight boards times two detectors")
+    for row in result["rows"]:
+        if not c.that("grade" in row, f"{row['board']} was graded"):
+            break
+    clean_rows = [r for r in result["rows"] if not r["defects"]]
+    c.equals(len(clean_rows), 2, "the clean board was run under both detectors")
+    c.note(
+        " · ".join(
+            f"{name} {t['caught']}/{t['of']}, {t['false_alarms_on_clean']} on clean"
+            for name, t in result["totals"].items()
+        )
+        + f" · ${result['usage']['dollars']}"
+    )
+
+
+# -------------------------------------------------------------------------- 14
+
+
+@step(14, "the README quotes the sweep that is actually in the repository")
+def check_readme(c: Check) -> None:
+    readme = ROOT / "README.md"
+    if not c.that(readme.exists(), "README.md exists"):
+        return
+    text = readme.read_text(encoding="utf-8")
+    latest = ROOT / "results" / "latest.json"
+    if not c.that(latest.exists(), "results/latest.json exists"):
+        return
+    result = json.loads(latest.read_text(encoding="utf-8"))
+
+    # A README carrying last week's numbers is worse than one carrying none.
+    for key in ("prompt_hash", "schema_hash", "corpus_hash"):
+        c.that(result[key] in text, f"the README quotes the result's {key} ({result[key]})")
+    for name, t in result["totals"].items():
+        c.that(
+            f"{t['caught']} of {t['of']}" in text,
+            f"the README quotes {name}'s recall, {t['caught']} of {t['of']}",
+        )
+        c.that(
+            str(t["false_alarms_on_clean"]) in text,
+            f"the README quotes {name}'s clean-board count",
+        )
+    c.that("what a netlist cannot see" in text.lower(), "the README says what a netlist cannot see")
+    dollars = result["usage"]["dollars"]
+    c.that(
+        any(form in text for form in (str(dollars), f'{dollars:.3f}', f'{dollars:.2f}')),
+        f'the README quotes what a run costs (${dollars})',
+    )
+
+
 # ---------------------------------------------------------------------------
 
 
