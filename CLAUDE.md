@@ -21,11 +21,18 @@ first; without it the edit-log arrows crash on cp1252.
 
 ## The rules that are easy to break
 
-**Four things are written twice, and fixtures hold them together.**
-`harness/ops.py` ↔ `site/ops.js`, and `harness/distill.py` ↔ `site/distill.js`.
-Change one and you must change the other and re-run `tests.fixture`. The page
-needs its own copy because it has to describe the board as the visitor just
-broke it, and only the browser holds that state.
+**Four things are written twice, and the tests hold them together.**
+
+| Python | JavaScript | held by |
+| --- | --- | --- |
+| `harness/ops.py` | `site/ops.js` | `tests/ops_parity.mjs` against `tests.fixture` |
+| `harness/distill.py` | `site/distill.js` | `tests/distill_parity.mjs`, character for character |
+| `harness/checks.py` | `site/checks.js` | `tests/checks_parity.mjs` |
+| `graph/build.py` | `site/graph.js` | `tests/graph_browser.mjs`, same four situations |
+
+Change one side and you must change the other and re-run `tests.fixture`. The
+page needs its own copy because it has to describe and judge the board as the
+visitor just broke it, and only the browser holds that state.
 
 Two cross-language traps are already paid for, so do not reintroduce them:
 number formatting goes through `mm()` and `round4()`, which are written to match
@@ -40,6 +47,13 @@ If you find yourself wanting to pass it a hint, that is the bug.
 `set_value` change the netlist; the copper keeps the routing it was extracted
 with. Repointing pads too would make `net-island` catch every preset for free
 and the scores would measure the editor.
+
+**The page has one board view, and adding a second is a regression.** There
+were three. The schematic was KiCad's 1.2 MB plot — a picture, so edits could not
+change it, and unmakeable for an uploaded board because plotting one needs
+KiCad. The bare layout was the routing view with the copper hidden. `tests.run 7`
+asserts `renderSchematic` and `data-view="layout"` are *absent*, so they cannot
+creep back unnoticed.
 
 **The page's review prompt is generated.** `tools/sync_prompt.py` writes it into
 `site/review.js` from `graph/prompts.py`; the builder refuses a stale copy.

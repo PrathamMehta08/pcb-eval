@@ -363,98 +363,6 @@ export function renderBoard(board, { copper = true, showSilk = true, showRefs = 
 
 // ------------------------------------------------------------------ schematic
 
-/**
- * Nest KiCad's schematic export inside our own SVG so it shares the pan and
- * zoom, and give it an empty overlay layer to draw markers into.
- *
- * KiCad plots A4 at one user unit per millimetre with the same origin the
- * .kicad_sch uses, so symbol coordinates drop straight in with no mapping.
- *
- * `sheetSvg` is markup or an already-parsed node — the page hands over a
- * <template>'s content, which the HTML parser has already turned into real SVG.
- */
-export function renderSchematic(board, sheetSvg) {
-  const sheet = board.meta.sheet;
-  const svg = el("svg", {
-    class: "board-svg schematic-svg",
-    viewBox: `0 0 ${f(sheet.width)} ${f(sheet.height)}`,
-    preserveAspectRatio: "xMidYMid meet",
-  });
-  // KiCad plots the schematic in its own palette on no background at all:
-  // dark red bodies, green wires, black text. Inverting it for a dark page
-  // turns that into cyan and magenta, so the sheet gets paper to sit on
-  // instead and keeps the colours an engineer already reads fluently.
-  svg.appendChild(
-    el("rect", { class: "paper", x: 0, y: 0, width: f(sheet.width), height: f(sheet.height) })
-  );
-  const holder = el("g", { class: "sheet" });
-  if (typeof sheetSvg === "string") holder.innerHTML = sheetSvg;
-  else if (sheetSvg) holder.appendChild(sheetSvg);
-  const inner = holder.querySelector("svg");
-  // An uploaded board has no plot: KiCad's own plotter makes that picture and a
-  // page cannot run it. What the .kicad_sch does give is where every symbol
-  // sits, so the sheet becomes a map of the parts — enough to select one and to
-  // put a marker on it, and honest about not being the drawing.
-  if (!inner) drawSymbolMap(holder, board);
-  if (inner) {
-    inner.setAttribute("x", "0");
-    inner.setAttribute("y", "0");
-    inner.setAttribute("width", f(sheet.width));
-    inner.setAttribute("height", f(sheet.height));
-    inner.removeAttribute("style");
-  }
-  svg.appendChild(holder);
-
-  const hits = el("g", { class: "sym-hits" });
-  for (const comp of board.components) {
-    if (!comp.sheet) continue;
-    const [x0, y0, x1, y1] = comp.sheet.bbox;
-    const node = el("rect", {
-      class: "sym-hit",
-      x: f(x0 - 0.6),
-      y: f(y0 - 0.6),
-      width: f(x1 - x0 + 1.2),
-      height: f(y1 - y0 + 1.2),
-      rx: 0.6,
-    });
-    node.dataset.kind = "symbol";
-    node.dataset.ref = comp.ref;
-    hits.appendChild(node);
-  }
-  svg.appendChild(hits);
-  svg.appendChild(el("g", { class: "marks" }));
-  return svg;
-}
-
-/** Where each part sits on the sheet, for a board with no plotted schematic. */
-function drawSymbolMap(holder, board) {
-  for (const comp of board.components) {
-    if (!comp.sheet) continue;
-    const [x0, y0, x1, y1] = comp.sheet.bbox;
-    holder.appendChild(
-      el("rect", {
-        class: "sym-box",
-        x: f(x0), y: f(y0),
-        width: f(Math.max(x1 - x0, 1.2)),
-        height: f(Math.max(y1 - y0, 1.2)),
-        rx: 0.4,
-      })
-    );
-    holder.appendChild(
-      el(
-        "text",
-        {
-          class: "sym-text",
-          x: f((x0 + x1) / 2),
-          y: f(y1 + 2),
-          "text-anchor": "middle",
-        },
-        [document.createTextNode(comp.ref)]
-      )
-    );
-  }
-}
-
 /** Every pad's world position, keyed "REF.PIN". */
 export function padIndex(board) {
   const index = new Map();
@@ -574,33 +482,16 @@ export function clearMarks(svg) {
 /**
  * Ring the components a set of findings or edits point at.
  *
- * Marking is at component level on purpose. Pin offsets live inside the
- * embedded lib_symbols definitions and rotate with the symbol, which is a great
- * deal of work for a smaller ring.
+ * Marking is at part level, not pin level: a ring around the footprint. A pad
+ * ring would need the pin the finding names, and a reviewer naming pins is a
+ * habit rather than a promise — `S1.4`, `S1 pin 4`, `FB`. The part is the thing
+ * both ends agree on.
  */
 export function markRefs(svg, board, refs, kind = "flag") {
   const marks = svg.querySelector(".marks");
   if (!marks) return;
   const wanted = new Set(refs);
   if (!wanted.size) return;
-
-  if (svg.classList.contains("schematic-svg")) {
-    for (const comp of board.components) {
-      if (!wanted.has(comp.ref) || !comp.sheet) continue;
-      const [x0, y0, x1, y1] = comp.sheet.bbox;
-      marks.appendChild(
-        el("rect", {
-          class: `mark mark-${kind}`,
-          x: f(x0 - 1.2),
-          y: f(y0 - 1.2),
-          width: f(x1 - x0 + 2.4),
-          height: f(y1 - y0 + 2.4),
-          rx: 1,
-        })
-      );
-    }
-    return;
-  }
 
   for (const fp of board.layout.footprints) {
     if (!wanted.has(fp.ref)) continue;
@@ -614,7 +505,7 @@ export function markRefs(svg, board, refs, kind = "flag") {
   }
 }
 
-/** Highlight every piece of copper on a net, across all three views. */
+/** Highlight every piece of copper on a net. */
 export function highlightNets(svg, nets) {
   const wanted = new Set(nets.filter(Boolean));
   for (const node of svg.querySelectorAll("[data-net]")) {

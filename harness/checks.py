@@ -380,7 +380,10 @@ def check_unbuildable_value(board: dict) -> list[dict]:
         out.append(
             finding(
                 "unbuildable-value",
-                f"{comp['ref']} has value {value!r}, which is not a quantity",
+                # An explicit quote rather than !r: repr uses single quotes and
+                # JSON.stringify uses double, and the two copies of this rule
+                # have to produce the same sentence.
+                f'{comp["ref"]} has value "{value}", which is not a quantity',
                 "There is no magnitude here, so the line cannot be ordered and "
                 "nobody assembling the board knows what to fit.",
                 refs=[comp["ref"]],

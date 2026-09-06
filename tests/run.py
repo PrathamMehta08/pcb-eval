@@ -391,7 +391,7 @@ def built_page(c: Check) -> str | None:
 # --------------------------------------------------------------------------- 7
 
 
-@step(7, "site/render.js draws all three views from the board, on KiCad's own geometry")
+@step(7, "site/render.js draws the board from KiCad's own geometry")
 def check_render(c: Check) -> None:
     run_node(c, "render_parity.mjs")
 
@@ -399,19 +399,22 @@ def check_render(c: Check) -> None:
     if page is None:
         return
     for marker, label in (
-        ('data-view="schematic"', "the schematic tab"),
-        ('data-view="layout"', "the layout tab"),
-        ('data-view="routing"', "the routing tab"),
-        ("renderSchematic", "the schematic renderer"),
-        ("renderBoard", "the layout and routing renderer"),
+        ('data-view="routing"', "the board tab"),
+        ('data-view="review"', "the review tab"),
+        ("renderBoard", "the board renderer"),
         ("attachPanZoom", "pan and zoom"),
     ):
         c.that(marker in page, f"the built page carries {label}")
 
-    # The schematic view is KiCad's own plot nested inside ours, so the plot
-    # has to actually be in the file rather than merely referenced.
-    paths = page.count("<path")
-    c.that(paths > 15000, f"KiCad's schematic plot is inlined: {paths} paths")
+    # There were three views. The schematic was KiCad's own 1.2 MB plot, which
+    # cannot be produced for a board someone uploads, and the bare layout was
+    # the routing view with the copper switched off. Both are gone, and the
+    # renderers with them — so assert their absence, or they creep back.
+    for gone, why in (
+        ("renderSchematic", "the schematic renderer"),
+        ('data-view="layout"', "the bare layout tab"),
+    ):
+        c.that(gone not in page, f"{why} is gone, not merely unreachable")
 
     board = load_board()
     c.that(
@@ -420,7 +423,7 @@ def check_render(c: Check) -> None:
     )
     size = len(page.encode("utf-8")) / 1024 / 1024
     c.that(size < 16, f"the page is {size:.2f} MB, under the 16 MB artifact budget")
-    c.note(f"{size:.2f} MB, {paths} schematic paths")
+    c.note(f"{size:.2f} MB")
 
 
 # --------------------------------------------------------------------------- 9
@@ -528,6 +531,12 @@ class StubClient:
 
 @step(12, "the review graph runs end to end, and the gate stops on measurements")
 def check_graph(c: Check) -> None:
+    # The page runs its own copy of the graph, because only the browser holds
+    # the board as the visitor just broke it. Both are checked here, against the
+    # same four situations, so the two cannot drift on the thing that matters:
+    # what makes the loop go round, and what makes it stop.
+    run_node(c, "graph_browser.mjs")
+
     from graph.build import MAX_PASSES, run_graph
     from harness.ops import apply_edits
     from harness.presets import BY_ID, edits_for

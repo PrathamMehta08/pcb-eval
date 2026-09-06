@@ -13,9 +13,9 @@ import {
   markDivergence,
   markRefs,
   renderBoard,
-  renderSchematic,
 } from "./render.js";
 import { islandCounts } from "./copper.js";
+import { MEASURED, ROLES } from "./graph.js";
 import { summarise } from "./kicad.js";
 import { attachUpload } from "./upload.js";
 import {
@@ -50,8 +50,8 @@ const state = {
   reviewError: null,
   focused: null,
   divergence: { stale: [], stranded: [] },
-  //: Which board view the review tab is showing underneath its report.
-  reviewSub: "routing",
+  //: The graph's steps as they happen, so the page can show it running.
+  steps: [],
   reviewing: false,
   //: The first half of a pin swap, waiting for the pin to swap it with.
   armed: null,
@@ -71,17 +71,12 @@ function drawView({ keepZoom = true } = {}) {
   if (keepZoom && panzoom) keptView = panzoom.view;
   stage.textContent = "";
 
-  // In review mode the board is still the board; the report sits over it. Which
-  // view it shows is decided by the finding being read.
-  const showing = state.view === "review" ? state.reviewSub : state.view;
-  // The embedded plot belongs to the sample board and only to it. Handing it to
-  // a loaded board would draw somebody else's schematic over their parts.
-  const sheet = custom ? null : $("sheet-svg").content.cloneNode(true);
-  const svg =
-    showing === "schematic"
-      ? renderSchematic(state.board, sheet)
-      : renderBoard(state.board, { copper: showing === "routing" });
-  svg.dataset.view = showing;
+  // One view: the board with its copper. The schematic and bare-layout views
+  // were dropped — a schematic here was KiCad's picture, which cannot be edited
+  // and cannot be produced for a board someone uploads, and layout was routing
+  // with the interesting half switched off.
+  const svg = renderBoard(state.board, { copper: true });
+  svg.dataset.view = "board";
   stage.appendChild(svg);
 
   panzoom = attachPanZoom(svg, {
@@ -109,7 +104,6 @@ function describe(node) {
 // ------------------------------------------------------------------ dragging
 
 function startDrag(event, target, at) {
-  if (state.view === "schematic") return false;
   const group = target.closest('[data-kind="footprint"]');
   if (!group) return false;
 
@@ -211,9 +205,7 @@ function loadBoard(board, notes = [], files = null) {
   state.selection = null;
   keptView = null;
 
-  const hasPlot = !custom;
-  $("tab-schematic").dataset.plot = hasPlot ? "yes" : "no";
-  setView(custom ? "routing" : state.view);
+  setView("routing");
   renderSource();
   afterChange();
 }
@@ -397,7 +389,7 @@ function renderPartInspector(panel, ref) {
     ${state.armed && state.armed.ref === ref
       ? html`<p class="hint armed-hint">Pin ${state.armed.pin} is armed. Pick the pin to swap it with.</p>`
       : `<p class="hint">⇆ swaps two pins in one move.</p>`}
-    <p class="hint">A net change edits the schematic only. The copper keeps its
+    <p class="hint">A net change edits the net list only. The copper keeps its
       routing, and the board shows where the two now disagree.</p>
   `;
 
@@ -574,21 +566,21 @@ async function runReview() {
   state.reviewing = true;
   state.reviewError = null;
   state.focused = null;
+  state.steps = [];
   // Go to the review tab first. The button is at the bottom of a long rail and
   // the stage is what anyone is actually watching, so that is where the state
   // change has to happen.
   setView("review");
   renderReview();
   try {
+    state.steps = [];
     const result = await review(state.sample, state.board, {
-      onText: (update) => {
-        $("review-stream").textContent = update.text.slice(-600);
-        const status = $("ro-status");
-        if (status) status.textContent = "Reading the reply";
-        const stream = $("ro-stream");
-        if (stream) stream.textContent = update.text.slice(-420);
+      onStep: (step, steps) => {
+        state.steps = steps.slice();
+        renderOverlay();
       },
     });
+    state.steps = result.steps || state.steps;
     state.verdict = result;
     paintMarks();
   } catch (error) {
@@ -646,46 +638,16 @@ const RETRYABLE = new Set([
   "cancelled",
 ]);
 
-/**
- * Which view a finding is best read in.
- *
- * A claim about copper — islands, vias, pours, trace width — can only be seen
- * in the routing view. A claim about a pin, a value or a connector's order is a
- * schematic claim. Everything else goes to routing, because that is where the
- * board is most itself.
- */
-const COPPER_CLAIM =
-  /island|via|pour|trace width|copper|stranded|thermal|clearance|stitch|plane|layer|routing|track/i;
-const SCHEMATIC_CLAIM =
-  /pin|net list|netlist|value|pull-?up|pull-?down|float|connector|pinout|swapped|wired|footprint|bom/i;
-
-function viewForFinding(finding) {
-  const text = `${finding.title} ${finding.why}`;
-  if (COPPER_CLAIM.test(text)) return "routing";
-  if (SCHEMATIC_CLAIM.test(text)) return "schematic";
-  return "routing";
-}
-
 /** Show one finding: its view, its parts ringed, its nets lit, its part opened. */
 function focusFinding(index) {
   const finding = state.verdict?.findings?.[index];
   if (!finding) return;
   state.focused = index;
 
-  const wanted = viewForFinding(finding);
-  if (state.view === "review") {
-    if (state.reviewSub !== wanted) {
-      state.reviewSub = wanted;
-      setView("review");
-    }
-  } else if (wanted !== state.view) {
-    setView(wanted);
-  }
-
   const svg = currentSvg();
   if (svg) {
     clearMarks(svg);
-    if (svg.dataset.view !== "schematic") markDivergence(svg, state.board);
+    markDivergence(svg, state.board);
     markRefs(svg, state.board, finding.refs, "flag");
     highlightNets(svg, finding.nets);
   }
@@ -705,6 +667,55 @@ function focusFinding(index) {
     }
   }
   renderReview();
+}
+
+/** The graph, as a list of steps with what each one did. */
+function pipelineHtml(steps) {
+  if (!steps.length) return `<p class="ro-empty muted">Starting.</p>`;
+  return steps
+    .map((step) => {
+      const measured = MEASURED.has(step.node) || step.measured;
+      const body = step.running
+        ? `<pre class="ro-stream">${escapeHtml(step.stream || "")}</pre>`
+        : stepSummary(step);
+      return `<div class="ro-step ${measured ? "measured" : "model"}${
+        step.running ? " running" : ""
+      }${step.decision === "again" ? " looping" : ""}">
+        <div class="ro-step-head">
+          ${step.running ? '<span class="ro-dot"></span>' : ""}
+          <b>${escapeHtml(step.node)}</b>
+          ${step.pass ? `<span class="ro-pass">pass ${step.pass}</span>` : ""}
+          ${measured ? '<span class="ro-tag">measured</span>' : ""}
+        </div>
+        <span class="ro-role">${escapeHtml(ROLES[step.node] || "")}</span>
+        ${body}
+      </div>`;
+    })
+    .join("");
+}
+
+function stepSummary(step) {
+  if (step.node === "ingest") {
+    return `<span class="ro-said">${escapeHtml(step.summary || "")}</span>` +
+      (step.rules || [])
+        .map((r) => html`<span class="ro-rule">${r.title}</span>`)
+        .join("");
+  }
+  if (step.node === "gate") {
+    return `<span class="ro-said"><code>${escapeHtml(step.decision)}</code></span>
+      <span class="ro-role">${escapeHtml(step.why || "")}</span>`;
+  }
+  if (step.node === "adjudicate") {
+    const dropped = (step.dropped || [])
+      .map((d) => html`<span class="ro-rule dropped">${d.title} — ${d.dropped}</span>`)
+      .join("");
+    return `<span class="ro-said">Merged ${step.merged ?? 0} into ${
+      (step.confirmed || []).length
+    }${(step.dropped || []).length ? `, and the board threw out ${step.dropped.length}` : ""}.</span>${dropped}`;
+  }
+  const found = (step.found || []).length;
+  return `<span class="ro-said">Proposed ${found} finding${found === 1 ? "" : "s"}.</span>` +
+    (step.found || []).map((f) => html`<span class="ro-rule">${f.title}</span>`).join("");
 }
 
 /**
@@ -732,10 +743,10 @@ function renderOverlay() {
 
   if (state.reviewing) {
     overlay.innerHTML = `
-      <div class="ro-head"><h3>Reviewing</h3>
-        <div class="ro-running"><span class="ro-dot"></span><span id="ro-status">Sending the board</span></div>
-        <pre class="ro-stream" id="ro-stream"></pre>
-      </div>`;
+      <div class="ro-head"><h3>Reviewing</h3></div>
+      <div class="ro-list">${pipelineHtml(state.steps)}</div>
+      <div class="ro-foot">Three reviewers, then a merge the board can overrule.
+        The gate decides whether that was enough.</div>`;
     return;
   }
 
@@ -772,10 +783,11 @@ function renderOverlay() {
 
   const { caught, missed, other } = grade(findings, expectedFromState());
   const total = caught.length + missed.length;
+  const verdict = state.verdict;
   overlay.innerHTML = `
     <div class="ro-head">
       <h3>${findings.length} finding${findings.length === 1 ? "" : "s"}${
-        state.verdict.cached ? " · from cache" : ""
+        verdict.cached ? " · from cache" : ""
       }</h3>
       <div class="ro-score">
         <div class="${caught.length ? "good" : ""}"><b>${caught.length}</b>
@@ -798,6 +810,12 @@ function renderOverlay() {
         </button>`
       )
       .join("")}</div>
+    <details class="ro-graph">
+      <summary>How it got there — ${verdict.passes} pass${
+        verdict.passes === 1 ? "" : "es"
+      }, ${verdict.proposed} proposed, ${findings.length} reported</summary>
+      ${pipelineHtml(verdict.steps || [])}
+    </details>
     <div class="ro-foot">Click a finding to put it on the board.</div>`;
 
   for (const button of overlay.querySelectorAll(".ro-item")) {
@@ -831,7 +849,7 @@ function paintMarks() {
   clearMarks(svg);
 
   let found = { stale: [], stranded: [] };
-  if (svg.dataset.view !== "schematic") found = markDivergence(svg, state.board);
+  found = markDivergence(svg, state.board);
   state.divergence = found;
 
   markRefs(svg, state.board, editedRefs(), "edit");
@@ -867,10 +885,7 @@ function renderDivergenceNote() {
        that does not reach the rest of ${[...new Set(stranded.map((s) => s.net))].join(", ")}.`
     );
   }
-  note.innerHTML = parts.join(" ") +
-    (state.view === "schematic"
-      ? " <span class='muted'>Switch to Routing to see where.</span>"
-      : "");
+  note.innerHTML = parts.join(" ");
 }
 
 function renderReview() {
@@ -979,16 +994,9 @@ function setView(view) {
     tab.classList.toggle("on", tab.dataset.view === view);
     tab.setAttribute("aria-selected", String(tab.dataset.view === view));
   }
-  const showing = view === "review" ? state.reviewSub : view;
-  $("layer-chips").hidden = showing === "schematic";
   keptView = null;
   drawView({ keepZoom: false });
   renderOverlay();
-  if (showing === "schematic") {
-    // Compute it anyway: the count is worth saying even where it cannot be drawn.
-    state.divergence = divergence(state.board);
-    renderDivergenceNote();
-  }
 }
 
 function boot() {

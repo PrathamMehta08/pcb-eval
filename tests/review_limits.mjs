@@ -53,10 +53,14 @@ let generation = 0;
 /** A fresh module instance — the equivalent of reloading the page. */
 const load = () => import(`${reviewUrl}?v=${++generation}`);
 
+// One review is four model calls — or eight when the gate loops — so what the
+// limits are about is reviews, not calls. `asked` counts calls; `reviews`
+// counts the graph runs they belong to, keyed off the first node's prompt.
 function stubSample(findings = []) {
-  const stub = { asked: 0, lastPrompt: "" };
+  const stub = { asked: 0, reviews: 0, lastPrompt: "" };
   stub.json = async (prompt) => {
     stub.asked += 1;
+    if (prompt.includes("Your area is what each pin is for")) stub.reviews += 1;
     stub.lastPrompt = prompt;
     return { findings };
   };
@@ -94,11 +98,11 @@ async function expectCode(promise, code, label) {
   const work = clone(board);
 
   const first = await review.review(sample, work, {});
-  check(sample.asked === 1, "the first review asks Claude once");
+  check(sample.reviews === 1, `the first review runs the graph once (${sample.asked} calls)`);
   check(first.cached === false, "the first review is not a cache hit");
 
   const second = await review.review(sample, work, {});
-  check(sample.asked === 1, `a repeat of the same board must not ask again (asked ${sample.asked})`);
+  check(sample.reviews === 1, `a repeat of the same board must not run again (${sample.reviews})`);
   check(second.cached === true, "the repeat is reported as cached");
   check(second.findings.length === 1, "the cached verdict carries its findings");
 
@@ -106,7 +110,7 @@ async function expectCode(promise, code, label) {
   const edited = clone(board);
   applyEdits(edited, [{ op: "set_value", args: { ref: "R4", value: "R" } }]);
   await expectCode(review.review(sample, edited, {}), "cooldown", "ten second interval");
-  check(sample.asked === 1, "a refused review must not have asked Claude");
+  check(sample.reviews === 1, "a refused review must not have run the graph again");
 }
 
 // --------------------------------------------------------------- session cap
@@ -121,7 +125,7 @@ async function expectCode(promise, code, label) {
   const fresh = clone(board);
   applyEdits(fresh, [{ op: "set_value", args: { ref: "R5", value: "2k2" } }]);
   await expectCode(review.review(sample, fresh, {}), "capped", "session cap");
-  check(sample.asked === 0, "a capped review must not have asked Claude");
+  check(sample.asked === 0, "a capped review must not have asked Claude at all");
 }
 
 // A board already in the cache still answers after the cap, which is the point:
@@ -138,7 +142,7 @@ async function expectCode(promise, code, label) {
   localStorage.setItem("pcb-eval.reviewCount.v1", String(review.SESSION_CAP));
   const replayed = await review.review(sample, work, {});
   check(replayed.cached === true, "a cached board still answers after the cap");
-  check(sample.asked === 1, "and it did not ask Claude again");
+  check(sample.reviews === 1, "and it did not run the graph again");
 }
 
 // ------------------------------------------- storage that is not there at all
@@ -151,7 +155,7 @@ async function expectCode(promise, code, label) {
   applyEdits(work, [{ op: "set_value", args: { ref: "R6", value: "330" } }]);
 
   await review.review(sample, work, {});
-  check(sample.asked === 1, "with storage blocked, the first review still goes through");
+  check(sample.reviews === 1, "with storage blocked, the first review still goes through");
 
   // The bug this replaces: with every storage access throwing, the counter, the
   // interval and the cache all read back empty, so three clicks in one second
@@ -159,7 +163,7 @@ async function expectCode(promise, code, label) {
   const other = clone(board);
   applyEdits(other, [{ op: "set_value", args: { ref: "R7", value: "2k2" } }]);
   await expectCode(review.review(sample, other, {}), "cooldown", "interval without storage");
-  check(sample.asked === 1, "and no second call was made");
+  check(sample.reviews === 1, "and no second review was run");
 
   const again = await review.review(sample, work, {});
   check(again.cached === true, "the cache still replays without storage");

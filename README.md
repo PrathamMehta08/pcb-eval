@@ -3,13 +3,13 @@
 A browser tool for breaking a real circuit board on purpose and measuring
 whether a language model notices.
 
-Three editable views — schematic, layout, routing — a review button, and a
-score. **[Open the page](https://claude.ai/code/artifact/57369783-5bbd-45c9-a3fa-fa314b956d0d)**;
-it reviews with your own Claude account and needs no key.
+An editable board, a review button, and a score.
+**[Open the page](https://claude.ai/code/artifact/57369783-5bbd-45c9-a3fa-fa314b956d0d)**; it
+reviews with your own Claude account and needs no key.
 
-**[Inside the review graph](https://claude.ai/code/artifact/fc2288ed-9a8c-4fa9-b777-23ffad65c7a2)** — the headless reviewer's
-own working, kept whole: every prompt, the model's reasoning at each node, and
-the gate's decision at each turn of the loop, across all eight boards.
+Pressing Review runs the graph in front of you — each node as it starts, what it
+proposed, what the board refuted, and the gate's decision at each turn of the
+loop.
 
 ---
 
@@ -26,7 +26,7 @@ plausibly have shipped with, and the seventh is the one it **did** ship with:
 > Every ground pad on the top layer stranded from the pour on the bottom.
 > No stitching vias, no top pour. ERC passed. DRC passed. The board did not work.
 
-That defect is why the routing view is editable rather than decorative. It does
+That defect is why the board view is editable rather than decorative. It does
 not exist in the netlist at all — the netlist says GND is one net, and it is
 right, and the copper disagrees. A tool that reviews a netlist cannot represent
 it, let alone find it.
@@ -170,24 +170,39 @@ island. Strip the ground vias and the top pour and GND becomes **28 islands with
 
 ## The page
 
-One HTML file, 1.46 MB, published as an Artifact. It holds the extracted board,
-KiCad's own schematic plot, and six ES modules.
+One HTML file, 0.40 MB, published as an Artifact. It holds the extracted board
+and ten ES modules.
 
-- **Schematic** — KiCad's SVG export nested inside ours so it shares the pan and
-  zoom. It is a picture, so edits cannot change it; markers are drawn over it
-  from the symbol coordinates in the `.kicad_sch`. Reassign a pin to another
-  net, swap two pins, change a value.
-- **Layout** — drawn element by element from the board object, not from a plot,
-  so every pad and footprint is selectable. Drag a part, rotate it.
-- **Routing** — layout plus 400 tracks, 63 vias and five pours. Delete a track,
-  change its width, delete vias, turn a pour off.
+One view: the board, drawn element by element from the board object rather than
+from a plot, so every pad, track, via and pour is selectable — 53 footprints,
+400 tracks, 63 vias, five pours. Reassign a pin to another net, swap two pins,
+change a value, drag a part, rotate it, delete a track, change its width, delete
+a via, turn a pour off.
+
+There were three views and now there is one. The schematic was KiCad's own
+1.2 MB plot, which is a picture — edits could not change it — and which cannot be
+produced at all for a board someone uploads, because making it needs KiCad's
+plotter. The bare layout was the board with the copper switched off. Neither
+earned its megabyte.
+
+A schematic edit stops at the schematic: the netlist changes and the copper keeps
+the routing it was extracted with, which is the real failure mode this tool is
+about. The board shows where the two now disagree — an amber ring and a dashed
+line to the pad the netlist now claims, a red ring on a pad the copper has
+stranded.
 
 Every edit is one of nine named operations, appends to the edit log, and is
 reversible. The review reads the mutated board, never the original files.
 
 Reviewing uses the artifact `sample` capability, so no API key is embedded and
 the viewer's own account pays. Four limits, all enforced: a cache keyed on the
-board hash, one review per ten seconds, 25 per browser, and never on load.
+board hash, one review per ten seconds, five per browser, and never on load.
+Per-browser rather than per-visitor, because a static page has no server to
+count against an address — and the bill lands on whoever clicks, not on me.
+
+You can also drop your own KiCad project folder on the page. It is read in the
+browser with no upload and no API call; the board view, the edits and the rule
+checks all work on it.
 
 ## Running it
 
@@ -227,7 +242,7 @@ harness/     the nine edit operations, seven deterministic rules, the distiller,
              the Groq client, the grader, the sweep runner
 graph/       ingest, three reviewers, adjudicate, gate
 baseline/    the single flat prompt the graph is measured against
-site/        six ES modules; tools/build_site.py makes one file of them
+site/        ten ES modules; tools/build_site.py makes one file of them
 tests/       the acceptance checks, and the fixtures that keep Python and
              JavaScript telling the same story
 qa/          adversarial review of each build step, kept as written

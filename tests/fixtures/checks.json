@@ -1,0 +1,466 @@
+{
+ "cases": [
+  {
+   "id": "clean",
+   "edits": [],
+   "rules": [],
+   "titles": [],
+   "refs": []
+  },
+  {
+   "id": "vfb-vbst-swap",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "S1",
+      "pin": "4",
+      "to_net": "VBST"
+     }
+    },
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "S1",
+      "pin": "6",
+      "to_net": "/FB"
+     }
+    }
+   ],
+   "rules": [
+    "power-pin-miswired"
+   ],
+   "titles": [
+    "S1 pin 6 (VBST_6) is on /FB, not VBST"
+   ],
+   "refs": [
+    [
+     "S1"
+    ]
+   ]
+  },
+  {
+   "id": "stepper-common-open",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "U3",
+      "pin": "12",
+      "to_net": "/O5"
+     }
+    },
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "J11",
+      "pin": "5",
+      "to_net": "/O5"
+     }
+    }
+   ],
+   "rules": [
+    "connector-no-reference"
+   ],
+   "titles": [
+    "J11 has 5 pins and no ground or supply among them"
+   ],
+   "refs": [
+    [
+     "J11"
+    ]
+   ]
+  },
+  {
+   "id": "servo-power-end-pin",
+   "edits": [
+    {
+     "op": "swap_pins",
+     "args": {
+      "ref": "J4",
+      "pin_a": "2",
+      "pin_b": "3"
+     }
+    }
+   ],
+   "rules": [
+    "connector-power-order"
+   ],
+   "titles": [
+    "J4: +5V is on end pin 3, not the middle pin"
+   ],
+   "refs": [
+    [
+     "J4"
+    ]
+   ]
+  },
+  {
+   "id": "ultrasonic-crossed",
+   "edits": [
+    {
+     "op": "swap_pins",
+     "args": {
+      "ref": "J2",
+      "pin_a": "2",
+      "pin_b": "3"
+     }
+    }
+   ],
+   "rules": [
+    "sensor-pinout-order"
+   ],
+   "titles": [
+    "J2 does not match a four-wire sensor pinout: trigger is on pin 3 and echo on pin 2, the wrong way round"
+   ],
+   "refs": [
+    [
+     "J2"
+    ]
+   ]
+  },
+  {
+   "id": "stepper-in4-floating",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "R11",
+      "pin": "2",
+      "to_net": "/STEPPER_IN1"
+     }
+    }
+   ],
+   "rules": [
+    "floating-driver-input"
+   ],
+   "titles": [
+    "/STEPPER_IN4 drives U3 with nothing holding it at reset"
+   ],
+   "refs": [
+    [
+     "U2",
+     "U3"
+    ]
+   ]
+  },
+  {
+   "id": "unbuildable-value",
+   "edits": [
+    {
+     "op": "set_value",
+     "args": {
+      "ref": "R4",
+      "value": "R"
+     }
+    }
+   ],
+   "rules": [
+    "unbuildable-value"
+   ],
+   "titles": [
+    "R4 has value \"R\", which is not a quantity"
+   ],
+   "refs": [
+    [
+     "R4"
+    ]
+   ]
+  },
+  {
+   "id": "ground-stranded",
+   "edits": [
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v0"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v1"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v2"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v3"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v4"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v5"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v6"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v7"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v8"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v9"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v10"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v11"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v12"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v13"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v14"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v15"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v16"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v17"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v18"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v19"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v20"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v21"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v22"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v23"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v24"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v25"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v26"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v27"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v28"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v29"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v30"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v31"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v32"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v33"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v34"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v35"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v36"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v37"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v38"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v39"
+     }
+    },
+    {
+     "op": "delete_via",
+     "args": {
+      "via_id": "v40"
+     }
+    },
+    {
+     "op": "toggle_zone",
+     "args": {
+      "zone_id": "z3"
+     }
+    }
+   ],
+   "rules": [
+    "net-island"
+   ],
+   "titles": [
+    "GND is not one piece of copper: 28 separate islands, 32 pads stranded"
+   ],
+   "refs": [
+    [
+     "C1",
+     "C10",
+     "C11",
+     "C12",
+     "C13",
+     "C14",
+     "C15",
+     "C16",
+     "C2",
+     "C3",
+     "C5",
+     "C6",
+     "C7",
+     "C8",
+     "C9",
+     "J10",
+     "R1",
+     "R10",
+     "R11",
+     "R3",
+     "R5",
+     "R8",
+     "R9",
+     "S1",
+     "SW1",
+     "U1",
+     "U2",
+     "Y1"
+    ]
+   ]
+  }
+ ]
+}

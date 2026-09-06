@@ -21,12 +21,14 @@ sys.path.insert(0, str(ROOT))
 
 from console import utf8  # noqa: E402
 from graph.prompts import single_prompt  # noqa: E402
+from harness.checks import run_checks  # noqa: E402
 from harness.distill import approx_tokens, distill  # noqa: E402
 from harness.ops import apply_edits, board_hash, undo  # noqa: E402
 from harness.presets import PRESETS, edits_for  # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "ops.json"
 DISTILL_OUT = ROOT / "tests" / "fixtures" / "distill.json"
+CHECKS_OUT = ROOT / "tests" / "fixtures" / "checks.json"
 
 
 def _edit(op: str, **args) -> dict:
@@ -138,7 +140,29 @@ def main() -> int:
             }
         )
 
+    # The rules run in the page too, so the browser copy answers to this.
+    rules = []
+    for preset in [None] + PRESETS:
+        work = json.loads(json.dumps(board))
+        edits = [] if preset is None else edits_for(preset, work)
+        apply_edits(work, edits)
+        found = run_checks(work)
+        rules.append(
+            {
+                "id": "clean" if preset is None else preset["id"],
+                "edits": edits,
+                "rules": [f["rule"] for f in found],
+                "titles": [f["title"] for f in found],
+                "refs": [f["refs"] for f in found],
+            }
+        )
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    CHECKS_OUT.write_text(json.dumps({"cases": rules}, indent=1), encoding="utf-8")
+    print(
+        f"wrote {CHECKS_OUT.relative_to(ROOT)}: {len(rules)} boards, "
+        f"{sum(len(r['rules']) for r in rules)} rule findings"
+    )
     # The page has to send the same prompt as the `single` detector, or the
     # README's comparison is not about the page. The whole prompt for the clean
     # board goes in, so the parity script compares the text, not a hash of it.

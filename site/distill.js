@@ -6,6 +6,7 @@
 // all seven presets.
 
 import { copperItems, islands, place } from "./copper.js";
+import { baseType } from "./checks.js";
 
 export const PROMPT_VERSION = "distill-1";
 
@@ -30,11 +31,17 @@ const PIN_KIND = {
   unspecified: "?",
 };
 
-const baseType = (pintype) => String(pintype || "").split("+")[0];
 
-/** A rough token count. Four characters per token is close enough to budget by. */
+/**
+ * A rough token count.
+ *
+ * Not the usual four characters per token: this text is dense mono — net names,
+ * designators, columns of numbers — and tokenises much finer. Measured against
+ * the Python's tiktoken count on the real board, 5,045 characters come to 2,918
+ * tokens, so the divisor is calibrated rather than assumed.
+ */
 export function approxTokens(text) {
-  return Math.ceil(text.length / 4);
+  return Math.ceil(text.length / 1.73);
 }
 
 function packageName(footprint) {

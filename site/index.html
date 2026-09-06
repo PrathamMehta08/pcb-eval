@@ -32,8 +32,6 @@
   --via: #97a3ae;
   --silk: #b3bfb8;
   --label: #7f9089;
-  --paper: #f4f1e6;
-  --paper-ink: #b0392b;
 
   --radius: 3px;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -238,6 +236,43 @@ main { display: flex; flex: 1; min-height: 0; }
   padding: 10px 14px; border-top: 1px solid var(--line); flex: none;
   font-size: 11.5px; color: #79828b;
 }
+/* The graph, running. `measured` steps ask no model anything, and that is the
+   distinction the whole page is about, so it is the one thing coloured. */
+.ro-step {
+  padding: 9px 14px; border-bottom: 1px solid var(--line-soft);
+  border-left: 2px solid var(--line);
+}
+.ro-step.measured { border-left-color: var(--mint); background: rgba(79, 211, 154, .04); }
+.ro-step.looping { border-left-color: var(--warn); }
+.ro-step.running { background: rgba(233, 182, 87, .06); }
+.ro-step-head {
+  display: flex; align-items: center; gap: 7px; font-family: var(--mono);
+  font-size: 12px; color: #e6eae7;
+}
+.ro-step.measured .ro-step-head b { color: var(--mint); }
+.ro-step.looping .ro-step-head b { color: var(--warn); }
+.ro-pass, .ro-tag {
+  font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: #6d757d; border: 1px solid var(--line); padding: 0 5px; border-radius: 8px;
+}
+.ro-tag { color: var(--mint); border-color: rgba(79, 211, 154, .35); }
+.ro-role { display: block; margin-top: 3px; font-size: 11.5px; color: #79828b; }
+.ro-said { display: block; margin-top: 5px; font-size: 12px; color: #b6bfc5; }
+.ro-said code { font-family: var(--mono); color: var(--mint); }
+.ro-step.looping .ro-said code { color: var(--warn); }
+.ro-rule {
+  display: block; margin-top: 4px; padding-left: 9px; font-size: 11.5px;
+  color: #9aa3a9; border-left: 1px solid var(--line);
+}
+.ro-rule.dropped { color: var(--warn); }
+
+.ro-graph { border-top: 1px solid var(--line); flex: none; max-height: 45%; overflow-y: auto; }
+.ro-graph summary {
+  padding: 9px 14px; cursor: pointer; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .1em; text-transform: uppercase; color: #79828b;
+}
+.ro-graph summary:hover { color: #e6eae7; }
+
 .ro-empty { padding: 22px 16px; text-align: center; }
 .ro-empty p { color: #9aa3a9; font-size: 12.5px; margin: 0 0 14px; }
 .ro-running { display: flex; align-items: center; gap: 9px; color: var(--warn); font-family: var(--mono); font-size: 12px; }
@@ -267,7 +302,6 @@ main { display: flex; flex: 1; min-height: 0; }
 /* ------------------------------------------------------------ board paint --- */
 .substrate { fill: var(--substrate); }
 .edge { fill: none; stroke: var(--edge); stroke-width: .16; opacity: .8; }
-.paper { fill: var(--paper); }
 
 .zone { stroke: none; }
 .zone.f-cu { fill: var(--f-cu); opacity: .17; }
@@ -304,14 +338,8 @@ main { display: flex; flex: 1; min-height: 0; }
 .board-svg:has(.net-lit) .via:not(.net-lit) { opacity: .12; }
 .board-svg:has(.net-lit) .pad:not(.net-lit) { opacity: .3; }
 
-.sym-hit { fill: transparent; stroke: none; cursor: pointer; }
-.sym-hit:hover { fill: rgba(13, 143, 99, .13); }
-.sym-hit.selected { fill: rgba(13, 143, 99, .18); stroke: #0d8f63; stroke-width: .3; }
-
 .mark { fill: none; stroke: var(--crit); stroke-width: .25; }
 .mark-edit { stroke: var(--mint); stroke-dasharray: .9 .6; }
-.schematic-svg .mark { stroke: var(--paper-ink); stroke-width: .45; }
-.schematic-svg .mark-edit { stroke: #0d8f63; stroke-dasharray: 1.4 1; }
 
 /* Where the board stops agreeing with itself. A schematic edit changes the net
    list and nothing else, so this is the only place it becomes visible. */
@@ -428,17 +456,6 @@ input, select {
   font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
   color: var(--mint); border: 2px dashed var(--mint); border-radius: 6px;
   background: rgba(8, 9, 12, .72); pointer-events: none;
-}
-
-/* An uploaded board has no plotted schematic; the tab says so before you go. */
-.tab[data-plot="no"]::after {
-  content: "map"; margin-left: 6px; font-size: 8.5px; letter-spacing: .08em;
-  color: var(--warn); vertical-align: 1px;
-}
-.sym-box { fill: rgba(13, 143, 99, .10); stroke: #7a8a80; stroke-width: .2; }
-.sym-text {
-  fill: #5d6b63; font-family: var(--mono); font-size: 1.6px;
-  pointer-events: none; user-select: none;
 }
 
 .preset {
@@ -560,10 +577,7 @@ input, select {
     <div class="brand">PCB<em>·</em>EVAL</div>
     <div class="board-id" id="board-id">stm32-good · pillmate rev 1</div>
     <nav class="tabs" role="tablist" aria-label="View">
-      <button class="tab" role="tab" id="tab-schematic" data-view="schematic"
-              data-plot="yes" aria-selected="false">Schematic</button>
-      <button class="tab" role="tab" data-view="layout" aria-selected="false">Layout</button>
-      <button class="tab" role="tab" data-view="routing" aria-selected="true">Routing</button>
+      <button class="tab" role="tab" data-view="routing" aria-selected="true">Board</button>
       <button class="tab tab-review" role="tab" id="tab-review" data-view="review"
               aria-selected="false">Review</button>
     </nav>
@@ -628,7 +642,6 @@ input, select {
   </main>
 </div>
 
-<template id="sheet-svg"><!--@SCHEMATIC@--></template>
 <script type="application/json" id="board-data">/*@BOARD@*/</script>
 <script type="module">
 /*@MODULES@*/
