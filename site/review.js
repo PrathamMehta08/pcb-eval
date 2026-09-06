@@ -7,9 +7,16 @@
 //   1. a cache on the board hash, which removes most repeat spending because
 //      visitors re-review the same edit;
 //   2. one review per ten seconds;
-//   3. 25 per viewer, in localStorage;
+//   3. five per viewer, in localStorage — see the note on limits below;
 //   4. never on load. `sample` asks the viewer for consent on the first call,
 //      so an automatic one is both rude and wasteful.
+//
+// On the third: this is a per-browser cap, not a per-IP one. A published page
+// is static — it has no server, cannot see an IP, and this runtime offers no
+// `user` capability to identify the viewer — so a determined visitor can clear
+// their storage and start again. It costs them, not the page's author: `sample`
+// bills the viewer's own Claude account. Real per-IP limiting needs a server in
+// front of a hosted copy.
 //
 // Grading is by overlap of component refs and net names, never by wording. A
 // finding matches an edit when their refs or nets intersect. Running against
@@ -21,7 +28,7 @@ import { boardHash } from "./ops.js";
 
 export const PROMPT_ID = `review-1/${PROMPT_VERSION}`;
 export const MIN_INTERVAL_MS = 10_000;
-export const SESSION_CAP = 25;
+export const SESSION_CAP = 5;
 
 const CACHE_KEY = "pcb-eval.reviews.v1";
 const COUNT_KEY = "pcb-eval.reviewCount.v1";

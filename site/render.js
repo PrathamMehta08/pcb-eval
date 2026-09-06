@@ -391,6 +391,11 @@ export function renderSchematic(board, sheetSvg) {
   if (typeof sheetSvg === "string") holder.innerHTML = sheetSvg;
   else if (sheetSvg) holder.appendChild(sheetSvg);
   const inner = holder.querySelector("svg");
+  // An uploaded board has no plot: KiCad's own plotter makes that picture and a
+  // page cannot run it. What the .kicad_sch does give is where every symbol
+  // sits, so the sheet becomes a map of the parts — enough to select one and to
+  // put a marker on it, and honest about not being the drawing.
+  if (!inner) drawSymbolMap(holder, board);
   if (inner) {
     inner.setAttribute("x", "0");
     inner.setAttribute("y", "0");
@@ -419,6 +424,35 @@ export function renderSchematic(board, sheetSvg) {
   svg.appendChild(hits);
   svg.appendChild(el("g", { class: "marks" }));
   return svg;
+}
+
+/** Where each part sits on the sheet, for a board with no plotted schematic. */
+function drawSymbolMap(holder, board) {
+  for (const comp of board.components) {
+    if (!comp.sheet) continue;
+    const [x0, y0, x1, y1] = comp.sheet.bbox;
+    holder.appendChild(
+      el("rect", {
+        class: "sym-box",
+        x: f(x0), y: f(y0),
+        width: f(Math.max(x1 - x0, 1.2)),
+        height: f(Math.max(y1 - y0, 1.2)),
+        rx: 0.4,
+      })
+    );
+    holder.appendChild(
+      el(
+        "text",
+        {
+          class: "sym-text",
+          x: f((x0 + x1) / 2),
+          y: f(y1 + 2),
+          "text-anchor": "middle",
+        },
+        [document.createTextNode(comp.ref)]
+      )
+    );
+  }
 }
 
 /** Every pad's world position, keyed "REF.PIN". */

@@ -47,7 +47,16 @@ PREVIEW_SHELL = """<!doctype html>
 """
 
 #: Dependency order. copper feeds distill, distill and ops feed review, app last.
-MODULES = ["copper.js", "ops.js", "distill.js", "render.js", "review.js", "app.js"]
+MODULES = [
+    "copper.js",
+    "ops.js",
+    "distill.js",
+    "kicad.js",
+    "upload.js",
+    "render.js",
+    "review.js",
+    "app.js",
+]
 
 _IMPORT = re.compile(r"^import\s+[\s\S]*?from\s+\"\./[^\"]+\";\s*$", re.M)
 _EXPORT = re.compile(r"^export\s+(?=const|let|var|function|async|class)", re.M)

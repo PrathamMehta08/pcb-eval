@@ -16,6 +16,8 @@ import {
   renderSchematic,
 } from "./render.js";
 import { islandCounts } from "./copper.js";
+import { summarise } from "./kicad.js";
+import { attachUpload } from "./upload.js";
 import {
   budget,
   coolingDownMs,
@@ -31,16 +33,23 @@ import {
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
-const ORIGINAL = JSON.parse($("board-data").textContent);
+const SAMPLE = JSON.parse($("board-data").textContent);
 const PRESETS = JSON.parse($("preset-data").textContent);
 
+// The board the page is currently working on, and the one Reset goes back to.
+// It starts as the sample and is replaced whole when a project is loaded.
+let ORIGINAL = SAMPLE;
+let custom = null;
+
 const state = {
-  board: clone(ORIGINAL),
+  board: clone(SAMPLE),
   log: [],
   view: "routing",
   selection: null,
   sample: null,
   verdict: null,
+  reviewError: null,
+  focused: null,
   divergence: { stale: [], stranded: [] },
   reviewing: false,
   presetId: null,
@@ -62,9 +71,12 @@ function drawView({ keepZoom = true } = {}) {
   if (keepZoom && panzoom) keptView = panzoom.view;
   stage.textContent = "";
 
+  // The embedded plot belongs to the sample board and only to it. Handing it to
+  // a loaded board would draw somebody else's schematic over their parts.
+  const sheet = custom ? null : $("sheet-svg").content.cloneNode(true);
   const svg =
     state.view === "schematic"
-      ? renderSchematic(state.board, $("sheet-svg").content.cloneNode(true))
+      ? renderSchematic(state.board, sheet)
       : renderBoard(state.board, { copper: state.view === "routing" });
   svg.dataset.view = state.view;
   stage.appendChild(svg);
@@ -148,11 +160,14 @@ function record(edit) {
   }
   state.presetId = null;
   state.verdict = null;
+  state.focused = null;
+  state.reviewError = null;
   afterChange();
   return true;
 }
 
 function afterChange() {
+  $("board-stats").textContent = summarise(state.board);
   drawView();
   renderLog();
   renderInspector();
@@ -173,8 +188,57 @@ function resetBoard() {
   state.log = [];
   state.presetId = null;
   state.verdict = null;
+  state.reviewError = null;
+  state.focused = null;
   state.selection = null;
   afterChange();
+}
+
+/**
+ * Swap in a board read from the visitor's own files.
+ *
+ * `null` goes back to the sample. The presets are turned off for a loaded
+ * board: each one names particular parts and particular track ids on this
+ * board, and pretending otherwise would just throw.
+ */
+function loadBoard(board, notes = [], files = null) {
+  ORIGINAL = board || SAMPLE;
+  custom = board ? { notes, files, name: board.meta.name } : null;
+  state.board = clone(ORIGINAL);
+  state.log = [];
+  state.presetId = null;
+  state.verdict = null;
+  state.reviewError = null;
+  state.focused = null;
+  state.selection = null;
+  keptView = null;
+
+  const hasPlot = !custom;
+  $("tab-schematic").dataset.plot = hasPlot ? "yes" : "no";
+  setView(custom ? "routing" : state.view);
+  renderSource();
+  afterChange();
+}
+
+function renderSource() {
+  const panel = $("source");
+  const stats = state.board.layout;
+  $("board-id").textContent = custom
+    ? `${custom.name} · your file`
+    : "stm32-good · pillmate rev 1";
+
+  if (!custom) {
+    panel.innerHTML = `<p class="muted">Reviewing the sample board — a real
+      STM32 controller, with the seven defects below to try. Load a KiCad
+      project to review your own instead.</p>`;
+  } else {
+    panel.innerHTML = `
+      <p class="loaded"><b>${escapeHtml(custom.name)}</b> ${escapeHtml(summarise(state.board))}</p>
+      ${custom.notes.map((n) => html`<p class="hint">${n}</p>`).join("")}
+      <button class="btn" id="unload">Back to the sample board</button>`;
+    panel.querySelector("#unload").addEventListener("click", () => loadBoard(null));
+  }
+  $("presets-panel").hidden = Boolean(custom);
 }
 
 function applyPreset(preset) {
@@ -541,7 +605,11 @@ function expectedFromState() {
 async function runReview() {
   if (state.reviewing) return;
   state.reviewing = true;
+  state.reviewError = null;
   renderReview();
+  // The button lives at the bottom of a long rail. Bring the panel into view so
+  // the state change is where the person who pressed it is looking.
+  $("review").scrollIntoView({ block: "nearest", behavior: "smooth" });
   try {
     const result = await review(state.sample, state.board, {
       onText: (update) => {
@@ -551,27 +619,108 @@ async function runReview() {
     state.verdict = result;
     paintMarks();
   } catch (error) {
+    // Every outcome is rendered in the panel next to the button. It used to be
+    // flashed over the board instead, which is a different scroll region and
+    // often off screen entirely — so a refused review looked like a dead
+    // button. And `not_granted` used to hide the button, which looked like the
+    // page had eaten it.
     state.verdict = null;
-    if (error instanceof ReviewUnavailable && error.code === "not_granted") {
-      state.sample = null;
-      flash("This viewer has not allowed the page to use Claude.");
-    } else {
-      flash(reviewCopy(error));
-    }
+    state.reviewError = {
+      code: error?.code || "upstream_error",
+      message: reviewCopy(error),
+    };
   } finally {
     state.reviewing = false;
     renderReview();
   }
 }
 
+/** What to tell the person who pressed the button, per error code. */
 function reviewCopy(error) {
   const code = error?.code;
   if (code === "cooldown" || code === "capped" || code === "unavailable") return error.message;
-  if (code === "rate_limited") return "Claude is rate limiting. Try again in a minute.";
-  if (code === "session_expired") return "Sign in to Claude again, then review.";
-  if (code === "invalid_json") return "The reply was not valid JSON. Review again.";
-  if (code === "empty_completion") return "Claude returned nothing. Try a smaller edit.";
-  return error?.message || "The review did not complete.";
+  if (code === "not_granted")
+    return `The first review asks your permission to use Claude, and this view has
+      not given it. Reload the page and choose Allow, or open it inside Claude.`;
+  if (code === "sampling_disabled")
+    return "Claude is not available on this account, so the review cannot run here.";
+  if (code === "not_declared" || code === "capability_disabled")
+    return "This copy of the page cannot reach Claude. Everything else still works.";
+  if (code === "rate_limited")
+    return "Claude is rate limiting this account. Give it a minute and press again.";
+  if (code === "session_expired") return "Your Claude session expired. Sign in again, then review.";
+  if (code === "invalid_json")
+    return "The reply was not valid JSON. Press review again — this one is usually transient.";
+  if (code === "empty_completion")
+    return "Claude returned nothing at all. Try again, or undo an edit and review a simpler board.";
+  if (code === "prompt_too_large")
+    return "The board came out too large to send. Undo an edit and try again.";
+  if (code === "cancelled") return "The review was stopped before it finished.";
+  return error?.message || "The review did not finish. Press it again.";
+}
+
+/** Errors you can do something about; the rest leave the button disabled. */
+const RETRYABLE = new Set([
+  "cooldown",
+  "rate_limited",
+  "invalid_json",
+  "empty_completion",
+  "upstream_error",
+  "cancelled",
+]);
+
+/**
+ * Which view a finding is best read in.
+ *
+ * A claim about copper — islands, vias, pours, trace width — can only be seen
+ * in the routing view. A claim about a pin, a value or a connector's order is a
+ * schematic claim. Everything else goes to routing, because that is where the
+ * board is most itself.
+ */
+const COPPER_CLAIM =
+  /island|via|pour|trace width|copper|stranded|thermal|clearance|stitch|plane|layer|routing|track/i;
+const SCHEMATIC_CLAIM =
+  /pin|net list|netlist|value|pull-?up|pull-?down|float|connector|pinout|swapped|wired|footprint|bom/i;
+
+function viewForFinding(finding) {
+  const text = `${finding.title} ${finding.why}`;
+  if (COPPER_CLAIM.test(text)) return "routing";
+  if (SCHEMATIC_CLAIM.test(text)) return "schematic";
+  return "routing";
+}
+
+/** Show one finding: its view, its parts ringed, its nets lit, its part opened. */
+function focusFinding(index) {
+  const finding = state.verdict?.findings?.[index];
+  if (!finding) return;
+  state.focused = index;
+
+  const view = viewForFinding(finding);
+  if (view !== state.view) setView(view);
+
+  const svg = currentSvg();
+  if (svg) {
+    clearMarks(svg);
+    if (state.view !== "schematic") markDivergence(svg, state.board);
+    markRefs(svg, state.board, finding.refs, "flag");
+    highlightNets(svg, finding.nets);
+  }
+
+  // Open the first part it names, so the inspector explains what the finding is
+  // talking about rather than leaving a ring with no context.
+  const ref = finding.refs.find((r) =>
+    state.board.components.some((c) => c.ref === r)
+  );
+  if (ref) {
+    state.selection = { kind: "part", ref };
+    renderInspector();
+    if (svg) {
+      for (const node of svg.querySelectorAll(`[data-ref="${cssEscape(ref)}"]`)) {
+        node.classList.add("selected");
+      }
+    }
+  }
+  renderReview();
 }
 
 /** Which parts the visitor has touched, so an edit is visible on the board. */
@@ -605,7 +754,12 @@ function paintMarks() {
 
   markRefs(svg, state.board, editedRefs(), "edit");
   if (state.verdict) {
-    markRefs(svg, state.board, state.verdict.findings.flatMap((f) => f.refs), "flag");
+    const focused = state.verdict.findings[state.focused];
+    const refs = focused
+      ? focused.refs
+      : state.verdict.findings.flatMap((f) => f.refs);
+    markRefs(svg, state.board, refs, "flag");
+    if (focused) highlightNets(svg, focused.nets);
   }
   renderDivergenceNote();
 }
@@ -665,6 +819,23 @@ function renderReview() {
     panel.innerHTML = `<p class="muted">Sending the board as it stands now.</p>`;
     return;
   }
+
+  // An error goes here, next to the button that caused it, and stays until the
+  // next attempt. Anything that cannot be retried also disables the button, so
+  // it is obvious that pressing again will not help.
+  if (state.reviewError) {
+    const { code, message } = state.reviewError;
+    const canRetry = RETRYABLE.has(code);
+    button.disabled = !canRetry;
+    panel.innerHTML = `
+      <div class="review-error">
+        <span class="review-error-code">${escapeHtml(code)}</span>
+        <p>${escapeHtml(message)}</p>
+      </div>
+      <p class="hint">Everything else on the page runs here and is unaffected.</p>`;
+    return;
+  }
+
   if (!state.verdict) {
     const counts = islandCounts(state.board);
     const broken = [...counts.entries()].filter(([, n]) => n > 1);
@@ -694,20 +865,29 @@ function renderReview() {
       .map((want) => html`<li class="missed"><b>${want.title}</b></li>`)
       .join("")}</ul>` : ""}
     ${state.verdict.findings.length
-      ? `<h4 class="eyebrow">What it reported</h4><ul class="findings">${state.verdict.findings
+      ? `<h4 class="eyebrow">What it reported — click one to see it on the board</h4>
+         <ul class="findings">${state.verdict.findings
           .map(
-            (finding) => `<li class="sev-${escapeHtml(finding.severity)}">
-              <b>${escapeHtml(finding.title)}</b>
-              <span class="why">${escapeHtml(finding.why)}</span>
-              <span class="tags">${[...finding.refs, ...finding.nets]
-                .map((tag) => html`<code>${tag}</code>`)
-                .join("")}</span>
+            (finding, i) => `<li class="sev-${escapeHtml(finding.severity)}${
+              state.focused === i ? " focused" : ""
+            }">
+              <button class="finding" data-finding="${i}">
+                <b>${escapeHtml(finding.title)}</b>
+                <span class="why">${escapeHtml(finding.why)}</span>
+                <span class="tags">${[...finding.refs, ...finding.nets]
+                  .map((tag) => html`<code>${tag}</code>`)
+                  .join("")}</span>
+              </button>
             </li>`
           )
           .join("")}</ul>`
       : `<p class="muted">No findings. On the untouched board that is the right
          answer; after an edit it is a miss.</p>`}
   `;
+
+  for (const button of panel.querySelectorAll(".finding")) {
+    button.addEventListener("click", () => focusFinding(Number(button.dataset.finding)));
+  }
 }
 
 // ----------------------------------------------------------------------- shell
@@ -739,6 +919,20 @@ function boot() {
       if (svg) svg.classList.toggle(`hide-${chip.dataset.layer}`, chip.classList.contains("off"));
     });
   }
+  attachUpload({
+    input: $("file-input"),
+    dropZone: $("stage"),
+    onBoard: (board, notes, files) => loadBoard(board, notes, files),
+    onError: (message) => {
+      $("source").innerHTML = html`<p class="load-error">${message}</p>`;
+      $("source").innerHTML += `<p class="hint">Drop the folder that holds the
+        .kicad_pcb and .kicad_sch, or pick the two files.</p>`;
+    },
+    onBusy: (busy) => {
+      $("stage").classList.toggle("loading", busy);
+    },
+  });
+
   $("undo").addEventListener("click", undoLast);
   $("reset").addEventListener("click", resetBoard);
   $("go").addEventListener("click", runReview);
@@ -751,12 +945,7 @@ function boot() {
     if (event.key === "Escape") select(null);
   });
 
-  const stats = state.board.layout;
-  $("board-stats").textContent =
-    `${state.board.components.length} parts · ${state.board.nets.length} nets · ` +
-    `${stats.tracks.length} tracks · ${stats.vias.length} vias · ` +
-    `${stats.size.w.toFixed(0)}×${stats.size.h.toFixed(0)} mm`;
-
+  renderSource();
   setView("routing");
   renderPresets();
   renderLog();

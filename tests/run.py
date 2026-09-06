@@ -326,7 +326,7 @@ def has_token(text: str, token: str) -> bool:
 # --------------------------------------------------------------------------- 8
 
 
-@step(8, "site/ops.js and site/distill.js match the Python on the shared fixtures")
+@step(8, "the browser modules match the Python: ops, distiller, and the KiCad reader")
 def check_ops_parity(c: Check) -> None:
     import shutil
     import subprocess
@@ -356,7 +356,7 @@ def check_ops_parity(c: Check) -> None:
             f"{case['id']}: edit-log labels match the fixture",
         )
 
-    run_node(c, "ops_parity.mjs", "distill_parity.mjs")
+    run_node(c, "ops_parity.mjs", "distill_parity.mjs", "kicad_parity.mjs")
 
 
 def run_node(c: Check, *scripts: str) -> None:
