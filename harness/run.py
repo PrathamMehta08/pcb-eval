@@ -47,7 +47,6 @@ def corpus() -> list[dict]:
             "title": "The board as manufactured",
             "board": good,
             "defects": [],
-            "focus": [],
         }
     ]
     for preset in PRESETS:
@@ -66,7 +65,6 @@ def corpus() -> list[dict]:
                         "nets": preset["nets"],
                     }
                 ],
-                "focus": preset["refs"],
             }
         )
     return boards
@@ -75,9 +73,9 @@ def corpus() -> list[dict]:
 def run_one(detector: str, case: dict, client: Client) -> dict:
     started = time.monotonic()
     if detector == "graph":
-        state = run_graph(case["board"], client, case["focus"])
+        state = run_graph(case["board"], client)
     else:
-        state = review_once(case["board"], client, case["focus"])
+        state = review_once(case["board"], client)
 
     findings = state["confirmed"]
     row = {

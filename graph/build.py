@@ -39,7 +39,7 @@ def ingest(state: ReviewState) -> dict:
     """Everything here is measured. No model has been asked anything yet."""
     board = state["board"]
     return {
-        "distilled": distill(board, state.get("focus_refs", [])),
+        "distilled": distill(board),
         "deterministic": run_checks(board),
         "findings": [],
         "confirmed": [],
@@ -94,12 +94,9 @@ def build_graph(client):
     return graph.compile()
 
 
-def run_graph(board: dict, client, focus_refs: list[str] | None = None) -> ReviewState:
+def run_graph(board: dict, client) -> ReviewState:
     graph = build_graph(client)
-    return graph.invoke(
-        {"board": board, "focus_refs": focus_refs or []},
-        {"recursion_limit": 50},
-    )
+    return graph.invoke({"board": board}, {"recursion_limit": 50})
 
 
 if __name__ == "__main__":

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from typing import TypedDict
+
+_DESIGNATOR = re.compile(r"^[A-Za-z]{1,3}\d+$")
+#: A node, not a net: `C4.2`, `U2.1(VBAT,pwr-in)`, `S1.5(EN,in)`.
+_NODE = re.compile(r"^([A-Za-z]{1,3}\d+)\.[A-Za-z0-9_]+")
 
 
 class ReviewState(TypedDict, total=False):
@@ -18,13 +23,47 @@ class ReviewState(TypedDict, total=False):
     confirmed: list[dict]
     #: What adjudication threw out, each with the measurement that refuted it.
     dropped: list[dict]
-    #: Parts a layout edit touched, so distil can include the geometry near them.
-    focus_refs: list[str]
     passes: int
     #: One row per model call, for the cost log.
     calls: list[dict]
     #: Why the gate stopped, so a result can be read six months later.
     stopped: str
+
+
+def tidy(refs, nets) -> tuple[list[str], list[str]]:
+    """Sort the model's refs and nets into refs and nets.
+
+    Reviewers write `D2.2` when they mean pin 2 of D2, and put whole node
+    strings like `U2.1(VBAT,pwr-in)` in the nets list. Taken literally, both
+    look like a part or a net that does not exist — which is exactly what the
+    adjudicator's contradiction check is for, so without this it throws out
+    correct findings for a formatting habit. Twenty of them, in the first
+    scored sweep.
+    """
+    out_refs: list[str] = []
+    out_nets: list[str] = []
+
+    def add_ref(value: str) -> None:
+        value = value.strip()
+        node = _NODE.match(value)
+        if node:
+            value = node.group(1)
+        value = value.split("(")[0].strip()
+        if _DESIGNATOR.match(value) and value not in out_refs:
+            out_refs.append(value)
+
+    for raw in refs or []:
+        add_ref(str(raw))
+    for raw in nets or []:
+        value = str(raw).strip().rstrip(",")
+        # A net name can legitimately contain brackets — `unconnected-(J12-Pad3)`
+        # is one — so nothing is stripped here beyond whitespace.
+        if _NODE.match(value) or _DESIGNATOR.match(value):
+            add_ref(value)
+            continue
+        if value and value not in out_nets:
+            out_nets.append(value)
+    return out_refs, out_nets
 
 
 def finding(
@@ -35,11 +74,12 @@ def finding(
     nets: list[str] | None = None,
     severity: str = "major",
 ) -> dict:
+    clean_refs, clean_nets = tidy(refs, nets)
     return {
         "source": source,
         "severity": severity if severity in ("critical", "major", "minor") else "major",
-        "refs": [str(r) for r in (refs or [])],
-        "nets": [str(n) for n in (nets or [])],
+        "refs": clean_refs,
+        "nets": clean_nets,
         "title": str(title).strip(),
         "why": str(why).strip(),
     }

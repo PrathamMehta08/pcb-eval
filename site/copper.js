@@ -12,7 +12,8 @@
 
 const TOL = 0.02; // mm; KiCad quantises to a nanometre, so this is generous
 
-function rot(x, y, deg) {
+/** KiCad's RotatePoint. The same transform as extract/layout.py `place()`. */
+export function place(x, y, deg) {
   if (!deg) return [x, y];
   const a = (deg * Math.PI) / 180;
   const ca = Math.cos(a);
@@ -39,7 +40,7 @@ export function copperItems(board) {
     for (const pad of fp.pads) {
       const layers = padLayers(pad);
       if (!layers.size || !pad.net) continue;
-      const [dx, dy] = rot(pad.x, pad.y, fp.rot);
+      const [dx, dy] = place(pad.x, pad.y, fp.rot);
       items.push({
         kind: "pad",
         id: `${fp.ref}.${pad.num}`,

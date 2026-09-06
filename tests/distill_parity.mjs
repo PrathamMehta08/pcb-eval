@@ -21,7 +21,7 @@ const failures = [];
 for (const testCase of fixture.cases) {
   const work = JSON.parse(JSON.stringify(board));
   applyEdits(work, testCase.edits);
-  const got = distill(work, testCase.focus || []);
+  const got = distill(work);
   if (got === testCase.text) continue;
 
   const a = got.split("\n");

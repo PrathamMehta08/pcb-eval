@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from console import utf8  # noqa: E402
-from harness.distill import distill  # noqa: E402
+from harness.distill import approx_tokens, distill  # noqa: E402
 from harness.ops import apply_edits, board_hash, undo  # noqa: E402
 from harness.presets import PRESETS, edits_for  # noqa: E402
 
@@ -60,6 +60,18 @@ def direct_cases(board: dict) -> list[dict]:
             "id": "op:set_track_width",
             "edits": [_edit("set_track_width", track_id=wide_track, mm=0.1524)],
         },
+        {
+            # Five decimals on purpose. Python's round() is banker's and
+            # JavaScript's Math.round is half-up, so this argument used to hash
+            # to two different boards — and every case here passed four decimals,
+            # which is exactly why the parity test never saw it.
+            "id": "op:set_track_width-five-decimals",
+            "edits": [_edit("set_track_width", track_id=wide_track, mm=0.15005)],
+        },
+        {
+            "id": "op:move_footprint-five-decimals",
+            "edits": [_edit("move_footprint", ref="C6", x=12.34565, y=-0.00001)],
+        },
         {"id": "op:delete_via", "edits": [_edit("delete_via", via_id=first_via)]},
         {"id": "op:toggle_zone", "edits": [_edit("toggle_zone", zone_id=zone)]},
         {
@@ -90,15 +102,23 @@ def main() -> int:
         for preset in PRESETS
     ]
 
+    reference = json.dumps(board, sort_keys=True)
     for case in cases:
         work = json.loads(json.dumps(board))
         log = apply_edits(work, case["edits"])
         case["hash"] = board_hash(work)
+        case["labels"] = [entry["label"] for entry in log]
         while log:
             undo(work, log)
         case["undo_hash"] = board_hash(work)
         if case["undo_hash"] != clean:
-            raise SystemExit(f"{case['id']}: undo did not restore the board")
+            raise SystemExit(f"{case['id']}: undo did not restore the board hash")
+        # And restore it exactly, not merely to something that hashes the same.
+        # The hash sorts net nodes, so an undo that put a node back at the wrong
+        # index — or a deleted track back at the wrong position — would pass on
+        # the hash alone.
+        if json.dumps(work, sort_keys=True) != reference:
+            raise SystemExit(f"{case['id']}: undo restored the hash but not the board")
 
     # The distilled text is what a review actually reads, so the browser copy
     # has to produce it character for character or the harness would be scoring
@@ -108,13 +128,12 @@ def main() -> int:
         work = json.loads(json.dumps(board))
         edits = [] if preset is None else edits_for(preset, work)
         apply_edits(work, edits)
-        focus = ["U3", "S1"] if preset is None else preset.get("refs", [])
         distilled.append(
             {
                 "id": "clean" if preset is None else preset["id"],
                 "edits": edits,
-                "focus": focus,
-                "text": distill(work, focus),
+                "text": distill(work),
+                "tokens": approx_tokens(distill(work)),
             }
         )
 
@@ -122,7 +141,7 @@ def main() -> int:
     DISTILL_OUT.write_text(json.dumps({"cases": distilled}, indent=1), encoding="utf-8")
     print(
         f"wrote {DISTILL_OUT.relative_to(ROOT)}: {len(distilled)} boards, "
-        f"{max(len(d['text']) for d in distilled)} characters at most"
+        f"{max(d['tokens'] for d in distilled)} tokens at most"
     )
     OUT.write_text(
         json.dumps({"clean_hash": clean, "cases": cases}, indent=1), encoding="utf-8"

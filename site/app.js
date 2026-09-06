@@ -527,19 +527,12 @@ function expectedFromState() {
   });
 }
 
-function focusRefs() {
-  const refs = new Set();
-  for (const entry of state.log) if (entry.args?.ref) refs.add(entry.args.ref);
-  return [...refs];
-}
-
 async function runReview() {
   if (state.reviewing) return;
   state.reviewing = true;
   renderReview();
   try {
     const result = await review(state.sample, state.board, {
-      focusRefs: focusRefs(),
       onText: (update) => {
         $("review-stream").textContent = update.text.slice(-600);
       },

@@ -14,6 +14,9 @@
     }
    ],
    "hash": "ed6a283808869977",
+   "labels": [
+    "R4.2: /BOOT0 \u2192 GND"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -29,6 +32,9 @@
     }
    ],
    "hash": "d49d837886a9b3fb",
+   "labels": [
+    "R4.2: /BOOT0 \u2192 /A_NET_THAT_DID_NOT_EXIST"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -44,6 +50,9 @@
     }
    ],
    "hash": "a3fd7ccc51ccd934",
+   "labels": [
+    "J2: pin 1 \u2194 pin 4 (+5V \u2194 GND)"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -58,6 +67,9 @@
     }
    ],
    "hash": "3b929c80b7f89ac9",
+   "labels": [
+    "R4: value '10k' \u2192 '4k7'"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -73,6 +85,9 @@
     }
    ],
    "hash": "ac370f10e0618c06",
+   "labels": [
+    "C6: moved to (12.35, 7.89) mm"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -87,6 +102,9 @@
     }
    ],
    "hash": "35361196d040bf7c",
+   "labels": [
+    "C6: rotated to 270\u00b0"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -101,6 +119,9 @@
     }
    ],
    "hash": "52c4906c3221b1ac",
+   "labels": [
+    "C6: rotated to 315\u00b0"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -114,6 +135,9 @@
     }
    ],
    "hash": "9a49b7a0192e7e04",
+   "labels": [
+    "deleted 0.3 mm GND track on F.Cu"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -128,6 +152,44 @@
     }
    ],
    "hash": "7e02fd8315bc607c",
+   "labels": [
+    "GND track: 0.5 \u2192 0.1524 mm"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "op:set_track_width-five-decimals",
+   "edits": [
+    {
+     "op": "set_track_width",
+     "args": {
+      "track_id": "t10",
+      "mm": 0.15005
+     }
+    }
+   ],
+   "hash": "1ef320ac338ac4c7",
+   "labels": [
+    "GND track: 0.5 \u2192 0.1501 mm"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "op:move_footprint-five-decimals",
+   "edits": [
+    {
+     "op": "move_footprint",
+     "args": {
+      "ref": "C6",
+      "x": 12.34565,
+      "y": -1e-05
+     }
+    }
+   ],
+   "hash": "6a5aeb4110d5b66a",
+   "labels": [
+    "C6: moved to (12.35, 0.00) mm"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -141,6 +203,9 @@
     }
    ],
    "hash": "89947d52202d5d04",
+   "labels": [
+    "deleted GND via at (51.9, 31.4)"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -154,6 +219,9 @@
     }
    ],
    "hash": "b65ef783ac0435e8",
+   "labels": [
+    "removed /VIN_LDO pour on F.Cu"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -173,6 +241,10 @@
     }
    ],
    "hash": "fdbf9eacfc0782bf",
+   "labels": [
+    "removed /VIN_LDO pour on F.Cu",
+    "restored /VIN_LDO pour on F.Cu"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -214,6 +286,13 @@
     }
    ],
    "hash": "c3097d978613570c",
+   "labels": [
+    "R4: value '10k' \u2192 'R'",
+    "U3: moved to (40.00, 20.00) mm",
+    "U3: rotated to 90\u00b0",
+    "deleted GND via at (51.9, 31.4)",
+    "removed /VIN_LDO pour on F.Cu"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -237,6 +316,10 @@
     }
    ],
    "hash": "7856e2336b5d4031",
+   "labels": [
+    "S1.4: /FB \u2192 VBST",
+    "S1.6: VBST \u2192 /FB"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -260,6 +343,10 @@
     }
    ],
    "hash": "a8eb1da0f9724cb3",
+   "labels": [
+    "U3.12: unconnected-(U3-O5-Pad12) \u2192 /O5",
+    "J11.5: +5V \u2192 /O5"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -275,6 +362,9 @@
     }
    ],
    "hash": "75e1377d6f051e78",
+   "labels": [
+    "J4: pin 2 \u2194 pin 3 (+5V \u2194 GND)"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -290,6 +380,9 @@
     }
    ],
    "hash": "9ee2a2bf2fada762",
+   "labels": [
+    "J2: pin 2 \u2194 pin 3 (/TRIG \u2194 /ECHO)"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -305,6 +398,9 @@
     }
    ],
    "hash": "0bad4e573e92f1cd",
+   "labels": [
+    "R11.2: /STEPPER_IN4 \u2192 /STEPPER_IN1"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -319,6 +415,9 @@
     }
    ],
    "hash": "1a242d1ffcc64481",
+   "labels": [
+    "R4: value '10k' \u2192 'R'"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
@@ -578,6 +677,50 @@
     }
    ],
    "hash": "dc90b203ec800217",
+   "labels": [
+    "deleted GND via at (51.9, 31.4)",
+    "deleted GND via at (30.4, 13.6)",
+    "deleted GND via at (21.6, 9.6)",
+    "deleted GND via at (32.5, 2.0)",
+    "deleted GND via at (5.0, 13.9)",
+    "deleted GND via at (3.7, 7.7)",
+    "deleted GND via at (53.4, 30.3)",
+    "deleted GND via at (23.4, 13.0)",
+    "deleted GND via at (35.0, 2.5)",
+    "deleted GND via at (36.7, 7.2)",
+    "deleted GND via at (33.7, 28.0)",
+    "deleted GND via at (26.7, 12.2)",
+    "deleted GND via at (22.9, 9.7)",
+    "deleted GND via at (23.3, 21.2)",
+    "deleted GND via at (5.0, 16.5)",
+    "deleted GND via at (20.0, 17.9)",
+    "deleted GND via at (38.3, 28.0)",
+    "deleted GND via at (38.0, 19.9)",
+    "deleted GND via at (29.8, 17.4)",
+    "deleted GND via at (3.8, 11.1)",
+    "deleted GND via at (5.0, 19.0)",
+    "deleted GND via at (3.8, 6.1)",
+    "deleted GND via at (39.1, 14.5)",
+    "deleted GND via at (2.4, 24.9)",
+    "deleted GND via at (49.4, 30.5)",
+    "deleted GND via at (3.7, 9.3)",
+    "deleted GND via at (25.6, 4.2)",
+    "deleted GND via at (34.8, 19.3)",
+    "deleted GND via at (52.3, 33.1)",
+    "deleted GND via at (23.1, 23.3)",
+    "deleted GND via at (5.0, 21.5)",
+    "deleted GND via at (31.4, 30.6)",
+    "deleted GND via at (29.1, 28.0)",
+    "deleted GND via at (39.1, 36.2)",
+    "deleted GND via at (20.0, 14.4)",
+    "deleted GND via at (37.1, 33.1)",
+    "deleted GND via at (28.3, 9.9)",
+    "deleted GND via at (28.5, 38.8)",
+    "deleted GND via at (50.7, 31.4)",
+    "deleted GND via at (49.4, 31.9)",
+    "deleted GND via at (52.0, 13.9)",
+    "removed GND pour on F.Cu"
+   ],
    "undo_hash": "fdbf9eacfc0782bf"
   }
  ]

@@ -26,9 +26,21 @@ from typing import Iterable
 RULES: list[tuple[str, callable]] = []
 
 #: Net names that are a supply or a return by convention, not by topology.
-RAIL_PATTERN = re.compile(r"^/?(GND|GNDA|AGND|VSS|VBUS|VCC|VDD|VEE|[+-]?\d+V\d*|[+-]\d+(\.\d+)?V)$", re.I)
-GROUND_PATTERN = re.compile(r"^/?(GND|GNDA|AGND|VSS)$", re.I)
+#: Grounds go by many names on a real board — DGND, AGND and PGND are all
+#: ground, and a split ground is standard practice around a switching converter.
+GROUND_PATTERN = re.compile(r"^/?((A|D|P|E|SG|PG|GND)?GND[A-Z0-9_]*|GND|VSS[A-Z0-9_]*)$", re.I)
+RAIL_PATTERN = re.compile(
+    r"^/?(VBUS|VCC|VDD|VEE|VIN|VOUT|[+-]?\d+V\d*|[+-]\d+(\.\d+)?V)[A-Z0-9]*$", re.I
+)
 DRIVERS = {"output", "power_out", "open_collector", "tri_state"}
+#: The convention below belongs to servo leads, and this is how the board says so.
+SERVO_NET = re.compile(r"SERVO|PWM|ESC", re.I)
+#: Parts that switch real current, where an undefined input at power-up moves
+#: something. An MCU reset or boot pin is not one of these and has its own
+#: conventions — an internal pull-up, a mode switch — so it is out of scope.
+DRIVER_PART = re.compile(
+    r"darlington|transistor array|driver|h-?bridge|mosfet|gate|relay", re.I
+)
 PASSIVE_PREFIXES = ("R", "C", "L")
 
 
@@ -54,7 +66,7 @@ def finding(rule_id: str, title: str, why: str, refs: Iterable[str] = (), nets: 
 
 
 def is_rail(name: str) -> bool:
-    return bool(RAIL_PATTERN.match(name))
+    return bool(RAIL_PATTERN.match(name)) or is_ground(name)
 
 
 def is_ground(name: str) -> bool:
@@ -87,6 +99,13 @@ def check_power_pin_miswired(board: dict) -> list[dict]:
     that same name, the binding is explicit and a mismatch is unambiguous. Pins
     whose name matches nothing on the board place no constraint at all, which is
     why this stays quiet on a board full of `PA1_11` and `Pin_5_5`.
+
+    Two limits worth stating rather than discovering. It sees only pins the
+    designer happened to name after a net, so `S1.4` (`VFB_4`) against a net
+    called `/FB` is invisible to it — the feedback half of the buck swap trips
+    this rule through `S1.6` alone. And two grounds are never a mismatch,
+    because splitting the return around a switcher is what you are supposed
+    to do.
     """
     net_names = {n["name"].lstrip("/").upper(): n["name"] for n in board["nets"]}
     out = []
@@ -100,7 +119,14 @@ def check_power_pin_miswired(board: dict) -> list[dict]:
             if len(declared) < 2 or declared not in net_names:
                 continue
             expected = net_names[declared]
-            if expected != net["name"]:
+            if expected == net["name"]:
+                continue
+            # A separate return for the switching stage is standard practice,
+            # so GND_1 landing on PGND rather than GND is a layout decision,
+            # not a miswire.
+            if is_ground(expected) and is_ground(net["name"]):
+                continue
+            if True:
                 out.append(
                     finding(
                         "power-pin-miswired",
@@ -154,6 +180,10 @@ def check_connector_power_order(board: dict) -> list[dict]:
     Hobby servo leads are signal / power / ground in that physical order, and
     the connector is not keyed. Power on an end pin means a lead inserted the
     normal way puts the supply on the servo's ground wire.
+
+    It applies only where the designer has named the signal after a servo. Pin
+    count alone would condemn a three-wire analogue sensor header, which is
+    supply / output / ground and correct.
     """
     out = []
     for ref, pins in _nets_by_ref(board).items():
@@ -166,6 +196,12 @@ def check_connector_power_order(board: dict) -> list[dict]:
         grounds = [p for p, n in by_pin.items() if is_ground(n)]
         signals = [p for p, n in by_pin.items() if not is_rail(n)]
         if not (len(supplies) == 1 and len(grounds) == 1 and len(signals) == 1):
+            continue
+        # Only a servo lead has this convention. A three-pin analogue sensor
+        # header is supply, output, ground and is perfectly correct that way,
+        # so the rule reads the designer's own label rather than guessing from
+        # the pin count.
+        if not SERVO_NET.search(by_pin[signals[0]]):
             continue
         if supplies[0] == "2":
             continue
@@ -186,11 +222,18 @@ def check_connector_power_order(board: dict) -> list[dict]:
 
 @rule("sensor-pinout-order", "critical")
 def check_sensor_pinout_order(board: dict) -> list[dict]:
-    """A four-pin ultrasonic header is VCC, TRIG, ECHO, GND, in that order.
+    """A four-pin sensor header is supply, signal, signal, ground, in that order.
 
-    The HC-SR04 module fixes that order on its own silkscreen, so the header has
-    to match it. Reading the designer's own net names is what makes this
-    checkable: nothing else on the board says which line is which.
+    Every common four-wire module — HC-SR04, DHT-style sensors, most I2C
+    breakouts — puts the supply on pin 1 and ground on pin 4 with the signals
+    between, because that is what the cable that ships with them expects. The
+    header is not keyed, so the board has to match.
+
+    The ordering of the two middle signals is checked as well where the board
+    names them: an HC-SR04 is VCC, TRIG, ECHO, GND, and crossing the middle two
+    means the MCU drives the sensor's output and listens on its input. Reading
+    the designer's own net names is what makes that clause checkable; the outer
+    two pins need no names at all.
     """
     out = []
     for ref, pins in _nets_by_ref(board).items():
@@ -199,56 +242,107 @@ def check_sensor_pinout_order(board: dict) -> list[dict]:
         by_pin = {node["pin"]: name for name, node in pins}
         if set(by_pin) != {"1", "2", "3", "4"}:
             continue
-        trig = [p for p, n in by_pin.items() if "TRIG" in n.upper()]
-        echo = [p for p, n in by_pin.items() if "ECHO" in n.upper()]
-        if len(trig) != 1 or len(echo) != 1:
+        supplies = [p for p, n in by_pin.items() if is_rail(n) and not is_ground(n)]
+        grounds = [p for p, n in by_pin.items() if is_ground(n)]
+        signals = [p for p, n in by_pin.items() if not is_rail(n)]
+        if not (len(supplies) == 1 and len(grounds) == 1 and len(signals) == 2):
             continue
-        if int(trig[0]) < int(echo[0]):
+
+        problems = []
+        if supplies[0] != "1":
+            problems.append(f"the supply {by_pin[supplies[0]]} is on pin {supplies[0]}, not pin 1")
+        if grounds[0] != "4":
+            problems.append(f"ground is on pin {grounds[0]}, not pin 4")
+        trig = [p for p in signals if "TRIG" in by_pin[p].upper()]
+        echo = [p for p in signals if "ECHO" in by_pin[p].upper()]
+        if len(trig) == 1 and len(echo) == 1 and int(trig[0]) > int(echo[0]):
+            problems.append(
+                f"trigger is on pin {trig[0]} and echo on pin {echo[0]}, the wrong way round"
+            )
+        if not problems:
             continue
+
         out.append(
             finding(
                 "sensor-pinout-order",
-                f"{ref}: trigger is on pin {trig[0]} and echo on pin {echo[0]}, the wrong way round",
-                "The module's pinout is VCC, TRIG, ECHO, GND. Crossed, the MCU "
-                "drives the sensor's echo output and listens on its trigger "
-                "input, so no range reading ever arrives.",
+                f"{ref} does not match a four-wire sensor pinout: " + "; ".join(problems),
+                "A four-wire module's cable is supply, signal, signal, ground, "
+                "and the header is not keyed. Plugged in the normal way, this "
+                "one connects the wrong wire to the wrong pin.",
                 refs=[ref],
-                nets=[by_pin[trig[0]], by_pin[echo[0]]],
+                nets=list(by_pin.values()),
                 severity="critical",
             )
         )
     return out
 
 
+def _reaches_rail(board: dict, node: dict, from_net: str) -> bool:
+    """Does this passive pin's part have another pin sitting on a rail?
+
+    A resistor to +3.3V or to ground defines a level. A decoupling capacitor's
+    far side is on a rail too, but a capacitor is not a pull — so only parts
+    that conduct at DC count, which on a board like this means R and L.
+    """
+    if not node["ref"].startswith(("R", "L", "FB")):
+        return False
+    for other in board["nets"]:
+        if other["name"] == from_net:
+            continue
+        for candidate in other["nodes"]:
+            if candidate["ref"] == node["ref"] and is_rail(other["name"]):
+                return True
+    return False
+
+
 @rule("floating-driver-input", "major")
 def check_floating_driver_input(board: dict) -> list[dict]:
-    """An input pin needs something holding it while the MCU is still in reset.
+    """A power driver's input needs something holding it while the MCU resets.
 
     A net whose only other member is a bidirectional MCU port has no defined
     level at power-up: the port is high impedance until firmware configures it.
-    On anything that switches current, that is a coil or a FET energising before
-    any code has run. A passive on the net, a real driver, or a rail all satisfy
-    this; that is why the clean board, where every driver input has a pull-down,
-    says nothing.
+    On something that switches real current that is a coil or a FET energising
+    before any code has run.
+
+    Two things keep this off correct boards. It applies only to parts the
+    library describes as drivers, so an MCU reset pin held by its internal
+    pull-up and a boot pin on a mode switch are out of scope — both are correct
+    and both would otherwise be flagged. And what satisfies it is a driver on
+    the net or a resistor whose other end is on a rail, not merely any passive:
+    a capacitor leaves the input floating just the same.
     """
+    drivers = {
+        comp["ref"]
+        for comp in board["components"]
+        if DRIVER_PART.search(f"{comp.get('description', '')} {comp.get('value', '')}")
+    }
     out = []
     for net in board["nets"]:
         if is_rail(net["name"]) or net["name"].startswith("unconnected-"):
             continue
-        inputs = [n for n in net["nodes"] if base_type(n["type"]) == "input"]
+        inputs = [
+            n
+            for n in net["nodes"]
+            if base_type(n["type"]) == "input" and n["ref"] in drivers
+        ]
         if not inputs:
             continue
-        has_passive = any(base_type(n["type"]) == "passive" for n in net["nodes"])
-        has_driver = any(base_type(n["type"]) in DRIVERS for n in net["nodes"])
-        if has_passive or has_driver:
+        if any(base_type(n["type"]) in DRIVERS for n in net["nodes"]):
+            continue
+        if any(
+            _reaches_rail(board, node, net["name"])
+            for node in net["nodes"]
+            if base_type(node["type"]) == "passive"
+        ):
             continue
         out.append(
             finding(
                 "floating-driver-input",
-                f"{net['name']} drives an input with nothing holding it at reset",
+                f"{net['name']} drives {inputs[0]['ref']} with nothing holding it at reset",
                 "The only other pin on this net is a port that sits high "
                 "impedance until firmware configures it, and there is no pull "
-                "resistor. The input floats from power-up until then.",
+                "resistor to a rail. The driver input floats from power-up "
+                "until then, and what it drives can energise.",
                 refs=[n["ref"] for n in net["nodes"]],
                 nets=[net["name"]],
             )
@@ -498,14 +592,15 @@ def check_net_island(board: dict) -> list[dict]:
         with_pads = [g for g in groups if any(i["kind"] == "pad" for i in g)]
         if len(with_pads) < 2:
             continue
-        counts = sorted((sum(1 for i in g if i["kind"] == "pad") for g in with_pads), reverse=True)
-        stranded = sum(counts[1:])
-        refs = {
-            i["id"].split(".")[0]
-            for g in with_pads[1:]
-            for i in g
-            if i["kind"] == "pad"
-        }
+        # Pick the main island once and derive both the count and the refs from
+        # the same partition. Sorting the counts but slicing the unsorted list
+        # named nine parts that were on the surviving island and missed one
+        # that was not — and section 8 grades findings by ref overlap.
+        pads_in = lambda group: sum(1 for i in group if i["kind"] == "pad")
+        main = max(with_pads, key=pads_in)
+        rest = [g for g in with_pads if g is not main]
+        stranded = sum(pads_in(g) for g in rest)
+        refs = {i["id"].split(".")[0] for g in rest for i in g if i["kind"] == "pad"}
         out.append(
             finding(
                 "net-island",

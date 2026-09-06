@@ -57,13 +57,15 @@ export const OPS = {
       target = { name: to_net, code, nodes: [] };
       board.nets.push(target);
     }
-    net.nodes.splice(net.nodes.indexOf(node), 1);
+    const index = net.nodes.indexOf(node);
+    net.nodes.splice(index, 1);
     target.nodes.push(node);
 
     return {
       op: "move_pin",
       args: { ref, pin, to_net },
       from_net: net.name,
+      from_index: index,
       created_net: created,
       label: `${ref}.${pin}: ${net.name} → ${to_net}`,
     };
@@ -78,10 +80,12 @@ export const OPS = {
 
     const nameA = netA.name;
     const nameB = netB.name;
-    netA.nodes.splice(netA.nodes.indexOf(nodeA), 1);
-    netB.nodes.splice(netB.nodes.indexOf(nodeB), 1);
-    netA.nodes.push(nodeB);
-    netB.nodes.push(nodeA);
+    // Each node goes back where the other one was, so a swap is exactly its own
+    // inverse — position included, not just membership.
+    const indexA = netA.nodes.indexOf(nodeA);
+    const indexB = netB.nodes.indexOf(nodeB);
+    netA.nodes.splice(indexA, 1, nodeB);
+    netB.nodes.splice(indexB, 1, nodeA);
 
     return {
       op: "swap_pins",
@@ -189,7 +193,7 @@ const UNDOS = {
     const home = findNet(board, entry.from_net);
     if (!home) throw new OpError(`net ${entry.from_net} vanished; cannot undo`);
     net.nodes.splice(net.nodes.indexOf(node), 1);
-    home.nodes.push(node);
+    home.nodes.splice(entry.from_index ?? home.nodes.length, 0, node);
     if (entry.created_net && net.nodes.length === 0) {
       board.nets.splice(board.nets.indexOf(net), 1);
     }
@@ -241,6 +245,8 @@ export function undo(board, log) {
 
 // -------------------------------------------------------------------- hashing
 
+// harness/ops.py `round4` is written to match this exactly. Do not change one
+// without the other: the board hash is the review cache key.
 function round4(value) {
   return Math.round(Number(value) * 1e4) / 1e4;
 }

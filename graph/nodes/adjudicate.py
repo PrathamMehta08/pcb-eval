@@ -48,13 +48,19 @@ def board_facts(board: dict) -> dict:
 
 
 def contradiction(item: dict, facts: dict) -> str:
-    """Why the board says this finding is wrong, or "" if it does not."""
-    for ref in item.get("refs", []):
-        if ref.upper() not in facts["refs"]:
-            return f"there is no part called {ref} on this board"
-    for net in item.get("nets", []):
-        if net.upper().lstrip("/") not in facts["nets"]:
-            return f"there is no net called {net} on this board"
+    """Why the board says this finding is wrong, or "" if it does not.
+
+    Identity is judged on the whole finding, not on each name in it. A reviewer
+    that names S1 correctly and writes the net name slightly wrong has still
+    found something; only a finding where *nothing* it names exists is talking
+    about a board that is not this one.
+    """
+    named = [r for r in item.get("refs", [])] + [n for n in item.get("nets", [])]
+    if named:
+        known = [r for r in item.get("refs", []) if r.upper() in facts["refs"]]
+        known += [n for n in item.get("nets", []) if n.upper().lstrip("/") in facts["nets"]]
+        if not known:
+            return f"nothing it names is on this board: {', '.join(named)}"
 
     text = f"{item.get('title', '')} {item.get('why', '')}"
     if _SPLIT_CLAIM.search(text):

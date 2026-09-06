@@ -45,3 +45,12 @@
 {"at": "2026-09-06T06:53:55", "model": "openai/gpt-oss-120b", "label": "adjudicate/pass1", "tokens_in": 3790, "tokens_out": 1039, "seconds": 2.47, "dollars": 0.001192, "chars_out": 106}
 {"at": "2026-09-06T06:54:00", "model": "openai/gpt-oss-120b", "label": "datasheet/pass2", "tokens_in": 3627, "tokens_out": 2554, "seconds": 5.55, "dollars": 0.002076, "chars_out": 628}
 {"at": "2026-09-06T06:54:08", "model": "openai/gpt-oss-120b", "label": "connections/pass2", "tokens_in": 3655, "tokens_out": 3295, "seconds": 8.12, "dollars": 0.002525, "chars_out": 212}
+{"at": "2026-09-06T06:54:12", "model": "openai/gpt-oss-120b", "label": "layout/pass2", "tokens_in": 3715, "tokens_out": 1173, "seconds": 3.27, "dollars": 0.001261, "chars_out": 634}
+{"at": "2026-09-06T06:54:15", "model": "openai/gpt-oss-120b", "label": "adjudicate/pass2", "tokens_in": 4103, "tokens_out": 1430, "seconds": 3.3, "dollars": 0.001473, "chars_out": 145}
+{"at": "2026-09-06T06:55:54", "model": "openai/gpt-oss-120b", "label": "single", "tokens_in": 3635, "tokens_out": 2076, "seconds": 5.59, "dollars": 0.001791, "chars_out": 1235}
+{"at": "2026-09-06T06:55:58", "model": "openai/gpt-oss-120b", "label": "adjudicate/pass1", "tokens_in": 3589, "tokens_out": 1254, "seconds": 3.05, "dollars": 0.001291, "chars_out": 134}
+{"at": "2026-09-06T06:56:02", "model": "openai/gpt-oss-120b", "label": "adjudicate/pass1", "tokens_in": 3898, "tokens_out": 1587, "seconds": 3.69, "dollars": 0.001537, "chars_out": 193}
+{"at": "2026-09-06T06:56:06", "model": "openai/gpt-oss-120b", "label": "adjudicate/pass1", "tokens_in": 4140, "tokens_out": 1723, "seconds": 3.97, "dollars": 0.001655, "chars_out": 142}
+{"at": "2026-09-06T06:56:10", "model": "openai/gpt-oss-120b", "label": "adjudicate/pass1", "tokens_in": 3778, "tokens_out": 1342, "seconds": 3.22, "dollars": 0.001372, "chars_out": 135}
+{"at": "2026-09-06T06:56:13", "model": "openai/gpt-oss-120b", "label": "adjudicate/pass2", "tokens_in": 4043, "tokens_out": 1366, "seconds": 3.14, "dollars": 0.001426, "chars_out": 144}
+{"at": "2026-09-06T06:56:15", "model": "openai/gpt-oss-120b", "label": "adjudicate/pass1", "tokens_in": 3801, "tokens_out": 922, "seconds": 2.3, "dollars": 0.001123, "chars_out": 152}

@@ -14,7 +14,13 @@ What survives, and why:
   electrical type, because that is what makes datasheet-level checks writable;
 - a copper summary per net: island count, track lengths and widths, vias,
   pours. Without this the ground defect is invisible, and that defect is the
-  whole argument for the tool.
+  whole argument for the tool;
+- how far every supply pin is from the nearest capacitor on its own net.
+
+Nothing in here depends on what was edited. An earlier version took a list of
+"focus" refs and printed the geometry around them, which meant the prompt named
+the part that had just been broken — the reviewer was handed the answer on a
+seeded board and nothing on the clean one.
 
 Unconnected nets collapse into one section. Twenty-five copies of
 `unconnected-(U2-PA10-Pad31)` cost about four hundred tokens and say exactly
@@ -27,6 +33,7 @@ import math
 import re
 from decimal import ROUND_HALF_UP, Decimal
 
+from extract.layout import place
 from harness.checks import base_type, copper_items, islands
 
 PROMPT_VERSION = "distill-1"
@@ -39,6 +46,9 @@ _LIB_BOILERPLATE = re.compile(
     r"(,?\s*script generated.*$)|(^Generic connector,\s*)|(\s*\(kicad-library-utils.*\)$)",
     re.I,
 )
+#: What is left of a pin header's description once the boilerplate is gone —
+#: and the package column already says 1x04hdr1.00mm.
+_SAYS_NOTHING = re.compile(r"^single row,\s*\d+x\d+$", re.I)
 
 
 def fixed(value: float, places: int) -> str:
@@ -50,8 +60,11 @@ def fixed(value: float, places: int) -> str:
     specified to do, so this matches it including the cases where a decimal
     that looks like a tie is not one.
     """
+    number = float(value)
+    if number == 0:
+        number = 0.0  # Decimal(-0.0) formats as "-0.0"; (-0).toFixed(1) does not
     quantum = Decimal(1).scaleb(-places)
-    return str(Decimal(float(value)).quantize(quantum, rounding=ROUND_HALF_UP))
+    return str(Decimal(number).quantize(quantum, rounding=ROUND_HALF_UP))
 
 
 def approx_tokens(text: str) -> int:
@@ -78,13 +91,16 @@ def _package(footprint: str) -> str:
     return tail or "-"
 
 
-def _short(text: str, words: int = 12) -> str:
+def _short(text: str, words: int = 10) -> str:
     """Trim library boilerplate, then cap the length.
 
     Eleven headers each carrying "Generic connector, single row, 01x04, script
     generated (kicad-library-utils/...)" is two hundred tokens of nothing.
     """
-    parts = _LIB_BOILERPLATE.sub("", text or "").strip(" ,").split()
+    trimmed = _LIB_BOILERPLATE.sub("", text or "").strip(" ,")
+    if _SAYS_NOTHING.match(trimmed):
+        return ""
+    parts = trimmed.split()
     if len(parts) <= words:
         return " ".join(parts)
     return " ".join(parts[:words]) + "…"
@@ -141,20 +157,22 @@ def _components_section(board: dict) -> list[str]:
 
 def _nets_section(board: dict) -> list[str]:
     lines = [
-        "NETS  name: ref.pin(pin name, type) ...  Type is omitted for passive "
-        "and bidirectional pins, which are the two defaults."
+        "NETS  name: ref.pin(pin name, type). Type is omitted where it is "
+        "passive or bidirectional."
     ]
     unconnected: list[str] = []
     for net in sorted(board["nets"], key=lambda n: n["name"]):
         if net["name"].startswith("unconnected-"):
-            unconnected += [_node(n) for n in net["nodes"]]
+            # Just the pin. Twenty-three port names cost seventy tokens to say
+            # what the pin number already identifies on a part that is listed
+            # above with its datasheet line.
+            unconnected += [f"{n['ref']}.{n['pin']}" for n in net["nodes"]]
             continue
         nodes = " ".join(_node(n) for n in sorted(net["nodes"], key=lambda n: (n["ref"], n["pin"])))
         lines.append(f"{net['name']}: {nodes}")
     if unconnected:
         lines.append(
-            "UNCONNECTED (each is its own single-pin net, named "
-            "unconnected-(REF-PINNAME-PadNUM)):"
+            "UNCONNECTED pins, each its own net named unconnected-(REF-NAME-PadNUM):"
         )
         lines.append(" ".join(sorted(unconnected)))
     return lines
@@ -187,7 +205,7 @@ def _copper_section(board: dict) -> list[str]:
     lines = [
         f"COPPER  board {fixed(size['w'], 0)} x {fixed(size['h'], 0)} mm, "
         "two layers: F.Cu top, B.Cu bottom",
-        "columns: net, pads, copper islands, total track mm, narrowest track mm, vias, pour layers",
+        "net, pads, copper islands, track mm, narrowest mm, vias, pours",
     ]
     for net in sorted(set(pads_by_net) | set(tracks) | set(vias) | set(pours)):
         if not net or net.startswith("unconnected-"):
@@ -212,48 +230,75 @@ def _copper_section(board: dict) -> list[str]:
     return lines
 
 
-def _placement_section(board: dict, refs: list[str]) -> list[str]:
-    """Positions, but only for the parts a layout edit actually touched.
+def _decoupling_section(board: dict) -> list[str]:
+    """How far each supply pin is from the nearest capacitor on its own net.
 
-    Sending all 53 placements costs about six hundred tokens to say what nobody
-    asked. Sending the edited part and everything within 8 mm of it is what a
-    placement question is actually about.
+    This replaced a placement dump keyed on what had just been edited. That
+    version named the edited part and marked it `edited`, which put the answer
+    in the prompt — the reviewer was being told where to look on a seeded board
+    and told nothing on the clean one, so neither number in the sweep meant
+    anything. Nothing here depends on the edit: it is a measurement of the board
+    as it stands, identical in shape for every board in the corpus.
     """
-    if not refs:
+    layout = board["layout"]
+    pads: list[tuple[str, str, str, float, float]] = []
+    for fp in layout["footprints"]:
+        for pad in fp["pads"]:
+            if not pad["net"]:
+                continue
+            dx, dy = place(pad["x"], pad["y"], fp["rot"])
+            pads.append((fp["ref"], pad["num"], pad["net"], fp["x"] + dx, fp["y"] + dy))
+
+    caps = [p for p in pads if p[0].startswith("C")]
+    rows = []
+    for net in board["nets"]:
+        for node in net["nodes"]:
+            if not re.match(r"^[US]\d+$", node["ref"]):
+                continue
+            if base_type(node.get("type", "")) not in ("power_in", "power_out"):
+                continue
+            here = next(
+                (p for p in pads if p[0] == node["ref"] and p[1] == node["pin"]), None
+            )
+            if here is None:
+                continue
+            near = [
+                (math.dist((here[3], here[4]), (c[3], c[4])), c[0])
+                for c in caps
+                if c[2] == net["name"]
+            ]
+            function = re.sub(r"_%s$" % re.escape(node["pin"]), "", node.get("function") or "")
+            label = f"{node['ref']}.{node['pin']}"
+            if function:
+                label += f"({function})"
+            if near:
+                distance, ref = min(near)
+                rows.append(f"{label} {net['name']} {ref} {fixed(distance, 1)}")
+            else:
+                rows.append(f"{label} {net['name']} none -")
+    if not rows:
         return []
-    fps = {f["ref"]: f for f in board["layout"]["footprints"]}
-    focus = [fps[r] for r in refs if r in fps]
-    if not focus:
-        return []
-    near: dict[str, float] = {}
-    for fp in board["layout"]["footprints"]:
-        distance = min(math.dist((fp["x"], fp["y"]), (f["x"], f["y"])) for f in focus)
-        if distance <= 8.0:
-            near[fp["ref"]] = distance
-    lines = ["PLACEMENT near the edited parts  ref (x, y) mm, rotation, layer, distance"]
-    for ref, distance in sorted(near.items(), key=lambda kv: kv[1]):
-        fp = fps[ref]
-        lines.append(
-            f"  {ref} ({fixed(fp['x'], 1)}, {fixed(fp['y'], 1)}) {fp['rot']:g} deg "
-            f"{fp['layer']}.Cu" + (f", {fixed(distance, 1)} mm away" if distance else ", edited")
-        )
-    return lines
+    return [
+        "DECOUPLING  supply pin, its net, the nearest capacitor on that net, mm away",
+        *sorted(rows),
+    ]
 
 
-def distill(board: dict, focus_refs: list[str] | None = None) -> str:
+def distill(board: dict) -> str:
+    """The board as it stands. Takes nothing else, on purpose: a distiller that
+    accepts a list of interesting parts is a distiller that can be handed the
+    answer."""
     meta = board["meta"]
     blocks = [
         [
             f"BOARD {meta['name']}",
             f"{len(board['components'])} components, {len(board['nets'])} nets, "
-            f"{len(board['layout']['footprints'])} footprints on a "
-            f"{fixed(board['layout']['size']['w'], 0)} x "
-            f"{fixed(board['layout']['size']['h'], 0)} mm two-layer board.",
+            f"{len(board['layout']['footprints'])} footprints.",
         ],
         _components_section(board),
         _nets_section(board),
         _copper_section(board),
-        _placement_section(board, focus_refs or []),
+        _decoupling_section(board),
     ]
     return "\n\n".join("\n".join(block) for block in blocks if block)
 

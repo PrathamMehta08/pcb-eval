@@ -1,5 +1,19 @@
 """Match findings to injected defects by overlap, never by wording.
 
+**Read the limitation before the numbers.** Overlap cannot tell a finding that
+identified a defect from a finding that merely mentioned one of the parts the
+defect touches. On this corpus that is not hypothetical: a single flat prompt
+scored six of seven, and three of those six were a trace-width observation that
+happened to name S1, a power rail observation that happened to name +5V, and a
+reset-pin observation that happened to name the MCU. Every catch therefore
+records `via`, the identifier the match rested on, and `breadth`, how many names
+the finding threw at the board. A reader can then see which catches are real.
+
+Grading exactly would need findings to carry a machine-checkable claim — the
+kind of defect, and the specific pin or net it is about — rather than a sentence
+plus a bag of references. That is the change the schema needs, and it is the
+main thing this corpus has to say about how to score a review.
+
 A finding matches a defect when their component refs or their net names
 intersect. Nothing here reads a sentence, because grading on wording would make
 the score a measure of how the prompt phrases things.
@@ -25,15 +39,19 @@ def norm(value: str) -> str:
     return str(value or "").strip().upper().lstrip("/")
 
 
-def overlaps(finding: dict, defect: dict) -> bool:
+def shared(finding: dict, defect: dict) -> list[str]:
+    """The identifiers a finding and a defect have in common, if any."""
     refs = {norm(r) for r in defect.get("refs", [])}
     nets = {norm(n) for n in defect.get("nets", [])}
     if not refs and not nets:
-        return False
-    return bool(
-        refs & {norm(r) for r in finding.get("refs", [])}
-        or nets & {norm(n) for n in finding.get("nets", [])}
-    )
+        return []
+    hit = sorted(refs & {norm(r) for r in finding.get("refs", [])})
+    hit += sorted(nets & {norm(n) for n in finding.get("nets", [])})
+    return hit
+
+
+def overlaps(finding: dict, defect: dict) -> bool:
+    return bool(shared(finding, defect))
 
 
 def grade(findings: list[dict], defects: list[dict]) -> dict:
@@ -53,7 +71,17 @@ def grade(findings: list[dict], defects: list[dict]) -> dict:
             missed.append(defect["id"])
         else:
             claimed.add(hit)
-            caught.append({"defect": defect["id"], "finding": findings[hit]["title"]})
+            # `via` is what the match rested on. It is recorded because overlap
+            # cannot tell "found this defect" from "mentioned this part", and
+            # the only way to see which one happened is to read the pair.
+            caught.append(
+                {
+                    "defect": defect["id"],
+                    "finding": findings[hit]["title"],
+                    "via": shared(findings[hit], defect),
+                    "breadth": len(findings[hit].get("refs", [])) + len(findings[hit].get("nets", [])),
+                }
+            )
     other = [f["title"] for i, f in enumerate(findings) if i not in claimed]
     return {
         "caught": caught,

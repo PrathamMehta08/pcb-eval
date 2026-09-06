@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from typing import Any, Callable
 
 OPS: dict[str, Callable] = {}
@@ -29,6 +30,20 @@ UNDOS: dict[str, Callable] = {}
 
 class OpError(ValueError):
     """An operation that cannot apply — a missing ref, pin, net or id."""
+
+
+def round4(value: float) -> float:
+    """Four decimal places, rounded the way JavaScript rounds.
+
+    `round()` here is banker's rounding on the decimal; `Math.round` there is
+    half-up on the scaled binary. They agree on almost everything and disagree
+    on a five-decimal argument: `set_track_width(t0, 0.15005)` gave 0.15 in
+    Python and 0.1501 in the browser, so the same edit hashed to two different
+    boards — and the hash is the review cache key, so the page and the harness
+    would have cached one board under two keys. The width field and a drag both
+    pass unsnapped floats, so this was reachable.
+    """
+    return math.floor(float(value) * 1e4 + 0.5) / 1e4
 
 
 def op(name: str):
@@ -107,13 +122,15 @@ def move_pin(board: dict, ref: str, pin: str, to_net: str) -> dict:
         }
         board["nets"].append(target)
 
-    net["nodes"].remove(node)
+    index = net["nodes"].index(node)
+    net["nodes"].pop(index)
     target["nodes"].append(node)
 
     return {
         "op": "move_pin",
         "args": {"ref": ref, "pin": pin, "to_net": to_net},
         "from_net": net["name"],
+        "from_index": index,
         "created_net": created,
         "label": f"{ref}.{pin}: {net['name']} → {to_net}",
     }
@@ -128,7 +145,7 @@ def _undo_move_pin(board: dict, entry: dict) -> None:
     if home is None:
         raise OpError(f"net {entry['from_net']!r} vanished; cannot undo")
     net["nodes"].remove(node)
-    home["nodes"].append(node)
+    home["nodes"].insert(entry.get("from_index", len(home["nodes"])), node)
     if entry["created_net"] and not net["nodes"]:
         board["nets"].remove(net)
 
@@ -143,10 +160,14 @@ def swap_pins(board: dict, ref: str, pin_a: str, pin_b: str) -> dict:
         raise OpError(f"{ref}.{pin_a} and {ref}.{pin_b} are already the same net")
 
     name_a, name_b = net_a["name"], net_b["name"]
-    net_a["nodes"].remove(node_a)
-    net_b["nodes"].remove(node_b)
-    net_a["nodes"].append(node_b)
-    net_b["nodes"].append(node_a)
+    # Each node goes back where the other one was, so a swap is exactly its own
+    # inverse — position included, not just membership.
+    index_a = net_a["nodes"].index(node_a)
+    index_b = net_b["nodes"].index(node_b)
+    net_a["nodes"].pop(index_a)
+    net_b["nodes"].pop(index_b)
+    net_a["nodes"].insert(index_a, node_b)
+    net_b["nodes"].insert(index_b, node_a)
 
     return {
         "op": "swap_pins",
@@ -187,7 +208,7 @@ def _undo_set_value(board: dict, entry: dict) -> None:
 def move_footprint(board: dict, ref: str, x: float, y: float) -> dict:
     fp = find_footprint(board, ref)
     before = (fp["x"], fp["y"])
-    fp["x"], fp["y"] = round(float(x), 4), round(float(y), 4)
+    fp["x"], fp["y"] = round4(x), round4(y)
     return {
         "op": "move_footprint",
         "args": {"ref": ref, "x": fp["x"], "y": fp["y"]},
@@ -207,7 +228,7 @@ def rotate_footprint(board: dict, ref: str, deg: float) -> dict:
     """Set the absolute orientation. The UI passes current + 90."""
     fp = find_footprint(board, ref)
     before = fp["rot"]
-    after = round(float(deg) % 360.0, 4)
+    after = round4(float(deg) % 360.0)
     if after == before % 360.0:
         raise OpError(f"{ref} is already at {deg} degrees")
     fp["rot"] = after
@@ -250,7 +271,7 @@ def _undo_delete_track(board: dict, entry: dict) -> None:
 def set_track_width(board: dict, track_id: str, mm: float) -> dict:
     _, track = _by_id(board["layout"]["tracks"], track_id, "track")
     before = track["width"]
-    track["width"] = round(float(mm), 4)
+    track["width"] = round4(mm)
     return {
         "op": "set_track_width",
         "args": {"track_id": track_id, "mm": track["width"]},

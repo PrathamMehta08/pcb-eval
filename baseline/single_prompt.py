@@ -13,8 +13,8 @@ from graph.state import normalise
 from harness.distill import distill
 
 
-def review_once(board: dict, client, focus_refs: list[str] | None = None) -> dict:
-    distilled = distill(board, focus_refs or [])
+def review_once(board: dict, client) -> dict:
+    distilled = distill(board)
     parsed, info = client.json(single_prompt(distilled), label="single", system=SYSTEM)
     findings = normalise(parsed.get("findings"), "single")
     return {

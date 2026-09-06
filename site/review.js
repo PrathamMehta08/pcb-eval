@@ -189,7 +189,7 @@ export class ReviewUnavailable extends Error {
  * code the caller turns into copy: `cooldown`, `capped`, `unavailable`, or one
  * of the capability's own codes.
  */
-export async function review(sample, board, { focusRefs = [], onText, signal } = {}) {
+export async function review(sample, board, { onText, signal } = {}) {
   const hash = await boardHash(board);
   const cached = reviewCache.get(hash);
   if (cached) return { ...cached, cached: true, hash };
@@ -206,7 +206,7 @@ export async function review(sample, board, { focusRefs = [], onText, signal } =
     );
   }
 
-  const distilled = distill(board, focusRefs);
+  const distilled = distill(board);
   writeJSON(LAST_KEY, Date.now());
   budget.spend();
 
