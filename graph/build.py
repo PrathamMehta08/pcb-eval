@@ -44,6 +44,7 @@ def ingest(state: ReviewState) -> dict:
         "findings": [],
         "confirmed": [],
         "calls": [],
+        "gates": [],
         "passes": 0,
     }
 
@@ -71,7 +72,51 @@ def route(state: ReviewState) -> str:
 
 
 def stamp(state: ReviewState) -> dict:
-    return {"stopped": gate(state)}
+    """Record the gate's decision, and why, before acting on it.
+
+    The loop is the part of this worth reading, so it is written down rather
+    than inferred from a call count: which pass, what the rules had found, what
+    the reviewers had accounted for, and what was still outstanding.
+    """
+    decision = gate(state)
+    left = unaccounted(state)
+    return {
+        "stopped": decision,
+        "gates": list(state.get("gates", []))
+        + [
+            {
+                "pass": state.get("passes", 0),
+                "decision": decision,
+                "rules": [item["rule"] for item in state.get("deterministic", [])],
+                "unaccounted": [item["rule"] for item in left],
+                "confirmed": len(state.get("confirmed", [])),
+                "proposed": len(state.get("findings", [])),
+                "why": _why(decision, state, left),
+            }
+        ],
+    }
+
+
+def _why(decision: str, state: ReviewState, left: list[dict]) -> str:
+    if decision == "stop:nothing-to-chase":
+        return "The rule checks found nothing, so there is nothing for another pass to chase."
+    if decision == "stop:passes-spent":
+        names = ", ".join(item["rule"] for item in left) or "nothing"
+        return (
+            f"{MAX_PASSES} passes are the budget and they are spent. Still "
+            f"unaccounted for: {names}. This is reported as a miss, not as a "
+            "clean board."
+        )
+    if decision == "stop:rules-accounted-for":
+        return (
+            "Every rule the deterministic checks fired has been matched by a "
+            "confirmed finding, on refs or nets. Nothing is left to chase."
+        )
+    names = ", ".join(item["rule"] for item in left)
+    return (
+        f"The rule checks found {names}, and no confirmed finding overlaps it. "
+        "Round again — the model is not asked whether it is finished."
+    )
 
 
 def build_graph(client):

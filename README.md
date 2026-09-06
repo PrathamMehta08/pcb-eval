@@ -7,6 +7,10 @@ Three editable views — schematic, layout, routing — a review button, and a
 score. **[Open the page](https://claude.ai/code/artifact/57369783-5bbd-45c9-a3fa-fa314b956d0d)**;
 it reviews with your own Claude account and needs no key.
 
+**[Inside the review graph](https://claude.ai/code/artifact/fc2288ed-9a8c-4fa9-b777-23ffad65c7a2)** — the headless reviewer's
+own working, kept whole: every prompt, the model's reasoning at each node, and
+the gate's decision at each turn of the loop, across all eight boards.
+
 ---
 
 ## The board is real, and so are the defects

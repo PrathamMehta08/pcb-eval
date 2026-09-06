@@ -28,6 +28,8 @@ class ReviewState(TypedDict, total=False):
     calls: list[dict]
     #: Why the gate stopped, so a result can be read six months later.
     stopped: str
+    #: One row per time the gate ran: the decision, and what it was based on.
+    gates: list[dict]
 
 
 def tidy(refs, nets) -> tuple[list[str], list[str]]:

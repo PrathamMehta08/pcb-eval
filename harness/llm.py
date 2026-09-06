@@ -10,11 +10,15 @@ the free tier throttles hard and the account has a two dollar ceiling:
   two. Both are overridable from the runner.
 - **A JSONL log of every call**: tokens in, tokens out, dollars, latency. A
   score you cannot cost is a score you cannot repeat.
+- **The prompt and the model's own reasoning, kept with the answer.** A review
+  you cannot read the thinking behind is a review you have to take on trust.
 
 One thing the model itself forces. `openai/gpt-oss-120b` is a reasoning model:
 the response carries `reasoning` before `content`, and a tight `max_tokens`
 spends the whole budget thinking and returns empty `content`. So the floor is
-2000 completion tokens and the answer is read from `content`, never `reasoning`.
+2000 completion tokens and the answer is read from `content`, never from
+`reasoning` — which is kept alongside it, because on a review tool the argument
+matters as much as the verdict.
 """
 
 from __future__ import annotations
@@ -137,8 +141,15 @@ class Client:
 
     # ------------------------------------------------------------------ cache
 
+    #: Bumped when the stored payload gains a field, so old entries miss rather
+    #: than replay without it. v2 added `reasoning`, `prompt` and `system`.
+    CACHE_FORMAT = "v2"
+
     def cache_key(self, prompt: str, label: str) -> str:
-        blob = f"{self.model}\n{self.temperature}\n{self.max_tokens}\n{label}\n{prompt}"
+        blob = (
+            f"{self.CACHE_FORMAT}\n{self.model}\n{self.temperature}\n"
+            f"{self.max_tokens}\n{label}\n{prompt}"
+        )
         return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:24]
 
     def _cached(self, key: str) -> dict | None:
@@ -187,10 +198,14 @@ class Client:
         elapsed = time.monotonic() - started
 
         choice = response.choices[0].message
-        # Never `reasoning`: on this model that is the thinking, not the answer.
+        # The answer is `content`. `reasoning` is the model thinking out loud
+        # before it — kept because it is worth reading, never used as the answer.
         text = (choice.content or "").strip()
         payload = {
             "text": text,
+            "reasoning": (getattr(choice, "reasoning", None) or "").strip(),
+            "prompt": prompt,
+            "system": system,
             "tokens_in": response.usage.prompt_tokens if response.usage else 0,
             "tokens_out": response.usage.completion_tokens if response.usage else 0,
             "seconds": round(elapsed, 2),
