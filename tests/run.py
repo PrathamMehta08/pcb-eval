@@ -622,9 +622,24 @@ def check_sweep(c: Check) -> None:
             break
     clean_rows = [r for r in result["rows"] if not r["defects"]]
     c.equals(len(clean_rows), 2, "the clean board was run under both detectors")
+
+    # The refutation count is the one number here that needs no judgement, so
+    # it has to be present rather than optional.
+    for row in result["rows"]:
+        if not c.that(
+            "refuted_reported" in row and "refuted_proposed" in row,
+            f"{row['detector']}/{row['board']} was checked against the copper "
+            "(rerun: python -m harness.run)",
+        ):
+            break
     c.note(
         " · ".join(
             f"{name} {t['caught']}/{t['of']}, {t['false_alarms_on_clean']} on clean"
+            for name, t in result["totals"].items()
+        )
+        + " · "
+        + " ".join(
+            f"{name} refutes {t['refuted_reported']}/{t['refuted_proposed']}"
             for name, t in result["totals"].items()
         )
         + f" · ${result['usage']['dollars']}"

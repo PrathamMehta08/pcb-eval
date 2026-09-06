@@ -29,7 +29,7 @@ from console import utf8  # noqa: E402
 from baseline.single_prompt import review_once  # noqa: E402
 from graph.build import run_graph  # noqa: E402
 from graph.prompts import prompt_hash  # noqa: E402
-from harness.grade import corpus_hash, grade, schema_hash, totals  # noqa: E402
+from harness.grade import corpus_hash, grade, refuted, schema_hash, totals  # noqa: E402
 from harness.llm import Client  # noqa: E402
 from harness.ops import apply_edits, board_hash  # noqa: E402
 from harness.presets import PRESETS, edits_for  # noqa: E402
@@ -98,6 +98,10 @@ def run_one(detector: str, case: dict, client: Client) -> dict:
         "seconds": round(time.monotonic() - started, 1),
     }
     row["grade"] = grade(findings, case["defects"])
+    # What the board refutes, before and after whatever the detector does about
+    # it. For the single prompt those two are the same list, which is the point.
+    row["refuted_proposed"] = refuted(state.get("findings", findings), case["board"])
+    row["refuted_reported"] = refuted(findings, case["board"])
     return row
 
 
@@ -127,6 +131,8 @@ def report(rows: list[dict]) -> str:
             f"{detector:<12} {t['caught']} of {t['of']} defects"
             f" · {t['false_alarms_on_clean']} findings on the clean board"
             f" · {t['extra_findings_on_seeded']} extra on the seeded ones"
+            f" · {t['refuted_reported']} reported findings the copper refutes"
+            f" (of {t['refuted_proposed']} proposed)"
         )
     return "\n".join(lines)
 

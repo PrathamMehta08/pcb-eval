@@ -92,6 +92,27 @@ def grade(findings: list[dict], defects: list[dict]) -> dict:
     }
 
 
+def refuted(findings: list[dict], board: dict) -> list[dict]:
+    """Findings the board itself contradicts, measured rather than judged.
+
+    This is the sharpest number here, because it needs no opinion: a finding
+    that says a net is split into islands, on a net whose copper is one piece,
+    is wrong and the geometry says so. It is run over both detectors and over
+    both what each proposed and what it reported, so the graph gets no credit
+    for a stage the baseline does not have — the difference between those two
+    columns *is* that stage.
+    """
+    from graph.nodes.adjudicate import board_facts, contradiction
+
+    facts = board_facts(board)
+    out = []
+    for finding in findings:
+        why = contradiction(finding, facts)
+        if why:
+            out.append({"title": finding["title"], "because": why})
+    return out
+
+
 def totals(rows: list[dict]) -> dict:
     """The headline: recall over the seeded boards, false alarms on the clean one."""
     seeded = [r for r in rows if r["defects"]]
@@ -105,6 +126,8 @@ def totals(rows: list[dict]) -> dict:
         "recall": round(caught / total, 3) if total else None,
         "false_alarms_on_clean": sum(r["grade"]["false_alarms"] for r in clean),
         "extra_findings_on_seeded": sum(r["grade"]["false_alarms"] for r in seeded),
+        "refuted_proposed": sum(len(r.get("refuted_proposed", [])) for r in rows),
+        "refuted_reported": sum(len(r.get("refuted_reported", [])) for r in rows),
     }
 
 

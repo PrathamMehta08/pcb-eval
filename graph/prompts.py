@@ -99,8 +99,8 @@ vias, and which layers carry a pour. Read it carefully. Look for:
 - a trace too narrow for the current its rail carries. Roughly 0.5 mm per amp
   on 1 oz outer copper for a 20 C rise. The buck is rated 3 A; three servos
   stall near 700 mA each; the ULN2003 sinks the stepper coils.
-- a decoupling capacitor far from the pin it serves, where the PLACEMENT
-  section says so.
+- a decoupling capacitor far from the pin it serves. The DECOUPLING section
+  gives that distance in millimetres for every supply pin on the board.
 
 Report only defects in your area. Do not comment on schematic connectivity, pin
 functions or part values — another reviewer has those."""
@@ -132,10 +132,14 @@ things:
 2. The wiring between parts and off the board: connector pin order against the
    modules that plug in, inputs with nothing holding them at reset, nets with
    no driver, parts whose value cannot be ordered.
-3. Placement and copper. A net whose pads sit on more than one island is not
+3. Placement and copper. The COPPER section states, per net, how many pads it
+   has, how many separate copper islands those pads sit on, how much track, the
+   narrowest track, how many vias, and which layers carry a pour; the
+   DECOUPLING section gives the distance from every supply pin to the nearest
+   capacitor on its net. A net whose pads sit on more than one island is not
    connected, whatever the net list says. Trace width against the current a
    rail carries, at roughly 0.5 mm per amp on 1 oz outer copper for a 20 C
-   rise. Ground return and pour coverage.
+   rise. Ground return, pour coverage, decoupling distance.
 
 Do not report style, silkscreen or aesthetics, or anything you would have to
 guess at."""
