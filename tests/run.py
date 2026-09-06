@@ -465,31 +465,33 @@ def check_review(c: Check) -> None:
 # -------------------------------------------------------------------------- 11
 
 
-@step(11, "the built page is publishable as an Artifact")
+@step(11, "the built page stands on its own as a hosted file")
 def check_publishable(c: Check) -> None:
     page = built_page(c)
     if page is None:
         return
 
-    # The host wraps the file in its own doctype, head and body, so the file
-    # must not bring those.
+    # It began life as an Artifact, where the host supplied the document shell
+    # and the file had to bring none of it. Hosted, nothing supplies it, and a
+    # file without a charset is served as whatever the host guesses — which
+    # turns every arrow and middle dot in the interface to mojibake.
+    c.that(page.lstrip().lower().startswith("<!doctype html>"), "it opens with a doctype")
     for tag in ("html", "head", "body"):
-        c.that(
-            not re.search(rf"<{tag}(?:\s|>)", page, re.I),
-            f"the file does not carry its own <{tag}> tag",
-        )
-    c.that("<!doctype" not in page.lower(), "and no doctype")
-    c.that("<title>" in page, "it has a <title>, which names it in the gallery")
+        c.that(re.search(rf"<{tag}(?:\s|>)", page, re.I), f"it carries its own <{tag}> tag")
+    c.that(
+        re.search(r'<meta\s+charset=["\']?utf-8', page, re.I),
+        "it declares utf-8, so the box-drawing and arrows survive",
+    )
+    c.that("<title>" in page, "it has a <title>")
     size = len(page.encode("utf-8")) / 1024 / 1024
-    c.that(size < 16, f"{size:.2f} MB, under the 16 MB budget")
+    c.that(size < 16, f"{size:.2f} MB")
 
-    # The artifact CSP blocks every external host but a short list, and blocks
-    # stylesheets and fetches even on the allowed ones. Everything this page
-    # needs beyond the Google Fonts stylesheet is inlined.
+    # Everything but the font stylesheet is inlined, so the page holds up on a
+    # slow link and has nothing to leak a visitor to.
     external = set(re.findall(r'(?:src|href)="(https?://[^"]+)"', page))
     allowed = ("https://fonts.googleapis.com/",)
     for url in external:
-        c.that(url.startswith(allowed), f"external reference not on the CSP allowlist: {url}")
+        c.that(url.startswith(allowed), f"unexpected external reference: {url}")
     c.that(
         "fonts.googleapis.com" in page,
         "the one external reference is the Google Fonts stylesheet",
@@ -498,11 +500,14 @@ def check_publishable(c: Check) -> None:
     # the netlist carries for each part. Neither is fetched; they are inert text
     # inside the board data, which is why this looks at src and href only.
 
-    # The capability the review needs, and the promise that nothing calls it on
-    # load. Both are the difference between a page that costs a viewer nothing
-    # to open and one that does not.
-    c.that('claude.use("sample")' in page, "it resolves the sample capability")
-    c.that(page.count("sample.json(") == 1, "there is exactly one call site")
+    # The review reaches the model through the serverless proxy, never directly.
+    # A key in this file would be readable by anyone who opened it.
+    c.that('fetch("/api/review"' in page, "the review calls the proxy")
+    c.that("window.claude" not in page, "nothing depends on the artifact runtime")
+    c.that(
+        not re.search(r"\b(gsk_|sk-)[A-Za-z0-9]{16}", page),
+        "no API key is baked into the page",
+    )
     c.note(f"{size:.2f} MB, {len(external)} external references")
 
 

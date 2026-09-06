@@ -10,4 +10,5 @@ results/*.log
 !results/latest.json
 .cache/
 boards/*.min.json
-dist/
+dist/preview.html
+dist/stubbed.html

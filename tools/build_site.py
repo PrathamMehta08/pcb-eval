@@ -28,13 +28,19 @@ from console import utf8  # noqa: E402
 SITE = ROOT / "site"
 DIST = ROOT / "dist"
 
-PREVIEW_SHELL = """<!doctype html>
-<html><head>
+#: The page is hosted now rather than published as an Artifact, so the build has
+#: to supply the document shell the artifact host used to wrap around it. Without
+#: a charset declaration the file is served as whatever the host guesses, and
+#: every arrow and middle dot in the interface turns to mojibake.
+PAGE_SHELL = """<!doctype html>
+<html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Break a real circuit board on purpose and see whether a language model notices.">
+<meta name="theme-color" content="#08090c">
 <style>
   :root { color-scheme: light dark; }
-  body { margin: 0; font: 14px system-ui, sans-serif; background: #faf9f7; }
+  body { margin: 0; font: 14px system-ui, sans-serif; background: #08090c; }
   img { max-width: 100%%; }
   [hidden] { display: none !important; }
 </style>
@@ -118,11 +124,11 @@ def build(out: Path) -> Path:
         page = page.replace(marker, payload, 1)
 
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(page, encoding="utf-8")
+    out.write_text(PAGE_SHELL % page, encoding="utf-8")
 
-    # A local copy inside the same skeleton the Artifact host wraps the file in,
-    # so a browser check here sees what a viewer will see.
-    (out.parent / "preview.html").write_text(PREVIEW_SHELL % page, encoding="utf-8")
+    # The bare fragment, without the shell. What an Artifact host wraps itself,
+    # and what a test that only cares about the body should read.
+    (out.parent / "preview.html").write_text(page, encoding="utf-8")
     return out
 
 

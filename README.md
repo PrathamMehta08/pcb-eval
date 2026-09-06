@@ -4,8 +4,8 @@ A browser tool for breaking a real circuit board on purpose and measuring
 whether a language model notices.
 
 An editable board, a review button, and a score.
-**[Open the page](https://claude.ai/code/artifact/57369783-5bbd-45c9-a3fa-fa314b956d0d)**; it
-reviews with your own Claude account and needs no key.
+**[Open the page](https://pcb-eval.vercel.app)**; the review runs through a
+serverless function that holds the key, so nothing is needed to try it.
 
 Pressing Review runs the graph in front of you — each node as it starts, what it
 proposed, what the board refuted, and the gate's decision at each turn of the

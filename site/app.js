@@ -612,7 +612,7 @@ function reviewCopy(error) {
     return `The first review asks your permission to use Claude, and this view has
       not given it. Reload the page and choose Allow, or open it inside Claude.`;
   if (code === "sampling_disabled")
-    return "Claude is not available on this account, so the review cannot run here.";
+    return "The review service is not reachable right now.";
   if (code === "not_declared" || code === "capability_disabled")
     return "This copy of the page cannot reach Claude. Everything else still works.";
   if (code === "rate_limited")
@@ -774,8 +774,7 @@ function renderOverlay() {
           : "Nothing has been reviewed yet. Break something first, or review the board as it is — a reviewer that flags a clean board is worth nothing, and that is the number worth knowing first."}</p>
         ${state.sample
           ? `<button class="primary" id="ro-go">Review this board</button>`
-          : `<p class="hint">The review runs on Claude and this view cannot reach
-             it. Everything else on the page works.</p>`}
+          : `<p class="hint">The review service is not reachable from here. Everything else on the page works.</p>`}
       </div>`;
     overlay.querySelector("#ro-go")?.addEventListener("click", runReview);
     return;
@@ -896,8 +895,7 @@ function renderReview() {
   if (!state.sample) {
     // Only the review needs Claude. Say which part, and say it without
     // implying the page is broken — everything that makes the board is here.
-    panel.innerHTML = `<p class="muted">The review runs on Claude and this view
-      cannot reach it. Everything else works.</p>`;
+    panel.innerHTML = `<p class="muted">The review service is not reachable from here. Everything else works.</p>`;
     button.hidden = true;
     stream.hidden = true;
     return;

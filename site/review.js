@@ -1,23 +1,24 @@
 // The review: run the graph over the board as it stands, then grade the answer.
 //
-// The page calls Claude through the artifact `sample` capability, so no API key
-// is embedded and the viewer's own account pays. One review is four calls — or
-// eight when the gate sends it round again — which is why all four limits below
-// are enforced rather than one, and why the cap is small:
+// The page calls the model through `/api/review`, a serverless function that
+// holds the key, so no key is embedded and no visitor needs an account. One
+// review is four calls — or eight when the gate sends it round again — which is
+// why the limits below exist:
 //
 //   1. a cache on the board hash, which removes most repeat spending because
 //      visitors re-review the same edit;
 //   2. one review per ten seconds;
-//   3. five per viewer, in localStorage — see the note on limits below;
-//   4. never on load. `sample` asks the viewer for consent on the first call,
-//      so an automatic one is both rude and wasteful.
+//   3. five per browser, in localStorage;
+//   4. never on load, only on an explicit click.
 //
-// On the third: this is a per-browser cap, not a per-IP one. A published page
-// is static — it has no server, cannot see an IP, and this runtime offers no
-// `user` capability to identify the viewer — so a determined visitor can clear
-// their storage and start again. It costs them, not the page's author: `sample`
-// bills the viewer's own Claude account. Real per-IP limiting needs a server in
-// front of a hosted copy.
+// None of those four is a spending guarantee. They live in the browser, and
+// localStorage clears. They exist to keep ordinary use tidy and to make the cost
+// of a review visible to the person spending it.
+//
+// The limits that actually bound the bill are elsewhere: per-IP counters in the
+// function, and above them the spending limit set in the provider's console.
+// That last one is the only guard enforced by the party doing the billing, and
+// it is the one to rely on.
 //
 // Grading is by overlap of component refs and net names, never by wording. A
 // finding matches an edit when their refs or nets intersect. Running against
@@ -365,14 +366,43 @@ export function grade(findings, expected) {
 
 // --------------------------------------------------------------------- the call
 
-/** Resolve the capability once. Null means hide the review affordance. */
+/**
+ * The review goes through a serverless function that holds the API key, so no
+ * key reaches the browser and no visitor needs an account of their own.
+ *
+ * Same shape as the capability this replaces — a prompt in, parsed JSON out —
+ * so runGraph never learns where the answer came from. The proxy does not
+ * stream, so `onText` never fires and the panel holds its waiting state for the
+ * whole call rather than filling in as it goes.
+ */
 export async function getSample() {
-  if (typeof window === "undefined" || !window.claude?.use) return null;
-  try {
-    return await window.claude.use("sample");
-  } catch {
-    return null;
-  }
+  if (typeof window === "undefined" || typeof fetch !== "function") return null;
+  return {
+    json: async (prompt, opts = {}) => {
+      let res;
+      try {
+        res = await fetch("/api/review", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+          signal: opts.signal,
+        });
+      } catch (e) {
+        const err = new Error("The review service could not be reached.");
+        err.code = e && e.name === "AbortError" ? "cancelled" : "upstream_error";
+        throw err;
+      }
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body || body.error) {
+        const err = new Error(
+          (body && body.message) || `Review failed (HTTP ${res.status}).`
+        );
+        err.code = (body && body.code) || "upstream_error";
+        throw err;
+      }
+      return body.result;
+    },
+  };
 }
 
 export class ReviewUnavailable extends Error {
@@ -401,7 +431,7 @@ export async function review(sample, board, { onStep, signal } = {}) {
   const cached = reviewCache.get(hash);
   if (cached) return { ...cached, cached: true, hash };
 
-  if (!sample) throw new ReviewUnavailable("unavailable", "Claude is not available here.");
+  if (!sample) throw new ReviewUnavailable("unavailable", "The review service is not reachable.");
   const cooling = coolingDownMs();
   if (cooling > 0) {
     throw new ReviewUnavailable("cooldown", `Another review in ${Math.ceil(cooling / 1000)}s.`);
@@ -413,8 +443,11 @@ export async function review(sample, board, { onStep, signal } = {}) {
     );
   }
 
+  // The cooldown starts now, so a failing service cannot be hammered. The
+  // session count is spent only once a review actually completes: the server
+  // enforces the limits that matter, and charging a visitor for the server's
+  // own outage would lock them out for something they did not do.
   writeJSON(LAST_KEY, Date.now());
-  budget.spend();
 
   const ask = async (prompt, opts = {}) => {
     try {
@@ -430,6 +463,7 @@ export async function review(sample, board, { onStep, signal } = {}) {
   };
 
   const result = await runGraph(board, ask, { onStep, signal });
+  budget.spend();
   const verdict = {
     findings: result.findings.map((finding) => ({
       severity: finding.severity,
