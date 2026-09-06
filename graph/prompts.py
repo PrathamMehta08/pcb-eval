@@ -30,16 +30,21 @@ dispenser: a TPS563208 buck converter from a barrel jack, an AMS1117-3.3 LDO,
 a ULN2003 driving a 5 V unipolar stepper, three servo headers, an HC-SR04
 ultrasonic header, a USB micro-B connector, and a 16 MHz crystal."""
 
+#: The tail every prompt shares. It says nothing about areas: the three node
+#: jobs each say what is not theirs, and the single prompt has no area at all —
+#: telling it otherwise would hand the comparison to the graph on wording.
 _TAIL = """
-Report only defects in your area. Use the exact ref and net strings from the
-board so findings can be matched to the design. Reply with JSON only, in exactly
-this shape:
+Use the exact ref and net strings from the board so findings can be matched to
+the design. Reply with JSON only, in exactly this shape:
 
 {schema}
 
 Here is the board.
 
 {distilled}"""
+
+#: What `single_prompt_template()` leaves for the page to substitute.
+BOARD_SLOT = "<<<BOARD>>>"
 
 
 def _build(job: str, distilled: str) -> str:
@@ -60,8 +65,8 @@ library, and the pin's electrical type. Use them. Look for:
 - a crystal, reset or boot pin wired in a way the part cannot work with;
 - a part whose value cannot be ordered, or cannot carry what is asked of it.
 
-Do not comment on layout, copper, trace widths or placement. Another reviewer
-has those."""
+Report only defects in your area. Do not comment on layout, copper, trace
+widths or placement — another reviewer has those."""
 
 CONNECTIONS_JOB = """Your area is the wiring between parts and off the board.
 
@@ -77,8 +82,8 @@ Look for:
 - a connector that leaves the board with no ground or supply among its pins;
 - a pin the design clearly meant to use that is left unconnected.
 
-Do not comment on layout, copper, trace widths or placement. Another reviewer
-has those."""
+Report only defects in your area. Do not comment on layout, copper, trace
+widths or placement — another reviewer has those."""
 
 LAYOUT_JOB = """Your area is placement and copper.
 
@@ -97,8 +102,8 @@ vias, and which layers carry a pour. Read it carefully. Look for:
 - a decoupling capacitor far from the pin it serves, where the PLACEMENT
   section says so.
 
-Do not comment on schematic connectivity, pin functions or part values. Another
-reviewer has those."""
+Report only defects in your area. Do not comment on schematic connectivity, pin
+functions or part values — another reviewer has those."""
 
 ADJUDICATE_JOB = """You are merging three reviews of one board into one list.
 
@@ -150,6 +155,18 @@ def layout_prompt(distilled: str) -> str:
 
 def single_prompt(distilled: str) -> str:
     return _build(SINGLE_PROMPT_JOB, distilled)
+
+
+def single_prompt_template() -> str:
+    """The same prompt with a slot where the board goes.
+
+    `site/review.js` builds this string too, and `tests/fixtures/distill.json`
+    holds the Python's copy so the two are compared byte for byte. The page is
+    meant to be the `single` detector, not something that resembles it — the
+    README's `one prompt` column is only about the page if they are the same
+    prompt.
+    """
+    return _build(SINGLE_PROMPT_JOB, BOARD_SLOT)
 
 
 def adjudicate_prompt(findings_text: str, distilled: str) -> str:

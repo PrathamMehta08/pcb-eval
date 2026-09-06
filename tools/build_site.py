@@ -95,6 +95,18 @@ def presets_for_page() -> list[dict]:
 
 
 def build(out: Path, schematic: Path) -> Path:
+    # The page is meant to be the `single` detector the README scores, so it
+    # must not ship a prompt that has drifted from graph/prompts.py.
+    from tools.sync_prompt import block, BEGIN, END
+
+    review = (SITE / "review.js").read_text(encoding="utf-8")
+    current = review[review.index(BEGIN) : review.index(END) + len(END)]
+    if current != block():
+        raise SystemExit(
+            "site/review.js carries a stale review prompt. "
+            "Regenerate it: python tools/sync_prompt.py"
+        )
+
     board = json.loads((ROOT / "boards" / "stm32-good.json").read_text(encoding="utf-8"))
     page = (SITE / "index.html").read_text(encoding="utf-8")
 

@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { applyEdits } = await import("file://" + join(root, "site", "ops.js"));
 const { distill } = await import("file://" + join(root, "site", "distill.js"));
+const { buildPrompt } = await import("file://" + join(root, "site", "review.js"));
 
 const board = JSON.parse(readFileSync(join(root, "boards", "stm32-good.json"), "utf8"));
 const fixture = JSON.parse(readFileSync(join(root, "tests", "fixtures", "distill.json"), "utf8"));
@@ -35,10 +36,28 @@ for (const testCase of fixture.cases) {
   );
 }
 
+// And the prompt the page wraps around it. The page is meant to *be* the
+// `single` detector the README scores, not something that resembles it.
+const clean = fixture.cases.find((c) => c.id === "clean");
+const jsPrompt = buildPrompt(clean.text);
+if (jsPrompt !== fixture.single_prompt_clean) {
+  const a = jsPrompt.split("\n");
+  const b = fixture.single_prompt_clean.split("\n");
+  const at = a.findIndex((line, i) => line !== b[i]);
+  failures.push(
+    [
+      `the page's review prompt differs from baseline/single_prompt.py at line ${at + 1}`,
+      `      js: ${JSON.stringify(a[at])}`,
+      `      py: ${JSON.stringify(b[at])}`,
+      "      regenerate it: python tools/sync_prompt.py",
+    ].join("\n")
+  );
+}
+
 for (const failure of failures) console.error("  x " + failure);
 console.log(
   failures.length
-    ? `${failures.length} of ${fixture.cases.length} distilled boards differ`
-    : `${fixture.cases.length} distilled boards match the Python character for character`
+    ? `${failures.length} distilled-board or prompt checks failed`
+    : `${fixture.cases.length} distilled boards and the review prompt match the Python character for character`
 );
 process.exit(failures.length ? 1 : 0);

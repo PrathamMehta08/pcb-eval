@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from console import utf8  # noqa: E402
+from graph.prompts import single_prompt  # noqa: E402
 from harness.distill import approx_tokens, distill  # noqa: E402
 from harness.ops import apply_edits, board_hash, undo  # noqa: E402
 from harness.presets import PRESETS, edits_for  # noqa: E402
@@ -138,7 +139,19 @@ def main() -> int:
         )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    DISTILL_OUT.write_text(json.dumps({"cases": distilled}, indent=1), encoding="utf-8")
+    # The page has to send the same prompt as the `single` detector, or the
+    # README's comparison is not about the page. The whole prompt for the clean
+    # board goes in, so the parity script compares the text, not a hash of it.
+    DISTILL_OUT.write_text(
+        json.dumps(
+            {
+                "cases": distilled,
+                "single_prompt_clean": single_prompt(distilled[0]["text"]),
+            },
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
     print(
         f"wrote {DISTILL_OUT.relative_to(ROOT)}: {len(distilled)} boards, "
         f"{max(d['tokens'] for d in distilled)} tokens at most"
