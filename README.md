@@ -218,7 +218,16 @@ baseline/    the single flat prompt the graph is measured against
 site/        six ES modules; tools/build_site.py makes one file of them
 tests/       the acceptance checks, and the fixtures that keep Python and
              JavaScript telling the same story
+qa/          adversarial review of each build step, kept as written
 ```
+
+Every step was built and then handed to a reviewer whose job was to break it
+against the real KiCad files rather than against this code's own output.
+[`qa/`](qa/) has the reports and a list of what they caught that a green test
+suite did not — including a prompt that named the part that had just been
+broken, three deterministic rules that turned out to be pattern-matching the
+seeded defect, and a coverage assertion that passed with a component deleted
+because `C1` is a substring of `C11`.
 
 Two things are written twice on purpose. `harness/ops.py` and `site/ops.js` are
 the same nine operations; `harness/distill.py` and `site/distill.js` are the
