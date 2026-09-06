@@ -7,7 +7,10 @@
 import { applyEdit, findFootprint, OPS, undo } from "./ops.js";
 import {
   attachPanZoom,
+  clearMarks,
+  divergence,
   highlightNets,
+  markDivergence,
   markRefs,
   renderBoard,
   renderSchematic,
@@ -38,6 +41,7 @@ const state = {
   selection: null,
   sample: null,
   verdict: null,
+  divergence: { stale: [], stranded: [] },
   reviewing: false,
   presetId: null,
   //: The first half of a pin swap, waiting for the pin to swap it with.
@@ -76,7 +80,7 @@ function drawView({ keepZoom = true } = {}) {
     );
   }
   applySelectionToSvg();
-  if (state.verdict) paintFindings();
+  paintMarks();
   return svg;
 }
 
@@ -545,7 +549,7 @@ async function runReview() {
       },
     });
     state.verdict = result;
-    paintFindings();
+    paintMarks();
   } catch (error) {
     state.verdict = null;
     if (error instanceof ReviewUnavailable && error.code === "not_granted") {
@@ -570,11 +574,67 @@ function reviewCopy(error) {
   return error?.message || "The review did not complete.";
 }
 
-function paintFindings() {
+/** Which parts the visitor has touched, so an edit is visible on the board. */
+function editedRefs() {
+  const refs = new Set();
+  for (const entry of state.log) {
+    if (entry.args?.ref) refs.add(entry.args.ref);
+    if (entry.track?.net || entry.via?.net) continue;
+  }
+  return [...refs];
+}
+
+/**
+ * Everything drawn over the board: what was edited, what the board now
+ * disagrees with itself about, and what a review flagged.
+ *
+ * The middle one is the point. A schematic edit changes the net list and
+ * nothing else, so on its own it would be invisible — the picture cannot
+ * change and the copper is not touched. What it does produce is a
+ * disagreement, and that is drawable: the pad is ringed and a ratsnest line
+ * runs to the pin the design now says it joins.
+ */
+function paintMarks() {
   const svg = currentSvg();
-  if (!svg || !state.verdict) return;
-  const refs = state.verdict.findings.flatMap((f) => f.refs);
-  markRefs(svg, state.board, refs, "flag");
+  if (!svg) return;
+  clearMarks(svg);
+
+  let found = { stale: [], stranded: [] };
+  if (state.view !== "schematic") found = markDivergence(svg, state.board);
+  state.divergence = found;
+
+  markRefs(svg, state.board, editedRefs(), "edit");
+  if (state.verdict) {
+    markRefs(svg, state.board, state.verdict.findings.flatMap((f) => f.refs), "flag");
+  }
+  renderDivergenceNote();
+}
+
+function renderDivergenceNote() {
+  const note = $("divergence");
+  const { stale, stranded } = state.divergence || { stale: [], stranded: [] };
+  if (!stale.length && !stranded.length) {
+    note.hidden = true;
+    return;
+  }
+  note.hidden = false;
+  const parts = [];
+  if (stale.length) {
+    parts.push(
+      `<b>${stale.length}</b> pad${stale.length === 1 ? "" : "s"} now sit${stale.length === 1 ? "s" : ""} on copper
+       laid for a different net. The dashed line runs to the pin the schematic says it joins now.`
+    );
+  }
+  if (stranded.length) {
+    parts.push(
+      `<b>${stranded.length}</b> pad${stranded.length === 1 ? " is" : "s are"} stranded on copper
+       that does not reach the rest of ${[...new Set(stranded.map((s) => s.net))].join(", ")}.`
+    );
+  }
+  note.innerHTML = parts.join(" ") +
+    (state.view === "schematic"
+      ? " <span class='muted'>Switch to Routing to see where.</span>"
+      : "");
 }
 
 function renderReview() {
@@ -583,9 +643,12 @@ function renderReview() {
   const button = $("go");
 
   if (!state.sample) {
-    panel.innerHTML = `<p class="muted">Reviewing needs Claude, which this view cannot
-      reach. Everything else on the page works: break the board, read the copper,
-      undo.</p>`;
+    // Only the review needs Claude. Say which part, and say it without
+    // implying the page is broken — everything that makes the board is here.
+    panel.innerHTML = `<p class="muted">The review runs on Claude, and this view
+      cannot reach it — open the page inside Claude to use it. Nothing else
+      depends on it: breaking the board, the copper analysis above, the edit log
+      and undo all run here.</p>`;
     button.hidden = true;
     stream.hidden = true;
     return;
@@ -658,6 +721,11 @@ function setView(view) {
   $("layer-chips").hidden = view === "schematic";
   keptView = null;
   drawView({ keepZoom: false });
+  if (view === "schematic") {
+    // Compute it anyway: the count is worth saying even where it cannot be drawn.
+    state.divergence = divergence(state.board);
+    renderDivergenceNote();
+  }
 }
 
 function boot() {

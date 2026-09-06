@@ -18,7 +18,7 @@
 
 // `place` is KiCad's RotatePoint and lives in copper.js, which needs it to put
 // pads in board coordinates. One definition, used by both.
-import { place } from "./copper.js";
+import { islands, place } from "./copper.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -356,6 +356,7 @@ export function renderBoard(board, { copper = true, showSilk = true, showRefs = 
   }
 
   svg.appendChild(el("path", { class: "edge", d: outlinePath(layout.outline) }));
+  svg.appendChild(el("g", { class: "divergence" }));
   svg.appendChild(el("g", { class: "marks" }));
   return svg;
 }
@@ -420,6 +421,122 @@ export function renderSchematic(board, sheetSvg) {
   return svg;
 }
 
+/** Every pad's world position, keyed "REF.PIN". */
+export function padIndex(board) {
+  const index = new Map();
+  for (const fp of board.layout.footprints) {
+    for (const pad of fp.pads) {
+      const [dx, dy] = place(pad.x, pad.y, fp.rot);
+      index.set(`${fp.ref}.${pad.num}`, {
+        ref: fp.ref,
+        pin: pad.num,
+        x: fp.x + dx,
+        y: fp.y + dy,
+        copper: pad.net,
+      });
+    }
+  }
+  return index;
+}
+
+/**
+ * Where the board no longer agrees with itself.
+ *
+ * Two kinds, and between them they are what makes an edit visible:
+ *
+ * - **stale** — a pad whose netlist net is not the net its copper belongs to.
+ *   That is what a schematic edit leaves behind: the design says this pin is on
+ *   VBST now, and the track it sits on was laid for /FB. Nothing in the board
+ *   data is changed to produce this; it is read off the two halves.
+ * - **stranded** — a pad on a net whose copper is in more than one piece, and
+ *   not on the largest piece. That is the ground defect, and it is invisible in
+ *   the net list by construction.
+ */
+export function divergence(board) {
+  const pads = padIndex(board);
+  const stale = [];
+  const byNet = new Map();
+
+  for (const net of board.nets) {
+    for (const node of net.nodes) {
+      const pad = pads.get(`${node.ref}.${node.pin}`);
+      if (!pad) continue;
+      if (!byNet.has(net.name)) byNet.set(net.name, []);
+      byNet.get(net.name).push(pad);
+      if (pad.copper && pad.copper !== net.name) {
+        stale.push({ ...pad, wants: net.name });
+      }
+    }
+  }
+
+  // For each stale pad, the nearest pin the schematic now says it joins. This
+  // is the connection the copper does not provide — a ratsnest line, the same
+  // thing a layout tool draws for an unrouted net.
+  for (const item of stale) {
+    let best = null;
+    for (const other of byNet.get(item.wants) || []) {
+      // By name, not by identity: `item` is a copy of the pad, so `other`
+      // being the same pin is exactly the case that must be skipped.
+      if (other.ref === item.ref && other.pin === item.pin) continue;
+      const distance = Math.hypot(other.x - item.x, other.y - item.y);
+      if (!best || distance < best.distance) best = { distance, to: other };
+    }
+    item.to = best ? best.to : null;
+  }
+
+  const stranded = [];
+  for (const [net, groups] of islands(board)) {
+    const withPads = groups.filter((g) => g.some((i) => i.kind === "pad"));
+    if (withPads.length < 2) continue;
+    const size = (g) => g.filter((i) => i.kind === "pad").length;
+    const main = withPads.reduce((a, b) => (size(b) > size(a) ? b : a));
+    for (const group of withPads) {
+      if (group === main) continue;
+      for (const item of group) {
+        if (item.kind === "pad") stranded.push({ id: item.id, net, x: item.x, y: item.y });
+      }
+    }
+  }
+  return { stale, stranded };
+}
+
+/** Draw the divergence into a board view. Returns what it drew. */
+export function markDivergence(svg, board) {
+  const layer = svg.querySelector(".divergence");
+  if (!layer) return { stale: [], stranded: [] };
+  layer.textContent = "";
+  const found = divergence(board);
+
+  for (const item of found.stranded) {
+    layer.appendChild(
+      el("circle", { class: "stranded", cx: f(item.x), cy: f(item.y), r: 0.85 })
+    );
+  }
+  for (const item of found.stale) {
+    if (item.to) {
+      layer.appendChild(
+        el("line", {
+          class: "ratsnest",
+          x1: f(item.x),
+          y1: f(item.y),
+          x2: f(item.to.x),
+          y2: f(item.to.y),
+        })
+      );
+    }
+    layer.appendChild(
+      el("circle", { class: "stale-pad", cx: f(item.x), cy: f(item.y), r: 0.85 })
+    );
+  }
+  return found;
+}
+
+/** Drop every marker. Findings and edits share the layer, so this comes first. */
+export function clearMarks(svg) {
+  const marks = svg.querySelector(".marks");
+  if (marks) marks.textContent = "";
+}
+
 /**
  * Ring the components a set of findings or edits point at.
  *
@@ -430,7 +547,6 @@ export function renderSchematic(board, sheetSvg) {
 export function markRefs(svg, board, refs, kind = "flag") {
   const marks = svg.querySelector(".marks");
   if (!marks) return;
-  marks.textContent = "";
   const wanted = new Set(refs);
   if (!wanted.size) return;
 

@@ -433,7 +433,7 @@ def check_editing(c: Check) -> None:
     # because the two are not the same thing: every operation had a control and
     # none of them could be reached, since pointer capture retargeted the click
     # to the SVG root and the selection was cleared in the same gesture.
-    run_node(c, "edit_cycle.mjs", "pointer.mjs")
+    run_node(c, "edit_cycle.mjs", "pointer.mjs", "divergence.mjs")
 
 
 # -------------------------------------------------------------------------- 10
