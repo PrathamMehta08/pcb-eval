@@ -3,6 +3,11 @@
 __pycache__/
 *.pyc
 results/*.json
+results/*.jsonl
+results/*.log
+# The scored sweep the README quotes is the record, and it carries the prompt,
+# schema and corpus hashes that make it re-checkable. Keep that one.
+!results/latest.json
 .cache/
 boards/*.min.json
 dist/

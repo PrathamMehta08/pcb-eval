@@ -103,14 +103,16 @@ Regenerate with `Portfolio/tools/export-pcb.ps1`.
 **LLM.** Groq, OpenAI-compatible wire format.
 
 ```
-GROQ_API_KEY=<redacted>
+GROQ_API_KEY=<in .env, which is gitignored>
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 GROQ_MODEL=openai/gpt-oss-120b
 ```
 
 Goes in `pcb-eval/.env`. **`.env` must be gitignored before the first commit.**
-Hard spending limit of $2 set in the Groq console. This key has appeared in a
-chat transcript, so rotate it once the project is public.
+Hard spending limit of $2 set in the Groq console. **The key was written out
+in full here and committed before it was redacted, so it is still in this
+repository's history. Rotate it in the Groq console before making the repo
+public** — redacting the working copy does not remove it from a past commit.
 
 Free-tier Groq throttles hard. Default to concurrency 2 and a token budget of
 8000 per minute. The runner must accept `--concurrency` and `--tpm` overrides.
