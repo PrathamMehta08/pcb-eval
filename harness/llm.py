@@ -205,7 +205,10 @@ class Client:
             self.usage.tokens_in += payload["tokens_in"]
             self.usage.tokens_out += payload["tokens_out"]
             self.usage.seconds += elapsed
-        self._log(payload)
+            # Inside the lock: two threads appending to the same file can
+            # interleave a line, and a cost log with a torn row is worse than
+            # none because it looks fine.
+            self._log(payload)
         return {**payload, "cached": False}
 
     def json(self, prompt: str, label: str = "", system: str = "") -> tuple[dict, dict]:

@@ -257,3 +257,24 @@ each footprint carries `(path "/<uuid>")` and each netlist `<comp>` carries
 spends the whole budget thinking and returns an empty `content`. The floor here
 is 2000 completion tokens, and the answer is read from
 `choices[0].message.content`, never from `reasoning`.
+
+## What I would do next
+
+In order of how much each would change what this measures.
+
+1. **Make findings machine-checkable.** The grading section above is really an
+   argument for a different output schema: a `claim` field naming the kind of
+   defect plus the pin or net it is about. Then `caught` is an equality test
+   rather than a judgement call, and the recall numbers mean what they look like
+   they mean.
+2. **Run the deterministic rules in the page.** They already exist, the copper
+   geometry is already ported to the browser, and the thing the README argues —
+   that a millisecond of rule beats a dollar of model on some defect classes,
+   and loses badly on others — would be visible to anyone who opens it rather
+   than only stated here.
+3. **A second model.** Whether decomposition beats capability is the question
+   behind the whole comparison, and one model cannot answer it. About twenty
+   cents.
+4. **More boards.** Seven defects on one board is a corpus you can overfit by
+   accident. The extractor takes any KiCad project; the presets are the part
+   that is board-specific.
