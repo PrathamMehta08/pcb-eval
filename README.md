@@ -192,7 +192,7 @@ Steps 1 through 11 need no API key at all.
 
 ```bash
 .venv/Scripts/python.exe -m extract.build      # boards/stm32-good.json
-.venv/Scripts/python.exe -m tests.run          # the acceptance checks, 10 of 10
+.venv/Scripts/python.exe -m tests.run          # the acceptance checks, 14 of 14
 .venv/Scripts/python.exe tools/build_site.py   # dist/pcb-eval.html
 ```
 
@@ -203,9 +203,12 @@ The scored sweep needs a Groq key in `.env` (copy `.env.example`):
 ```
 
 `tests/run.py` is the contract: one check per row of the build order, each
-asserting the thing that row claims. Ten of ten pass. `place()`, the transform every view and
-every copper check rests on, is pinned to six pad centres read out of KiCad's
-own `layer-F_Cu.svg` plot — in Python and again in JavaScript.
+asserting the thing that row claims. Fourteen of fourteen pass, and none of them
+needs an API key: the graph's wiring, its gate and its contradiction check are
+all decidable against a stub, and only the quality of the findings is not.
+`place()`, the transform every view and every copper check rests on, is pinned
+to six pad centres read out of KiCad's own `layer-F_Cu.svg` plot — in Python and
+again in JavaScript.
 
 ## Repository
 
@@ -232,11 +235,14 @@ because `C1` is a substring of `C11`.
 Two things are written twice on purpose. `harness/ops.py` and `site/ops.js` are
 the same nine operations; `harness/distill.py` and `site/distill.js` are the
 same distiller. The page has to describe the board as the visitor just broke it,
-and only the browser holds that state. Both pairs are pinned by fixtures — 20
-edit cases must produce identical board hashes, and eight distilled boards must
-match character for character. That last one caught a real difference: Python
-formats half to even and JavaScript's `toFixed` rounds half away from zero, so a
-pad at 30.25 mm printed as 30.2 in one and 30.3 in the other.
+and only the browser holds that state. Both pairs are pinned by fixtures — 22
+edit cases must produce identical board hashes and identical edit-log labels,
+and eight distilled boards must match character for character. Both caught real
+differences. Python formats half to even and JavaScript's `toFixed` rounds half
+away from zero, so a pad at 30.25 mm printed as 30.2 in one and 30.3 in the
+other; and `round(v, 4)` against `Math.round(v * 1e4) / 1e4` made one
+five-decimal track width hash to two different boards — which matters because
+that hash is the review cache key.
 
 ## Two gotchas worth writing down
 
