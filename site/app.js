@@ -51,6 +51,8 @@ const state = {
   reviewError: null,
   focused: null,
   divergence: { stale: [], stranded: [] },
+  //: Which board view the review tab is showing underneath its report.
+  reviewSub: "routing",
   reviewing: false,
   presetId: null,
   //: The first half of a pin swap, waiting for the pin to swap it with.
@@ -71,14 +73,17 @@ function drawView({ keepZoom = true } = {}) {
   if (keepZoom && panzoom) keptView = panzoom.view;
   stage.textContent = "";
 
+  // In review mode the board is still the board; the report sits over it. Which
+  // view it shows is decided by the finding being read.
+  const showing = state.view === "review" ? state.reviewSub : state.view;
   // The embedded plot belongs to the sample board and only to it. Handing it to
   // a loaded board would draw somebody else's schematic over their parts.
   const sheet = custom ? null : $("sheet-svg").content.cloneNode(true);
   const svg =
-    state.view === "schematic"
+    showing === "schematic"
       ? renderSchematic(state.board, sheet)
-      : renderBoard(state.board, { copper: state.view === "routing" });
-  svg.dataset.view = state.view;
+      : renderBoard(state.board, { copper: showing === "routing" });
+  svg.dataset.view = showing;
   stage.appendChild(svg);
 
   panzoom = attachPanZoom(svg, {
@@ -606,14 +611,20 @@ async function runReview() {
   if (state.reviewing) return;
   state.reviewing = true;
   state.reviewError = null;
+  state.focused = null;
+  // Go to the review tab first. The button is at the bottom of a long rail and
+  // the stage is what anyone is actually watching, so that is where the state
+  // change has to happen.
+  setView("review");
   renderReview();
-  // The button lives at the bottom of a long rail. Bring the panel into view so
-  // the state change is where the person who pressed it is looking.
-  $("review").scrollIntoView({ block: "nearest", behavior: "smooth" });
   try {
     const result = await review(state.sample, state.board, {
       onText: (update) => {
         $("review-stream").textContent = update.text.slice(-600);
+        const status = $("ro-status");
+        if (status) status.textContent = "Reading the reply";
+        const stream = $("ro-stream");
+        if (stream) stream.textContent = update.text.slice(-420);
       },
     });
     state.verdict = result;
@@ -632,6 +643,10 @@ async function runReview() {
   } finally {
     state.reviewing = false;
     renderReview();
+    renderOverlay();
+    // Open the first finding, so the answer to "what did it say" is already on
+    // the board rather than one click away.
+    if (state.verdict?.findings?.length) focusFinding(0);
   }
 }
 
@@ -695,13 +710,20 @@ function focusFinding(index) {
   if (!finding) return;
   state.focused = index;
 
-  const view = viewForFinding(finding);
-  if (view !== state.view) setView(view);
+  const wanted = viewForFinding(finding);
+  if (state.view === "review") {
+    if (state.reviewSub !== wanted) {
+      state.reviewSub = wanted;
+      setView("review");
+    }
+  } else if (wanted !== state.view) {
+    setView(wanted);
+  }
 
   const svg = currentSvg();
   if (svg) {
     clearMarks(svg);
-    if (state.view !== "schematic") markDivergence(svg, state.board);
+    if (svg.dataset.view !== "schematic") markDivergence(svg, state.board);
     markRefs(svg, state.board, finding.refs, "flag");
     highlightNets(svg, finding.nets);
   }
@@ -721,6 +743,105 @@ function focusFinding(index) {
     }
   }
   renderReview();
+}
+
+/**
+ * The report over the board, and the state of the Review tab.
+ *
+ * This exists because the review used to happen entirely inside a panel at the
+ * bottom of a scrolling rail: pressing the button changed nothing anywhere the
+ * person pressing it was looking. Now the stage takes it — the board stays
+ * underneath, in whichever view the finding belongs in, with the finding
+ * explained beside it.
+ */
+function renderOverlay() {
+  const overlay = $("review-overlay");
+  const tab = $("tab-review");
+  const findings = state.verdict?.findings || [];
+
+  tab.dataset.state = state.reviewing ? "running" : findings.length ? "done" : "none";
+  tab.dataset.count = String(findings.length);
+
+  if (state.view !== "review") {
+    overlay.hidden = true;
+    return;
+  }
+  overlay.hidden = false;
+
+  if (state.reviewing) {
+    overlay.innerHTML = `
+      <div class="ro-head"><h3>Reviewing</h3>
+        <div class="ro-running"><span class="ro-dot"></span><span id="ro-status">Sending the board</span></div>
+        <pre class="ro-stream" id="ro-stream"></pre>
+      </div>`;
+    return;
+  }
+
+  if (state.reviewError) {
+    overlay.innerHTML = `
+      <div class="ro-head"><h3>Review</h3></div>
+      <div class="ro-empty">
+        <p><b style="color:var(--crit);font-family:var(--mono);font-size:11px">
+          ${escapeHtml(state.reviewError.code)}</b></p>
+        <p>${escapeHtml(state.reviewError.message)}</p>
+        ${RETRYABLE.has(state.reviewError.code)
+          ? `<button class="primary" id="ro-go">Try again</button>`
+          : ""}
+      </div>`;
+    overlay.querySelector("#ro-go")?.addEventListener("click", runReview);
+    return;
+  }
+
+  if (!findings.length) {
+    overlay.innerHTML = `
+      <div class="ro-head"><h3>Review</h3></div>
+      <div class="ro-empty">
+        <p>${state.verdict
+          ? "It reported nothing. On an untouched board that is the right answer."
+          : "Nothing has been reviewed yet. Break something first, or review the board as it is — a reviewer that flags a clean board is worth nothing, and that is the number worth knowing first."}</p>
+        ${state.sample
+          ? `<button class="primary" id="ro-go">Review this board</button>`
+          : `<p class="hint">The review runs on Claude and this view cannot reach
+             it. Everything else on the page works.</p>`}
+      </div>`;
+    overlay.querySelector("#ro-go")?.addEventListener("click", runReview);
+    return;
+  }
+
+  const { caught, missed, other } = grade(findings, expectedFromState());
+  const total = caught.length + missed.length;
+  overlay.innerHTML = `
+    <div class="ro-head">
+      <h3>${findings.length} finding${findings.length === 1 ? "" : "s"}${
+        state.verdict.cached ? " · from cache" : ""
+      }</h3>
+      <div class="ro-score">
+        <div class="${caught.length ? "good" : ""}"><b>${caught.length}</b>
+          <span>caught${total ? ` of ${total}` : ""}</span></div>
+        <div class="${missed.length ? "bad" : ""}"><b>${missed.length}</b><span>missed</span></div>
+        <div class="${other.length ? "warn" : ""}"><b>${other.length}</b><span>also raised</span></div>
+      </div>
+    </div>
+    <div class="ro-list">${findings
+      .map(
+        (finding, i) => `<button class="ro-item sev-${escapeHtml(finding.severity)}${
+          state.focused === i ? " on" : ""
+        }" data-finding="${i}">
+          <b>${escapeHtml(finding.title)}</b>
+          <span class="why">${escapeHtml(finding.why)}</span>
+          <span class="tags">${[...finding.refs, ...finding.nets]
+            .map((tag) => html`<code>${tag}</code>`)
+            .join("")}</span>
+          <span class="where">shown in ${escapeHtml(viewForFinding(finding))}</span>
+        </button>`
+      )
+      .join("")}</div>
+    <div class="ro-foot">Click a finding to put it on the board. The parts it
+      names are ringed and its nets are lit.</div>`;
+
+  for (const button of overlay.querySelectorAll(".ro-item")) {
+    button.addEventListener("click", () => focusFinding(Number(button.dataset.finding)));
+  }
 }
 
 /** Which parts the visitor has touched, so an edit is visible on the board. */
@@ -749,7 +870,7 @@ function paintMarks() {
   clearMarks(svg);
 
   let found = { stale: [], stranded: [] };
-  if (state.view !== "schematic") found = markDivergence(svg, state.board);
+  if (svg.dataset.view !== "schematic") found = markDivergence(svg, state.board);
   state.divergence = found;
 
   markRefs(svg, state.board, editedRefs(), "edit");
@@ -898,10 +1019,12 @@ function setView(view) {
     tab.classList.toggle("on", tab.dataset.view === view);
     tab.setAttribute("aria-selected", String(tab.dataset.view === view));
   }
-  $("layer-chips").hidden = view === "schematic";
+  const showing = view === "review" ? state.reviewSub : view;
+  $("layer-chips").hidden = showing === "schematic";
   keptView = null;
   drawView({ keepZoom: false });
-  if (view === "schematic") {
+  renderOverlay();
+  if (showing === "schematic") {
     // Compute it anyway: the count is worth saying even where it cannot be drawn.
     state.divergence = divergence(state.board);
     renderDivergenceNote();
@@ -958,13 +1081,18 @@ function boot() {
     state.sample = sample;
     renderReview();
   });
+  // The countdown, and only the countdown. It used to re-enable the button half
+  // a second after an error disabled it, and overwrite the label with it.
   setInterval(() => {
-    if (!state.reviewing && state.sample && coolingDownMs() > 0) {
-      $("go").textContent = `Review in ${Math.ceil(coolingDownMs() / 1000)}s`;
-      $("go").disabled = true;
-    } else if (!state.reviewing && state.sample && $("go").disabled) {
-      $("go").disabled = false;
-      $("go").textContent = "Review this board";
+    if (state.reviewing || !state.sample || state.reviewError) return;
+    const left = coolingDownMs();
+    const go = $("go");
+    if (left > 0) {
+      go.textContent = `Review in ${Math.ceil(left / 1000)}s`;
+      go.disabled = true;
+    } else if (go.disabled) {
+      go.disabled = false;
+      go.textContent = "Review this board";
     }
   }, 500);
 }

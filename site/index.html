@@ -156,6 +156,97 @@ main { display: flex; flex: 1; min-height: 0; }
 .chip.off { color: #5c666d; }
 .chip.off::before { background: #333b42; }
 
+/* ------------------------------------------------------------ review view ---
+   The review used to happen entirely in a panel at the bottom of the rail, so
+   pressing the button changed nothing where anyone was looking. It gets the
+   stage now: the board stays underneath, in whichever view the finding belongs
+   in, and the report sits over it. */
+.tab-review[data-state="none"] { opacity: .55; }
+.tab-review[data-state="running"] { color: var(--warn); border-color: var(--line); }
+.tab-review[data-state="done"]::after {
+  content: attr(data-count); margin-left: 6px; font-size: 9px;
+  padding: 0 5px; border-radius: 8px; vertical-align: 1px;
+  background: var(--crit); color: #120706;
+}
+
+/* The well behind it is dark in both themes, so this panel does not follow the
+   page palette — it is furniture on the board, like the layer chips. */
+#review-overlay {
+  position: absolute; right: 12px; top: 12px; bottom: 12px; width: 340px;
+  max-width: calc(100% - 24px); display: flex; flex-direction: column;
+  background: rgba(10, 12, 16, .93); border: 1px solid var(--line);
+  border-radius: 5px; overflow: hidden;
+  backdrop-filter: blur(3px);
+}
+.ro-head {
+  padding: 12px 14px; border-bottom: 1px solid var(--line); flex: none;
+}
+.ro-head h3 {
+  margin: 0 0 8px; font-family: var(--mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase; color: #c3ccd2;
+}
+.ro-score { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ro-score div {
+  padding: 6px 8px; border-radius: var(--radius); background: rgba(255,255,255,.04);
+  border: 1px solid var(--line);
+}
+.ro-score b {
+  display: block; font-family: var(--mono); font-size: 17px; line-height: 1.1;
+  color: #9aa3a9; font-variant-numeric: tabular-nums;
+}
+.ro-score span {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
+  text-transform: uppercase; color: #79828b;
+}
+.ro-score .good { border-color: var(--mint); } .ro-score .good b { color: var(--mint); }
+.ro-score .bad { border-color: var(--crit); } .ro-score .bad b { color: var(--crit); }
+.ro-score .warn { border-color: var(--warn); } .ro-score .warn b { color: var(--warn); }
+
+.ro-list { overflow-y: auto; flex: 1; }
+.ro-item {
+  display: block; width: 100%; text-align: left; cursor: pointer; color: inherit;
+  padding: 10px 14px; background: none; border: 0;
+  border-bottom: 1px solid var(--line-soft); border-left: 2px solid transparent;
+  font: inherit;
+}
+.ro-item:hover { background: rgba(255,255,255,.03); }
+.ro-item.on { background: rgba(255,255,255,.06); border-left-color: var(--mint); }
+.ro-item.sev-critical { border-left-color: var(--crit); }
+.ro-item.sev-major { border-left-color: var(--warn); }
+.ro-item.on.sev-critical, .ro-item.on.sev-major { border-left-color: var(--mint); }
+.ro-item b { display: block; font-weight: 500; font-size: 12.5px; color: #e6eae7; }
+.ro-item .why { display: block; margin-top: 3px; font-size: 12px; color: #9aa3a9; }
+.ro-item .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.ro-item code {
+  font-family: var(--mono); font-size: 10px; padding: 1px 5px; border-radius: 2px;
+  background: rgba(255,255,255,.06); color: #b6bfc5;
+}
+.ro-item .where {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mint); margin-top: 6px; display: block;
+}
+.ro-foot {
+  padding: 10px 14px; border-top: 1px solid var(--line); flex: none;
+  font-size: 11.5px; color: #79828b;
+}
+.ro-empty { padding: 22px 16px; text-align: center; }
+.ro-empty p { color: #9aa3a9; font-size: 12.5px; margin: 0 0 14px; }
+.ro-running { display: flex; align-items: center; gap: 9px; color: var(--warn); font-family: var(--mono); font-size: 12px; }
+.ro-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--warn);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .ro-dot { animation: none; opacity: .8 } }
+.ro-stream {
+  margin: 10px 0 0; font-family: var(--mono); font-size: 10px; line-height: 1.5;
+  color: #6d757d; max-height: 160px; overflow: hidden; white-space: pre-wrap;
+}
+
+@media (max-width: 760px) {
+  #review-overlay { left: 12px; width: auto; }
+}
+
 #flash {
   position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
   padding: 7px 14px; border-radius: var(--radius); font-family: var(--mono);
@@ -455,6 +546,8 @@ input, select {
               data-plot="yes" aria-selected="false">Schematic</button>
       <button class="tab" role="tab" data-view="layout" aria-selected="false">Layout</button>
       <button class="tab" role="tab" data-view="routing" aria-selected="true">Routing</button>
+      <button class="tab tab-review" role="tab" id="tab-review" data-view="review"
+              aria-selected="false">Review</button>
     </nav>
     <div class="stats" id="board-stats"></div>
   </header>
@@ -472,6 +565,7 @@ input, select {
         <button class="chip" id="fit">Fit</button>
         <span>scroll to zoom · drag to pan</span>
       </div>
+      <div id="review-overlay" hidden></div>
       <div id="flash" role="status" aria-live="polite"></div>
     </section>
 
