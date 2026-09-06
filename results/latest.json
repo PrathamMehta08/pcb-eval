@@ -1,33 +1,33 @@
 {
- "at": "2026-09-06T06:58:16",
+ "at": "2026-09-06T07:12:11",
  "model": "openai/gpt-oss-120b",
  "prompt_hash": "bab4450ceef8",
  "schema_hash": "234a1c9dd4ac",
  "corpus_hash": "c945775a879c",
  "usage": {
   "calls": 44,
-  "cached": 44,
-  "tokens_in": 0,
-  "tokens_out": 0,
-  "dollars": 0.0,
-  "seconds": 0.0
+  "cached": 0,
+  "tokens_in": 154468,
+  "tokens_out": 104924,
+  "dollars": 0.08612,
+  "seconds": 251.0
  },
  "totals": {
   "single": {
-   "boards": 8,
-   "caught": 6,
-   "of": 7,
-   "recall": 0.857,
-   "false_alarms_on_clean": 5,
-   "extra_findings_on_seeded": 31
-  },
-  "graph": {
    "boards": 8,
    "caught": 5,
    "of": 7,
    "recall": 0.714,
    "false_alarms_on_clean": 4,
-   "extra_findings_on_seeded": 46
+   "extra_findings_on_seeded": 30
+  },
+  "graph": {
+   "boards": 8,
+   "caught": 6,
+   "of": 7,
+   "recall": 0.857,
+   "false_alarms_on_clean": 6,
+   "extra_findings_on_seeded": 60
   }
  },
  "rows": [
@@ -49,62 +49,50 @@
      "nets": [
       "/IN"
      ],
-     "title": "Buck converter EN pin tied to VIN net",
-     "why": "EN (S1.5) is incorrectly connected to the input voltage net, preventing proper enable control and causing the regulator to be permanently on"
+     "title": "Enable pin of buck converter tied to input voltage",
+     "why": "EN pin is connected to the VIN net, preventing the converter from being turned off or controlled"
     },
     {
      "source": "single",
      "severity": "major",
      "refs": [
-      "U2",
-      "C6"
+      "S1",
+      "L1",
+      "C4"
      ],
      "nets": [
-      "/NRST"
+      "/SW"
      ],
-     "title": "NRST pin lacks pull\u2011up resistor",
-     "why": "The reset input is left floating, which can cause unpredictable MCU resets or inability to hold the device in reset"
+     "title": "Switch node trace width too narrow for 3\u202fA load",
+     "why": "0.5\u202fmm trace cannot safely carry the buck converter's peak switch current, leading to overheating and voltage drop"
     },
     {
      "source": "single",
      "severity": "major",
      "refs": [
-      "U2",
-      "R4"
+      "S1",
+      "C4"
      ],
      "nets": [
-      "/BOOT0"
+      "VBST"
      ],
-     "title": "BOOT0 pin floating without pull\u2011down",
-     "why": "BOOT0 is not tied to ground, so the MCU may boot from system memory unintentionally"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
-      "J10",
-      "R7",
-      "U2"
-     ],
-     "nets": [
-      "/USB_D+"
-     ],
-     "title": "Incorrect series resistor on USB D+ line",
-     "why": "A 1.5\u202fk\u03a9 resistor (R7) is far too high for USB data signaling, which should use ~27\u202f\u03a9, leading to communication failure"
+     "title": "Boost node trace width too narrow for high current",
+     "why": "VBST carries the inductor current (up to 3\u202fA) but the 0.5\u202fmm trace is undersized, risking overheating"
     },
     {
      "source": "single",
      "severity": "major",
      "refs": [
       "L1",
-      "R2",
+      "D2",
+      "J11",
       "U3"
      ],
      "nets": [
       "+5V"
      ],
-     "title": "Insufficient trace width on +5\u202fV rail",
-     "why": "The narrowest trace is 0.50\u202fmm, which is marginal for the 3\u202fA current the buck converter must deliver, risking overheating and voltage drop"
+     "title": "+5\u202fV rail trace width insufficient for expected current",
+     "why": "The +5\u202fV net may supply the stepper driver and other loads up to several amps, but the 0.5\u202fmm trace is undersized for that current"
     }
    ],
    "dropped": [],
@@ -112,22 +100,21 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 1,
-   "tokens_in": 3354,
-   "tokens_out": 2161,
-   "seconds": 0.1,
+   "cached_calls": 0,
+   "tokens_in": 3419,
+   "tokens_out": 3586,
+   "seconds": 8.8,
    "grade": {
     "caught": [],
     "missed": [],
     "other": [
-     "Buck converter EN pin tied to VIN net",
-     "NRST pin lacks pull\u2011up resistor",
-     "BOOT0 pin floating without pull\u2011down",
-     "Incorrect series resistor on USB D+ line",
-     "Insufficient trace width on +5\u202fV rail"
+     "Enable pin of buck converter tied to input voltage",
+     "Switch node trace width too narrow for 3\u202fA load",
+     "Boost node trace width too narrow for high current",
+     "+5\u202fV rail trace width insufficient for expected current"
     ],
     "recall": null,
-    "false_alarms": 5
+    "false_alarms": 4
    }
   },
   {
@@ -153,95 +140,90 @@
      "source": "single",
      "severity": "major",
      "refs": [
-      "J2",
-      "J3",
-      "J4",
-      "J7",
-      "J8",
-      "L1",
-      "R2",
-      "U3"
-     ],
-     "nets": [
-      "+5V"
-     ],
-     "title": "+5V trace width too narrow for expected current",
-     "why": "0.50\u202fmm trace supports ~1\u202fA but the buck converter and multiple servos/stepper can draw several amps, risking overheating"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
-      "J12",
       "S1",
+      "J12",
       "C3"
      ],
      "nets": [
       "/IN"
      ],
-     "title": "/IN trace width insufficient for barrel\u2011jack input current",
-     "why": "0.50\u202fmm trace limits current to ~1\u202fA while the input may supply up to the buck converter's 3\u202fA rating"
+     "title": "Enable pin of buck converter tied to VIN net",
+     "why": "EN pin should be a separate control net, tying it to VIN forces the regulator always enabled and prevents proper shutdown"
     },
     {
      "source": "single",
      "severity": "major",
      "refs": [
-      "U1",
-      "C1",
-      "D1",
-      "D2"
-     ],
-     "nets": [
-      "VIN_LDO"
-     ],
-     "title": "LDO input net not connected to +5\u202fV rail",
-     "why": "AMS1117\u20113.3 receives no supply voltage, so the 3.3\u202fV rail will be dead"
-    },
-    {
-     "source": "single",
-     "severity": "minor",
-     "refs": [
-      "U2",
-      "C6"
+      "U2"
      ],
      "nets": [
       "/NRST"
      ],
-     "title": "NRST pin lacks pull\u2011up resistor",
-     "why": "Without a pull\u2011up the reset line may float, causing unpredictable MCU resets"
+     "title": "Missing pull\u2011up resistor on MCU reset line",
+     "why": "NRST requires a pull\u2011up to +3.3\u202fV for reliable reset operation; without it the MCU may not start correctly"
     },
     {
      "source": "single",
      "severity": "minor",
      "refs": [
-      "J3"
-     ],
-     "nets": [],
-     "title": "Unconnected pin on 6\u2011pin header J3",
-     "why": "Pin 1 of J3 is floating; likely intended for VCC but not routed"
-    },
-    {
-     "source": "single",
-     "severity": "minor",
-     "refs": [
-      "J6"
-     ],
-     "nets": [],
-     "title": "Unconnected pin on SWD header J6",
-     "why": "Pin 1 (typically VCC) is not connected, preventing powered debugging"
-    },
-    {
-     "source": "single",
-     "severity": "minor",
-     "refs": [
-      "D1",
-      "J10"
+      "R7",
+      "J10",
+      "U2"
      ],
      "nets": [
-      "VBUS"
+      "/USB_D+"
      ],
-     "title": "VBUS net has no copper trace",
-     "why": "Only the diode and connector are on the net, so VBUS cannot be used elsewhere on the board"
+     "title": "Incorrect series resistor value on USB D+ line",
+     "why": "A 1.5\u202fk\u03a9 resistor is far too high for USB signalling and will prevent proper USB enumeration"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [
+      "L1",
+      "D2",
+      "J11",
+      "J2",
+      "J3",
+      "J4",
+      "J7",
+      "J8",
+      "U3",
+      "R2"
+     ],
+     "nets": [
+      "+5V"
+     ],
+     "title": "Insufficient trace width on +5\u202fV rail",
+     "why": "The +5\u202fV rail can carry up to 3\u202fA from the buck converter, but the 0.5\u202fmm trace width only supports ~1\u202fA, risking overheating and voltage drop"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "J12",
+      "C3"
+     ],
+     "nets": [
+      "/IN"
+     ],
+     "title": "Insufficient trace width on input power rail",
+     "why": "The input rail may carry the full buck converter current (up to 3\u202fA) yet the 0.5\u202fmm trace width is undersized, leading to possible overheating"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "L1",
+      "C4"
+     ],
+     "nets": [
+      "/SW"
+     ],
+     "title": "Insufficient trace width on buck converter switching node",
+     "why": "The SW node conducts the full in\u2011ductor current (up to 3\u202fA); a 0.5\u202fmm trace is too narrow and can cause excessive heating and EMI"
     }
    ],
    "dropped": [],
@@ -249,15 +231,15 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 1,
-   "tokens_in": 3613,
-   "tokens_out": 3057,
-   "seconds": 0.0,
+   "cached_calls": 0,
+   "tokens_in": 3414,
+   "tokens_out": 2152,
+   "seconds": 5.3,
    "grade": {
     "caught": [
      {
       "defect": "vfb-vbst-swap",
-      "finding": "/IN trace width insufficient for barrel\u2011jack input current",
+      "finding": "Enable pin of buck converter tied to VIN net",
       "via": [
        "S1"
       ],
@@ -266,15 +248,14 @@
     ],
     "missed": [],
     "other": [
-     "+5V trace width too narrow for expected current",
-     "LDO input net not connected to +5\u202fV rail",
-     "NRST pin lacks pull\u2011up resistor",
-     "Unconnected pin on 6\u2011pin header J3",
-     "Unconnected pin on SWD header J6",
-     "VBUS net has no copper trace"
+     "Missing pull\u2011up resistor on MCU reset line",
+     "Incorrect series resistor value on USB D+ line",
+     "Insufficient trace width on +5\u202fV rail",
+     "Insufficient trace width on input power rail",
+     "Insufficient trace width on buck converter switching node"
     ],
     "recall": 1.0,
-    "false_alarms": 6
+    "false_alarms": 5
    }
   },
   {
@@ -299,88 +280,63 @@
    "findings": [
     {
      "source": "single",
-     "severity": "major",
+     "severity": "critical",
      "refs": [
-      "S1",
-      "J12",
-      "C3"
-     ],
-     "nets": [
-      "/IN"
-     ],
-     "title": "EN pin of buck converter tied to input net",
-     "why": "EN is connected to the VIN net, preventing proper enable control of the regulator"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
-      "R2"
-     ],
-     "nets": [
-      "/5V"
-     ],
-     "title": "Feedback resistor R2 placed on 5\u202fV rail",
-     "why": "R2.1 is on the +5\u202fV net, altering the voltage division and causing incorrect regulator feedback"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
-      "C6",
       "U2"
      ],
      "nets": [
       "/NRST"
      ],
-     "title": "NRST line missing pull\u2011up resistor",
-     "why": "The reset pin is only connected to a capacitor, leaving it floating and unreliable"
+     "title": "NRST pin lacks pull\u2011up resistor",
+     "why": "Without a pull\u2011up to +3.3\u202fV the reset line can float, causing unpredictable MCU resets"
     },
     {
      "source": "single",
      "severity": "major",
      "refs": [
-      "R7"
+      "S1",
+      "R2",
+      "R3"
      ],
      "nets": [
-      "/USB_D+"
+      "/FB",
+      "/IN",
+      "+5V"
      ],
-     "title": "Excessive series resistance on USB D+ line",
-     "why": "A 1.5\u202fk\u03a9 resistor will prevent proper USB enumeration and data transfer"
+     "title": "Buck converter feedback network sets output ~3.3\u202fV, but +5\u202fV net expects 5\u202fV",
+     "why": "Incorrect resistor ratio will make the TPS563208 deliver ~3.3\u202fV, starving the stepper driver and servos"
     },
     {
      "source": "single",
      "severity": "major",
-     "refs": [],
-     "nets": [
-      "/5V",
-      "/SW"
+     "refs": [
+      "U1",
+      "D1",
+      "D2"
      ],
-     "title": "Insufficient trace width for high\u2011current paths",
-     "why": "0.5\u202fmm tracks on the 5\u202fV and switch nets cannot safely carry the 3\u202fA buck converter current"
-    },
-    {
-     "source": "single",
-     "severity": "minor",
-     "refs": [],
      "nets": [
-      "+3.3V"
+      "VIN_LDO",
+      "VBUS",
+      "+5V"
      ],
-     "title": "+3.3\u202fV trace width may be undersized for load current",
-     "why": "0.30\u202fmm width is below the 0.5\u202fmm per amp guideline for a potential 1\u202fA load"
+     "title": "VIN_LDO net tied to both VBUS and +5\u202fV via diode cathodes",
+     "why": "Connecting the LDO input to two different supply rails can cause back\u2011feeding and regulator damage"
     },
     {
      "source": "single",
      "severity": "minor",
      "refs": [
-      "R4",
-      "SW1"
+      "L1",
+      "J7",
+      "J8",
+      "J4",
+      "U3"
      ],
      "nets": [
-      "/BOOT0"
+      "+5V"
      ],
-     "title": "BOOT0 line can float when switch is open",
-     "why": "No defined pull\u2011down to ground leaves BOOT0 undefined in the default state"
+     "title": "+5\u202fV trace width only 0.50\u202fmm",
+     "why": "At 0.5\u202fmm width the trace can carry ~1\u202fA; the stepper driver and servos may draw more, risking overheating"
     }
    ],
    "dropped": [],
@@ -388,26 +344,29 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 1,
-   "tokens_in": 3611,
-   "tokens_out": 2831,
-   "seconds": 0.0,
+   "cached_calls": 0,
+   "tokens_in": 3427,
+   "tokens_out": 2051,
+   "seconds": 4.7,
    "grade": {
-    "caught": [],
-    "missed": [
-     "stepper-common-open"
+    "caught": [
+     {
+      "defect": "stepper-common-open",
+      "finding": "Buck converter feedback network sets output ~3.3\u202fV, but +5\u202fV net expects 5\u202fV",
+      "via": [
+       "+5V"
+      ],
+      "breadth": 6
+     }
     ],
+    "missed": [],
     "other": [
-     "EN pin of buck converter tied to input net",
-     "Feedback resistor R2 placed on 5\u202fV rail",
-     "NRST line missing pull\u2011up resistor",
-     "Excessive series resistance on USB D+ line",
-     "Insufficient trace width for high\u2011current paths",
-     "+3.3\u202fV trace width may be undersized for load current",
-     "BOOT0 line can float when switch is open"
+     "NRST pin lacks pull\u2011up resistor",
+     "VIN_LDO net tied to both VBUS and +5\u202fV via diode cathodes",
+     "+5\u202fV trace width only 0.50\u202fmm"
     ],
-    "recall": 0.0,
-    "false_alarms": 7
+    "recall": 1.0,
+    "false_alarms": 3
    }
   },
   {
@@ -431,61 +390,15 @@
    "findings": [
     {
      "source": "single",
-     "severity": "critical",
-     "refs": [
-      "U2",
-      "C6"
-     ],
-     "nets": [
-      "NRST"
-     ],
-     "title": "NRST line lacks pull\u2011up resistor",
-     "why": "Reset pin will float, preventing reliable MCU reset"
-    },
-    {
-     "source": "single",
      "severity": "major",
      "refs": [
-      "S1"
+      "U2"
      ],
      "nets": [
-      "/IN"
+      "/NRST"
      ],
-     "title": "EN pin of buck converter tied to VIN",
-     "why": "Converter cannot be disabled, risking over\u2011current or loss of control"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
-      "R7"
-     ],
-     "nets": [
-      "/USB_D+"
-     ],
-     "title": "USB D+ series resistor 1.5\u202fk\u03a9 too large",
-     "why": "USB signal integrity will be degraded, preventing proper enumeration"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
-      "U1",
-      "U3",
-      "L1",
-      "D2",
-      "J2",
-      "J3",
-      "J4",
-      "J7",
-      "J8",
-      "J11"
-     ],
-     "nets": [
-      "+5V"
-     ],
-     "title": "+5\u202fV trace width too narrow for load",
-     "why": "0.5\u202fmm trace supports ~1\u202fA but stepper motor and servos may draw >2\u202fA, causing overheating"
+     "title": "NRST pin lacks pull\u2011up resistor",
+     "why": "Without a pull\u2011up to VDD the reset input can float, preventing reliable MCU reset"
     }
    ],
    "dropped": [],
@@ -493,30 +406,20 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 1,
-   "tokens_in": 3559,
-   "tokens_out": 3653,
-   "seconds": 0.1,
+   "cached_calls": 0,
+   "tokens_in": 3419,
+   "tokens_out": 2622,
+   "seconds": 5.9,
    "grade": {
-    "caught": [
-     {
-      "defect": "servo-power-end-pin",
-      "finding": "+5\u202fV trace width too narrow for load",
-      "via": [
-       "J4",
-       "+5V"
-      ],
-      "breadth": 11
-     }
+    "caught": [],
+    "missed": [
+     "servo-power-end-pin"
     ],
-    "missed": [],
     "other": [
-     "NRST line lacks pull\u2011up resistor",
-     "EN pin of buck converter tied to VIN",
-     "USB D+ series resistor 1.5\u202fk\u03a9 too large"
+     "NRST pin lacks pull\u2011up resistor"
     ],
-    "recall": 1.0,
-    "false_alarms": 3
+    "recall": 0.0,
+    "false_alarms": 1
    }
   },
   {
@@ -543,67 +446,86 @@
      "source": "single",
      "severity": "critical",
      "refs": [
-      "U1",
-      "D1",
-      "D2",
-      "C1"
-     ],
-     "nets": [
-      "VIN_LDO"
-     ],
-     "title": "LDO input net VIN_LDO has no power source",
-     "why": "AMS1117-3.3 regulator receives no input voltage, preventing 3.3\u202fV generation"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
       "S1"
      ],
      "nets": [
-      "/IN"
+      "/FB"
      ],
-     "title": "Buck converter EN pin tied to VIN net",
-     "why": "EN pin is permanently high, disabling proper enable control of the regulator"
+     "title": "Feedback divider sets wrong output voltage",
+     "why": "Resistor values (56.2\u202fk\u03a9 and 10\u202fk\u03a9) produce ~4.0\u202fV instead of the intended 3.3\u202fV"
     },
     {
      "source": "single",
      "severity": "major",
      "refs": [
-      "U2",
-      "C6"
+      "U2"
      ],
      "nets": [
       "/NRST"
      ],
      "title": "NRST pin lacks pull\u2011up resistor",
-     "why": "Microcontroller reset line may float, causing unpredictable resets"
+     "why": "Reset line may float, causing unintended resets or failure to reset"
     },
     {
      "source": "single",
      "severity": "major",
      "refs": [
-      "U3",
-      "L1",
-      "R2"
+      "U2"
      ],
      "nets": [
-      "+5V"
+      "/BOOT0"
      ],
-     "title": "Trace width on +5\u202fV net insufficient for 3\u202fA load",
-     "why": "0.5\u202fmm width on 1\u202foz copper may overheat under full buck converter current"
+     "title": "BOOT0 pin not pulled low",
+     "why": "MCU could enter system bootloader on power\u2011up instead of normal operation"
     },
     {
      "source": "single",
-     "severity": "minor",
+     "severity": "major",
      "refs": [
-      "D1"
+      "R7"
      ],
      "nets": [
-      "VBUS"
+      "/USB_D+"
      ],
-     "title": "Diode D1 orientation appears reversed",
-     "why": "Anode of SS14 is on VBUS net, likely blocking USB power instead of protecting it"
+     "title": "USB D+ series resistor too large (1.5\u202fk\u03a9)",
+     "why": "Excessive series resistance will prevent proper USB enumeration"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [],
+     "nets": [
+      "/USB_D-"
+     ],
+     "title": "USB D- missing series termination resistor",
+     "why": "Lack of termination may degrade signal integrity and affect USB communication"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "L1"
+     ],
+     "nets": [
+      "+5V",
+      "/SW"
+     ],
+     "title": "Power trace widths insufficient for 3\u202fA load",
+     "why": "0.5\u202fmm trace width is undersized for expected buck converter current, causing excess voltage drop and heating"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "L1"
+     ],
+     "nets": [
+      "VBST"
+     ],
+     "title": "VBST net not connected to inductor",
+     "why": "Boost pin of the buck converter is left floating, which can lead to instability or improper operation"
     }
    ],
    "dropped": [],
@@ -611,10 +533,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 1,
-   "tokens_in": 3635,
-   "tokens_out": 2076,
-   "seconds": 0.0,
+   "cached_calls": 0,
+   "tokens_in": 3419,
+   "tokens_out": 2622,
+   "seconds": 7.4,
    "grade": {
     "caught": [
      {
@@ -623,18 +545,20 @@
       "via": [
        "U2"
       ],
-      "breadth": 3
+      "breadth": 2
      }
     ],
     "missed": [],
     "other": [
-     "LDO input net VIN_LDO has no power source",
-     "Buck converter EN pin tied to VIN net",
-     "Trace width on +5\u202fV net insufficient for 3\u202fA load",
-     "Diode D1 orientation appears reversed"
+     "Feedback divider sets wrong output voltage",
+     "BOOT0 pin not pulled low",
+     "USB D+ series resistor too large (1.5\u202fk\u03a9)",
+     "USB D- missing series termination resistor",
+     "Power trace widths insufficient for 3\u202fA load",
+     "VBST net not connected to inductor"
     ],
     "recall": 1.0,
-    "false_alarms": 4
+    "false_alarms": 6
    }
   },
   {
@@ -661,49 +585,14 @@
      "source": "single",
      "severity": "critical",
      "refs": [
-      "S1"
+      "D2"
      ],
      "nets": [
-      "/IN"
+      "+5V",
+      "VIN_LDO"
      ],
-     "title": "Enable pin tied to input net",
-     "why": "S1.5(EN) is connected to the /IN net, preventing proper control of the buck converter enable"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
-      "U2"
-     ],
-     "nets": [
-      "/NRST"
-     ],
-     "title": "Missing pull\u2011up resistor on reset line",
-     "why": "NRST net only has a capacitor, leaving the MCU reset pin without the required pull\u2011up to +3.3\u202fV"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
-      "U3"
-     ],
-     "nets": [
-      "/STEPPER_IN4"
-     ],
-     "title": "Series resistor missing on stepper driver input",
-     "why": "All other stepper inputs have a 10\u202fk resistor, but /STEPPER_IN4 connects directly to the MCU, risking over\u2011current to the ULN2003"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [
-      "R7"
-     ],
-     "nets": [
-      "/USB_D+"
-     ],
-     "title": "Incorrect series resistor value on USB D+ line",
-     "why": "A 1.5\u202fk\u03a9 resistor is far above the USB specification (typically 22\u201327\u202f\u03a9), degrading signal integrity"
+     "title": "D2 diode orientation reversed",
+     "why": "The diode is wired with its anode on the +5V net and cathode on VIN_LDO, preventing proper power conversion and leaving the +5V rail unpowered"
     },
     {
      "source": "single",
@@ -712,8 +601,18 @@
      "nets": [
       "+5V"
      ],
-     "title": "Insufficient trace width for +5\u202fV rail",
-     "why": "The narrowest +5\u202fV trace is 0.50\u202fmm, which is undersized for the up\u2011to\u20113\u202fA current drawn by the stepper driver"
+     "title": "Insufficient trace width on +5V rail",
+     "why": "The +5V net carries up to 3\u202fA from the buck converter but the narrowest trace is only 0.5\u202fmm, below the ~1.5\u202fmm required for safe current handling"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [],
+     "nets": [
+      "/IN"
+     ],
+     "title": "Insufficient trace width on buck converter input",
+     "why": "The /IN net supplies the buck converter input at up to 3\u202fA yet the narrowest trace is only 0.5\u202fmm, which is undersized for the expected current"
     },
     {
      "source": "single",
@@ -723,17 +622,32 @@
       "/SW"
      ],
      "title": "Insufficient trace width on buck converter switch node",
-     "why": "The /SW net carries high switching current but its narrowest trace is only 0.50\u202fmm, likely causing excessive voltage drop and heating"
+     "why": "The /SW net carries the high\u2011current switching current of the buck converter but the trace width is only 0.5\u202fmm, likely too thin for the required current"
     },
     {
      "source": "single",
      "severity": "major",
-     "refs": [],
-     "nets": [
-      "/IN"
+     "refs": [
+      "U2",
+      "U3"
      ],
-     "title": "Insufficient trace width on buck converter input net",
-     "why": "The /IN net may carry the full input current (up to 3\u202fA) yet its narrowest trace is only 0.50\u202fmm, which is too thin for that load"
+     "nets": [
+      "/STEPPER_IN4"
+     ],
+     "title": "Missing series resistor on stepper driver input 4",
+     "why": "The ULN2003 input I4 is driven directly from the MCU pin PA4 without a current\u2011limiting resistor, risking MCU pin over\u2011current"
+    },
+    {
+     "source": "single",
+     "severity": "minor",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "/NRST"
+     ],
+     "title": "NRST pin lacks pull\u2011up resistor",
+     "why": "The reset pin is not tied to VDD via a pull\u2011up, which may cause unreliable reset behavior"
     }
    ],
    "dropped": [],
@@ -741,33 +655,32 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 1,
-   "tokens_in": 3500,
-   "tokens_out": 2367,
-   "seconds": 0.0,
+   "cached_calls": 0,
+   "tokens_in": 3419,
+   "tokens_out": 2904,
+   "seconds": 7.5,
    "grade": {
     "caught": [
      {
       "defect": "stepper-in4-floating",
-      "finding": "Series resistor missing on stepper driver input",
+      "finding": "Missing series resistor on stepper driver input 4",
       "via": [
        "U3",
        "STEPPER_IN4"
       ],
-      "breadth": 2
+      "breadth": 3
      }
     ],
     "missed": [],
     "other": [
-     "Enable pin tied to input net",
-     "Missing pull\u2011up resistor on reset line",
-     "Incorrect series resistor value on USB D+ line",
-     "Insufficient trace width for +5\u202fV rail",
+     "D2 diode orientation reversed",
+     "Insufficient trace width on +5V rail",
+     "Insufficient trace width on buck converter input",
      "Insufficient trace width on buck converter switch node",
-     "Insufficient trace width on buck converter input net"
+     "NRST pin lacks pull\u2011up resistor"
     ],
     "recall": 1.0,
-    "false_alarms": 6
+    "false_alarms": 5
    }
   },
   {
@@ -789,47 +702,64 @@
     {
      "source": "single",
      "severity": "major",
-     "refs": [],
-     "nets": [
-      "/5V"
-     ],
-     "title": "Insufficient trace width on +5V rail",
-     "why": "0.5\u202fmm width supports only ~1\u202fA but the buck converter can deliver up to 3\u202fA, risking overheating"
-    },
-    {
-     "source": "single",
-     "severity": "major",
-     "refs": [],
-     "nets": [
-      "/IN"
-     ],
-     "title": "Insufficient trace width on input rail",
-     "why": "0.5\u202fmm width supports ~1\u202fA while the barrel jack may supply several amperes, causing possible voltage drop or overheating"
-    },
-    {
-     "source": "single",
-     "severity": "major",
      "refs": [
-      "R4"
+      "R2",
+      "R3",
+      "S1"
      ],
      "nets": [
-      "/BOOT0",
-      "SW_BOOT0"
+      "/FB"
      ],
-     "title": "Resistor R4 has no defined value",
-     "why": "Without a value the BOOT0 pull\u2011up/down network is undefined, preventing reliable MCU boot mode selection"
+     "title": "Feedback divider resistors shorted on /FB net",
+     "why": "Both feedback resistors are tied to the same net, eliminating the voltage divider and preventing proper regulation of the buck converter"
     },
     {
      "source": "single",
      "severity": "minor",
      "refs": [
+      "C6",
       "U2"
      ],
      "nets": [
       "/NRST"
      ],
      "title": "Missing pull\u2011up resistor on NRST line",
-     "why": "NRST is left floating except for a decoupling capacitor, which can cause unintended resets"
+     "why": "The reset pin lacks a pull\u2011up to +3.3\u202fV, risking unintended resets or inability to start the MCU"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "L1",
+      "C4"
+     ],
+     "nets": [
+      "/IN",
+      "/SW"
+     ],
+     "title": "Insufficient trace width on high\u2011current buck converter nets",
+     "why": "Both /IN and /SW nets carry up to 3\u202fA but the copper width is only 0.5\u202fmm, below the ~1.5\u202fmm required for safe current handling"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [
+      "L1",
+      "U3",
+      "R2",
+      "J11",
+      "J2",
+      "J3",
+      "J4",
+      "J7",
+      "J8"
+     ],
+     "nets": [
+      "+5V"
+     ],
+     "title": "Potentially undersized trace width on +5\u202fV rail",
+     "why": "The +5\u202fV net supplies the stepper driver and may carry >1\u202fA, but the trace width is only 0.5\u202fmm, which may cause excessive voltage drop and heating"
     }
    ],
    "dropped": [],
@@ -837,29 +767,23 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 1,
-   "tokens_in": 3645,
-   "tokens_out": 2608,
-   "seconds": 0.0,
+   "cached_calls": 0,
+   "tokens_in": 3424,
+   "tokens_out": 3006,
+   "seconds": 7.9,
    "grade": {
-    "caught": [
-     {
-      "defect": "unbuildable-value",
-      "finding": "Resistor R4 has no defined value",
-      "via": [
-       "R4"
-      ],
-      "breadth": 3
-     }
+    "caught": [],
+    "missed": [
+     "unbuildable-value"
     ],
-    "missed": [],
     "other": [
-     "Insufficient trace width on +5V rail",
-     "Insufficient trace width on input rail",
-     "Missing pull\u2011up resistor on NRST line"
+     "Feedback divider resistors shorted on /FB net",
+     "Missing pull\u2011up resistor on NRST line",
+     "Insufficient trace width on high\u2011current buck converter nets",
+     "Potentially undersized trace width on +5\u202fV rail"
     ],
-    "recall": 1.0,
-    "false_alarms": 3
+    "recall": 0.0,
+    "false_alarms": 4
    }
   },
   {
@@ -880,69 +804,91 @@
    "findings": [
     {
      "source": "single",
-     "severity": "major",
+     "severity": "critical",
      "refs": [
       "U2"
      ],
      "nets": [
       "/NRST"
      ],
-     "title": "NRST pin lacks pull\u2011up resistor",
-     "why": "Without a pull\u2011up to +3.3\u202fV the reset line may float, causing unreliable MCU resets"
+     "title": "NRST pin lacks pull-up resistor",
+     "why": "The MCU reset pin will float, causing unintended resets"
     },
     {
      "source": "single",
      "severity": "major",
      "refs": [
-      "U2",
-      "U1",
-      "U3",
-      "J10",
-      "J12",
-      "J2",
-      "J3",
-      "J4",
-      "J6",
-      "J7",
-      "J8",
-      "J9",
-      "R1",
-      "R10",
-      "R11",
-      "R3",
-      "R5",
-      "R8",
-      "R9"
+      "J11",
+      "L1",
+      "R2",
+      "U3"
      ],
+     "nets": [
+      "+5V"
+     ],
+     "title": "+5V net trace width insufficient for expected 3\u202fA load",
+     "why": "Trace width of 0.5\u202fmm may overheat under the stepper and ULN2003 current"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "L1",
+      "C4"
+     ],
+     "nets": [
+      "/SW"
+     ],
+     "title": "/SW net trace width insufficient for buck switch current",
+     "why": "The switch node can carry several amperes and the 0.5\u202fmm trace may overheat"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "J12",
+      "C3"
+     ],
+     "nets": [
+      "/IN"
+     ],
+     "title": "/IN net trace width insufficient for input current",
+     "why": "Input current up to the buck converter rating may exceed the 0.5\u202fmm trace capacity"
+    },
+    {
+     "source": "single",
+     "severity": "major",
+     "refs": [],
      "nets": [
       "GND"
      ],
-     "title": "Ground net split into multiple copper islands with no vias",
-     "why": "The GND net consists of 28 isolated islands on the bottom layer, risking open ground connections and noise issues"
+     "title": "GND net split into multiple copper islands",
+     "why": "A fragmented ground plane degrades return paths and increases noise"
     },
     {
      "source": "single",
-     "severity": "major",
+     "severity": "minor",
      "refs": [
-      "U1",
-      "U2",
-      "U3",
-      "L1",
-      "R2",
-      "J11",
-      "J2",
-      "J3",
-      "J4",
-      "J7",
-      "J8"
+      "J6"
+     ],
+     "nets": [],
+     "title": "Connector J6 pin 1 left unconnected",
+     "why": "Floating connector pin may confuse users or be mistakenly used"
+    },
+    {
+     "source": "single",
+     "severity": "minor",
+     "refs": [
+      "D2"
      ],
      "nets": [
       "+5V",
-      "/IN",
-      "/SW"
+      "/VIN_LDO"
      ],
-     "title": "Trace width on high\u2011current power nets too narrow",
-     "why": "Narrowest track is 0.50\u202fmm on nets carrying up to 3\u202fA, which exceeds the current capacity of 1\u202foz copper and may cause overheating"
+     "title": "Diode D2 connects +5\u202fV to VIN_LDO",
+     "why": "Creates a potential short between the buck output and the LDO input"
     }
    ],
    "dropped": [],
@@ -950,28 +896,32 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 1,
-   "tokens_in": 3350,
-   "tokens_out": 2623,
-   "seconds": 0.0,
+   "cached_calls": 0,
+   "tokens_in": 3415,
+   "tokens_out": 3416,
+   "seconds": 9.3,
    "grade": {
     "caught": [
      {
       "defect": "ground-stranded",
-      "finding": "Ground net split into multiple copper islands with no vias",
+      "finding": "GND net split into multiple copper islands",
       "via": [
        "GND"
       ],
-      "breadth": 20
+      "breadth": 1
      }
     ],
     "missed": [],
     "other": [
-     "NRST pin lacks pull\u2011up resistor",
-     "Trace width on high\u2011current power nets too narrow"
+     "NRST pin lacks pull-up resistor",
+     "+5V net trace width insufficient for expected 3\u202fA load",
+     "/SW net trace width insufficient for buck switch current",
+     "/IN net trace width insufficient for input current",
+     "Connector J6 pin 1 left unconnected",
+     "Diode D2 connects +5\u202fV to VIN_LDO"
     ],
     "recall": 1.0,
-    "false_alarms": 2
+    "false_alarms": 6
    }
   },
   {
@@ -983,80 +933,72 @@
    "findings": [
     {
      "source": "datasheet",
-     "severity": "critical",
+     "severity": "major",
      "refs": [
-      "R2",
-      "R3",
       "S1"
      ],
      "nets": [
       "/FB",
       "+5V"
      ],
-     "title": "Buck converter feedback network sets output to ~3.3V while net is labeled +5V",
-     "why": "Incorrect resistor ratio causes the step-down converter to regulate to ~3.3\u202fV, starving the +5\u202fV rail and downstream components"
+     "title": "Feedback resistor network sets incorrect buck output voltage",
+     "why": "R2 (56.2\u202fk) and R3 (10\u202fk) on the /FB net produce a voltage far below the intended 5\u202fV output, preventing the converter from reaching the required supply level"
     },
     {
-     "source": "datasheet",
-     "severity": "major",
+     "source": "connections",
+     "severity": "critical",
      "refs": [
-      "C6",
       "U2"
      ],
      "nets": [
       "/NRST"
      ],
-     "title": "NRST pin lacks pull\u2011up resistor to +3.3\u202fV",
-     "why": "Without a pull\u2011up, the reset line may float low, preventing the MCU from starting reliably"
+     "title": "NRST pin left floating",
+     "why": "The reset input has no pull\u2011up/down, so the MCU may not reset reliably"
     },
     {
-     "source": "layout",
+     "source": "connections",
      "severity": "major",
      "refs": [
-      "C12",
-      "D2",
-      "J11",
-      "J2",
-      "J3",
-      "J4",
-      "J7",
-      "J8",
-      "L1",
-      "R2",
-      "U3"
-     ],
-     "nets": [
-      "/5V"
-     ],
-     "title": "Trace width too narrow for expected current on +5V net",
-     "why": "0.50\u202fmm width is insufficient for up to 3\u202fA load, risking overheating"
-    },
-    {
-     "source": "layout",
-     "severity": "major",
-     "refs": [
-      "C11",
-      "C13",
-      "C16",
-      "C2",
-      "C5",
-      "C8",
-      "C9",
-      "D3",
-      "FB1",
-      "J5",
-      "J6",
-      "R6",
-      "R7",
-      "SW1",
-      "U1",
       "U2"
      ],
      "nets": [
-      "+3.3V"
+      "/ECHO"
      ],
-     "title": "Trace width too narrow for expected current on +3.3V net",
-     "why": "0.30\u202fmm width is below the ~0.5\u202fmm per amp guideline for up to 1\u202fA, may cause voltage drop"
+     "title": "ECHO input left un\u2011biased",
+     "why": "The HC\u2011SR04 echo line is only connected to the MCU pin, so it can float and cause spurious readings"
+    },
+    {
+     "source": "connections",
+     "severity": "major",
+     "refs": [
+      "J5"
+     ],
+     "nets": [],
+     "title": "Connector J5 provides no ground reference",
+     "why": "The two\u2011pin header supplies +3.3\u202fV and the LDR signal but lacks a ground pin, preventing a proper reference for the sensor"
+    },
+    {
+     "source": "connections",
+     "severity": "major",
+     "refs": [
+      "J11"
+     ],
+     "nets": [],
+     "title": "Connector J11 provides no ground reference",
+     "why": "The 5\u2011pin header carries stepper driver outputs and +5\u202fV but no ground, which can leave the external stepper driver unreferenced"
+    },
+    {
+     "source": "layout",
+     "severity": "minor",
+     "refs": [
+      "U3"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor for ULN2003 far from its GND pin",
+     "why": "C16 is 17.2\u202fmm away, reducing effectiveness of high\u2011frequency decoupling"
     }
    ],
    "dropped": [],
@@ -1064,21 +1006,23 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 4,
-   "cached_calls": 4,
-   "tokens_in": 13713,
-   "tokens_out": 9223,
-   "seconds": 0.2,
+   "cached_calls": 0,
+   "tokens_in": 13960,
+   "tokens_out": 8456,
+   "seconds": 21.3,
    "grade": {
     "caught": [],
     "missed": [],
     "other": [
-     "Buck converter feedback network sets output to ~3.3V while net is labeled +5V",
-     "NRST pin lacks pull\u2011up resistor to +3.3\u202fV",
-     "Trace width too narrow for expected current on +5V net",
-     "Trace width too narrow for expected current on +3.3V net"
+     "Feedback resistor network sets incorrect buck output voltage",
+     "NRST pin left floating",
+     "ECHO input left un\u2011biased",
+     "Connector J5 provides no ground reference",
+     "Connector J11 provides no ground reference",
+     "Decoupling capacitor for ULN2003 far from its GND pin"
     ],
     "recall": null,
-    "false_alarms": 4
+    "false_alarms": 6
    }
   },
   {
@@ -1107,51 +1051,28 @@
       "S1"
      ],
      "nets": [
-      "/IN"
-     ],
-     "title": "EN pin of buck converter tied to VIN net",
-     "why": "EN should be a separate control input, not tied to the input voltage, preventing proper enable control"
-    },
-    {
-     "source": "datasheet",
-     "severity": "major",
-     "refs": [
-      "S1",
-      "C4"
-     ],
-     "nets": [
+      "/FB",
       "VBST"
      ],
-     "title": "VBST pin of buck converter lacks proper source",
-     "why": "VBST is only connected to a capacitor and not to the output or a bootstrap diode, so the high\u2011side driver cannot be powered"
-    },
-    {
-     "source": "datasheet",
-     "severity": "minor",
-     "refs": [
-      "U2"
-     ],
-     "nets": [
-      "+3.3V"
-     ],
-     "title": "VBAT pin of MCU tied to main 3.3\u202fV rail",
-     "why": "VBAT is intended for a separate battery supply; tying it to VDD may cause unintended power\u2011up behavior"
+     "title": "Feedback pin wired to VBST net instead of VFB net",
+     "why": "Buck converter receives feedback on the boost pin, preventing proper voltage regulation"
     },
     {
      "source": "connections",
-     "severity": "major",
+     "severity": "critical",
      "refs": [
-      "U2"
+      "U2",
+      "C6"
      ],
      "nets": [
       "/NRST"
      ],
-     "title": "NRST pin floating",
-     "why": "No pull\u2011up resistor, MCU reset pin may float at power\u2011up"
+     "title": "NRST pin lacks pull\u2011up resistor",
+     "why": "The reset input floats at power\u2011up, risking unintended resets"
     },
     {
      "source": "connections",
-     "severity": "minor",
+     "severity": "major",
      "refs": [
       "U2",
       "J3"
@@ -1159,106 +1080,86 @@
      "nets": [
       "/ESP_EN"
      ],
-     "title": "ESP_EN pin floating",
-     "why": "No pull resistor, input may be undefined at power\u2011up"
-    },
-    {
-     "source": "connections",
-     "severity": "minor",
-     "refs": [
-      "U2",
-      "J3"
-     ],
-     "nets": [
-      "/ESP_IO0"
-     ],
-     "title": "ESP_IO0 pin floating",
-     "why": "No pull resistor, input may be undefined at power\u2011up"
-    },
-    {
-     "source": "connections",
-     "severity": "minor",
-     "refs": [
-      "J5"
-     ],
-     "nets": [],
-     "title": "Connector J5 missing ground pin",
-     "why": "Connector provides +3.3\u202fV and signal but no ground reference"
-    },
-    {
-     "source": "connections",
-     "severity": "minor",
-     "refs": [
-      "J11"
-     ],
-     "nets": [],
-     "title": "Connector J11 missing ground pin",
-     "why": "Connector supplies +5\u202fV and driver outputs but no ground reference"
-    },
-    {
-     "source": "connections",
-     "severity": "minor",
-     "refs": [
-      "J12"
-     ],
-     "nets": [],
-     "title": "Barrel jack switch pin unconnected",
-     "why": "Switch output not connected, preventing detection of jack insertion"
+     "title": "ESP_EN net has no driver or pull\u2011up",
+     "why": "The enable line can float, causing unpredictable ESP module activation"
     },
     {
      "source": "layout",
-     "severity": "minor",
+     "severity": "major",
      "refs": [
-      "C4"
+      "D2",
+      "L1",
+      "U3"
+     ],
+     "nets": [
+      "/5V"
+     ],
+     "title": "Insufficient trace width on +5V net",
+     "why": "0.50\u202fmm trace width cannot safely carry the buck converter\u2019s up to 3\u202fA output, risking overheating and voltage drop"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "C4",
+      "L1",
+      "S1"
      ],
      "nets": [
       "/SW"
      ],
-     "title": "Decoupling capacitor C4 too far from buck SW pin",
-     "why": "3.2\u202fmm distance exceeds recommended <1\u202fmm, reducing high\u2011frequency decoupling effectiveness"
-    }
-   ],
-   "dropped": [
+     "title": "Insufficient trace width on buck switch net",
+     "why": "0.50\u202fmm trace width is too narrow for the high inductor current (~3\u202fA) causing possible overheating"
+    },
     {
-     "title": "Feedback pin of buck converter not connected to feedback node",
-     "because": "/FB is one connected piece of copper across all 3 of its pads"
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "C3",
+      "J12",
+      "S1"
+     ],
+     "nets": [
+      "/IN"
+     ],
+     "title": "Insufficient trace width on input power net",
+     "why": "0.50\u202fmm trace width on the input net cannot handle the full load current, leading to excessive temperature rise"
     }
    ],
+   "dropped": [],
    "rules": [
     "power-pin-miswired"
    ],
    "passes": 1,
    "stopped": "stop:rules-accounted-for",
    "calls": 4,
-   "cached_calls": 4,
-   "tokens_in": 14799,
-   "tokens_out": 8817,
-   "seconds": 0.2,
+   "cached_calls": 0,
+   "tokens_in": 13853,
+   "tokens_out": 7971,
+   "seconds": 18.0,
    "grade": {
     "caught": [
      {
       "defect": "vfb-vbst-swap",
-      "finding": "EN pin of buck converter tied to VIN net",
+      "finding": "Feedback pin wired to VBST net instead of VFB net",
       "via": [
-       "S1"
+       "S1",
+       "FB",
+       "VBST"
       ],
-      "breadth": 2
+      "breadth": 3
      }
     ],
     "missed": [],
     "other": [
-     "VBST pin of buck converter lacks proper source",
-     "VBAT pin of MCU tied to main 3.3\u202fV rail",
-     "NRST pin floating",
-     "ESP_EN pin floating",
-     "ESP_IO0 pin floating",
-     "Connector J5 missing ground pin",
-     "Connector J11 missing ground pin",
-     "Barrel jack switch pin unconnected",
-     "Decoupling capacitor C4 too far from buck SW pin"
+     "NRST pin lacks pull\u2011up resistor",
+     "ESP_EN net has no driver or pull\u2011up",
+     "Insufficient trace width on +5V net",
+     "Insufficient trace width on buck switch net",
+     "Insufficient trace width on input power net"
     ],
     "recall": 1.0,
-    "false_alarms": 9
+    "false_alarms": 5
    }
   },
   {
@@ -1291,46 +1192,19 @@
       "/IN"
      ],
      "title": "EN pin of TPS563208 tied to VIN net",
-     "why": "EN input shares the power input net, preventing proper enable control of the buck converter"
-    },
-    {
-     "source": "datasheet",
-     "severity": "major",
-     "refs": [
-      "U2"
-     ],
-     "nets": [
-      "/BOOT0",
-      "/SW_BOOT0"
-     ],
-     "title": "BOOT0 pin not tied to a defined level",
-     "why": "BOOT0 is only connected to resistors that have no other connection, leaving the MCU boot mode undefined"
-    },
-    {
-     "source": "datasheet",
-     "severity": "critical",
-     "refs": [
-      "S1",
-      "C4"
-     ],
-     "nets": [
-      "VBST",
-      "/SW"
-     ],
-     "title": "VBST net floating and output capacitor miswired",
-     "why": "VBST has no source and the buck output capacitor C4 is connected to VBST instead of GND, preventing proper operation of the step\u2011down converter"
+     "why": "EN control is not separate, preventing proper enable/disable of the buck converter"
     },
     {
      "source": "connections",
-     "severity": "critical",
+     "severity": "major",
      "refs": [
       "U2"
      ],
      "nets": [
       "/NRST"
      ],
-     "title": "NRST pin lacks pull\u2011up resistor",
-     "why": "NRST will float at power\u2011up, causing unreliable reset behavior"
+     "title": "NRST pin has no pull\u2011up resistor",
+     "why": "The MCU reset line floats at power\u2011up, risking unintended resets or failure to start"
     },
     {
      "source": "connections",
@@ -1345,34 +1219,72 @@
       "/O4",
       "/O5"
      ],
-     "title": "J11 connector provides only driver outputs with no ground or supply pins",
-     "why": "The connector cannot supply a reference or power, so any attached circuitry will lack a defined ground or VCC"
+     "title": "Connector J11 provides only control signals with no ground or supply pins",
+     "why": "The stepper driver signals leave the board without a reference voltage, preventing proper operation of external devices"
     },
     {
      "source": "connections",
-     "severity": "minor",
+     "severity": "major",
      "refs": [
-      "U2",
-      "J3"
+      "U2"
      ],
      "nets": [
-      "/ESP_EN"
+      "/ECHO"
      ],
-     "title": "ESP_EN input has no pull resistor",
-     "why": "The input may float at reset, potentially enabling the ESP module unintentionally"
+     "title": "ECHO input from HC\u2011SR04 lacks a defined bias",
+     "why": "The echo pin floats when the sensor is idle, causing false distance readings or missed echoes"
     },
     {
-     "source": "connections",
-     "severity": "minor",
+     "source": "layout",
+     "severity": "major",
      "refs": [
-      "U2",
-      "J3"
+      "U1",
+      "C2"
      ],
      "nets": [
-      "/ESP_IO0"
+      "+3.3V"
      ],
-     "title": "ESP_IO0 input has no pull resistor",
-     "why": "The pin can float on power\u2011up, leading to undefined boot mode for the ESP module"
+     "title": "Decoupling capacitor C2 too far from U1 VO pin",
+     "why": "Reduced high\u2011frequency bypass effectiveness for the 3.3\u202fV rail."
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "U1",
+      "C1"
+     ],
+     "nets": [
+      "/VIN_LDO"
+     ],
+     "title": "Decoupling capacitor C1 too far from U1 VI pin",
+     "why": "May impair regulator stability and increase input noise."
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "U3",
+      "C16"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor C16 too far from ULN2003 GND pin",
+     "why": "Ineffective noise suppression for the stepper driver."
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "C3"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor C3 too far from S1 GND pin",
+     "why": "May reduce filtering of the buck converter input."
     }
    ],
    "dropped": [],
@@ -1382,15 +1294,15 @@
    "passes": 1,
    "stopped": "stop:rules-accounted-for",
    "calls": 4,
-   "cached_calls": 4,
-   "tokens_in": 14725,
-   "tokens_out": 8121,
-   "seconds": 0.1,
+   "cached_calls": 0,
+   "tokens_in": 14293,
+   "tokens_out": 10767,
+   "seconds": 24.8,
    "grade": {
     "caught": [
      {
       "defect": "stepper-common-open",
-      "finding": "J11 connector provides only driver outputs with no ground or supply pins",
+      "finding": "Connector J11 provides only control signals with no ground or supply pins",
       "via": [
        "J11",
        "O5"
@@ -1401,14 +1313,15 @@
     "missed": [],
     "other": [
      "EN pin of TPS563208 tied to VIN net",
-     "BOOT0 pin not tied to a defined level",
-     "VBST net floating and output capacitor miswired",
-     "NRST pin lacks pull\u2011up resistor",
-     "ESP_EN input has no pull resistor",
-     "ESP_IO0 input has no pull resistor"
+     "NRST pin has no pull\u2011up resistor",
+     "ECHO input from HC\u2011SR04 lacks a defined bias",
+     "Decoupling capacitor C2 too far from U1 VO pin",
+     "Decoupling capacitor C1 too far from U1 VI pin",
+     "Decoupling capacitor C16 too far from ULN2003 GND pin",
+     "Decoupling capacitor C3 too far from S1 GND pin"
     ],
     "recall": 1.0,
-    "false_alarms": 6
+    "false_alarms": 7
    }
   },
   {
@@ -1432,17 +1345,16 @@
    "findings": [
     {
      "source": "datasheet",
-     "severity": "major",
+     "severity": "critical",
      "refs": [
-      "D1",
-      "J10"
+      "S1"
      ],
      "nets": [
-      "VBUS",
-      "/IN"
+      "/IN",
+      "/EN"
      ],
-     "title": "USB VBUS net tied to barrel jack diode",
-     "why": "VBUS is connected to the diode from the barrel jack, causing the USB port to be powered from the external supply and violating USB power specifications"
+     "title": "EN pin of TPS563208 tied to input voltage net",
+     "why": "EN pin is connected to the /IN net instead of a separate control net, exposing it to up to 17\u202fV and likely exceeding its rating"
     },
     {
      "source": "datasheet",
@@ -1454,51 +1366,11 @@
       "/NRST"
      ],
      "title": "NRST pin lacks pull\u2011up resistor",
-     "why": "The reset line is only connected to a capacitor and ground, so the MCU reset pin is not held high and may cause unintended resets"
-    },
-    {
-     "source": "datasheet",
-     "severity": "minor",
-     "refs": [
-      "U2",
-      "SW1"
-     ],
-     "nets": [
-      "/BOOT0",
-      "SW_BOOT0"
-     ],
-     "title": "BOOT0 pin not pulled up to VDD",
-     "why": "BOOT0 is only connected to a switch and resistor without a defined high level, leaving the boot mode undefined"
+     "why": "The reset pin is only connected to a capacitor and ground, so it has no defined high level and may stay low or float, preventing proper MCU reset operation"
     },
     {
      "source": "connections",
      "severity": "major",
-     "refs": [
-      "J4"
-     ],
-     "nets": [
-      "/SERVO_3",
-      "+5V",
-      "GND"
-     ],
-     "title": "Servo connector J4 pin order incorrect",
-     "why": "Signal, ground, power order will cause servo to receive wrong polarity"
-    },
-    {
-     "source": "connections",
-     "severity": "minor",
-     "refs": [
-      "U2"
-     ],
-     "nets": [
-      "/ECHO"
-     ],
-     "title": "Echo pin left floating",
-     "why": "No pull resistor, MCU input may float at power-up"
-    },
-    {
-     "source": "connections",
-     "severity": "minor",
      "refs": [
       "U2",
       "J3"
@@ -1506,12 +1378,12 @@
      "nets": [
       "/ESP_EN"
      ],
-     "title": "ESP_EN pin floating",
-     "why": "No pull resistor, undefined level may enable ESP unintentionally"
+     "title": "ESP_EN input left floating",
+     "why": "The MCU input has no pull resistor or driver, so its level is undefined when the ESP module is absent"
     },
     {
      "source": "connections",
-     "severity": "minor",
+     "severity": "major",
      "refs": [
       "U2",
       "J3"
@@ -1519,271 +1391,8 @@
      "nets": [
       "/ESP_IO0"
      ],
-     "title": "ESP_IO0 pin floating",
-     "why": "No pull resistor, may cause unintended boot mode"
-    },
-    {
-     "source": "connections",
-     "severity": "major",
-     "refs": [
-      "J11"
-     ],
-     "nets": [
-      "+5V",
-      "/O1",
-      "/O2",
-      "/O3",
-      "/O4"
-     ],
-     "title": "Connector J11 provides no ground",
-     "why": "External device cannot reference ground, may not operate"
-    },
-    {
-     "source": "connections",
-     "severity": "minor",
-     "refs": [
-      "J12"
-     ],
-     "nets": [
-      "unconnected-(J12-3)"
-     ],
-     "title": "Barrel jack switch detection pin left unconnected",
-     "why": "Switch detection functionality unavailable"
-    },
-    {
-     "source": "layout",
-     "severity": "minor",
-     "refs": [
-      "C11"
-     ],
-     "nets": [
-      "+3.3V"
-     ],
-     "title": "Decoupling capacitor C11 placed far from its supply pin",
-     "why": "Placement distance of 4.3\u202fmm reduces effectiveness of high\u2011frequency decoupling"
-    }
-   ],
-   "dropped": [],
-   "rules": [
-    "connector-power-order"
-   ],
-   "passes": 1,
-   "stopped": "stop:rules-accounted-for",
-   "calls": 4,
-   "cached_calls": 4,
-   "tokens_in": 14657,
-   "tokens_out": 9310,
-   "seconds": 0.2,
-   "grade": {
-    "caught": [
-     {
-      "defect": "servo-power-end-pin",
-      "finding": "Servo connector J4 pin order incorrect",
-      "via": [
-       "J4",
-       "+5V",
-       "GND"
-      ],
-      "breadth": 4
-     }
-    ],
-    "missed": [],
-    "other": [
-     "USB VBUS net tied to barrel jack diode",
-     "NRST pin lacks pull\u2011up resistor",
-     "BOOT0 pin not pulled up to VDD",
-     "Echo pin left floating",
-     "ESP_EN pin floating",
-     "ESP_IO0 pin floating",
-     "Connector J11 provides no ground",
-     "Barrel jack switch detection pin left unconnected",
-     "Decoupling capacitor C11 placed far from its supply pin"
-    ],
-    "recall": 1.0,
-    "false_alarms": 9
-   }
-  },
-  {
-   "detector": "graph",
-   "board": "ultrasonic-crossed",
-   "title": "Ultrasonic trigger and echo crossed",
-   "board_hash": "9ee2a2bf2fada762",
-   "defects": [
-    {
-     "id": "ultrasonic-crossed",
-     "title": "Ultrasonic trigger and echo crossed",
-     "refs": [
-      "J2",
-      "U2"
-     ],
-     "nets": [
-      "/TRIG",
-      "/ECHO"
-     ]
-    }
-   ],
-   "findings": [
-    {
-     "source": "datasheet",
-     "severity": "major",
-     "refs": [
-      "S1"
-     ],
-     "nets": [
-      "/IN"
-     ],
-     "title": "EN pin of buck converter tied to VIN net",
-     "why": "EN pin may see up to 17\u202fV exceeding its logic\u2011level rating, preventing proper enable control"
-    },
-    {
-     "source": "connections",
-     "severity": "major",
-     "refs": [
-      "J2"
-     ],
-     "nets": [
-      "/ECHO",
-      "/TRIG"
-     ],
-     "title": "HC\u2011SR04 header pin order swapped",
-     "why": "ECHO and TRIG signals are reversed causing incorrect operation of the ultrasonic sensor"
-    },
-    {
-     "source": "connections",
-     "severity": "major",
-     "refs": [
-      "U2"
-     ],
-     "nets": [
-      "/NRST"
-     ],
-     "title": "NRST pin has no pull\u2011up resistor",
-     "why": "Reset line may float at power\u2011up, preventing reliable MCU reset"
-    },
-    {
-     "source": "connections",
-     "severity": "minor",
-     "refs": [
-      "J5"
-     ],
-     "nets": [
-      "+3.3V",
-      "/LDR"
-     ],
-     "title": "Connector J5 provides power and signal but no ground pin",
-     "why": "External device connected to J5 lacks a reference ground"
-    },
-    {
-     "source": "connections",
-     "severity": "minor",
-     "refs": [
-      "J11"
-     ],
-     "nets": [
-      "+5V",
-      "/O1",
-      "/O2",
-      "/O3",
-      "/O4"
-     ],
-     "title": "Connector J11 supplies power and outputs but no ground pin",
-     "why": "External load cannot reference board ground, risking undefined behavior"
-    },
-    {
-     "source": "layout",
-     "severity": "minor",
-     "refs": [
-      "C8"
-     ],
-     "nets": [
-      "+3.3V",
-      "GND"
-     ],
-     "title": "Decoupling capacitor C8 placed far from its pins",
-     "why": "Distance >5\u202fmm degrades high\u2011frequency decoupling effectiveness"
-    }
-   ],
-   "dropped": [],
-   "rules": [
-    "sensor-pinout-order"
-   ],
-   "passes": 1,
-   "stopped": "stop:rules-accounted-for",
-   "calls": 4,
-   "cached_calls": 4,
-   "tokens_in": 15107,
-   "tokens_out": 10863,
-   "seconds": 0.2,
-   "grade": {
-    "caught": [
-     {
-      "defect": "ultrasonic-crossed",
-      "finding": "HC\u2011SR04 header pin order swapped",
-      "via": [
-       "J2",
-       "ECHO",
-       "TRIG"
-      ],
-      "breadth": 3
-     }
-    ],
-    "missed": [],
-    "other": [
-     "EN pin of buck converter tied to VIN net",
-     "NRST pin has no pull\u2011up resistor",
-     "Connector J5 provides power and signal but no ground pin",
-     "Connector J11 supplies power and outputs but no ground pin",
-     "Decoupling capacitor C8 placed far from its pins"
-    ],
-    "recall": 1.0,
-    "false_alarms": 5
-   }
-  },
-  {
-   "detector": "graph",
-   "board": "stepper-in4-floating",
-   "title": "Stepper input 4 pull-down moved off its net",
-   "board_hash": "0bad4e573e92f1cd",
-   "defects": [
-    {
-     "id": "stepper-in4-floating",
-     "title": "Stepper input 4 pull-down moved off its net",
-     "refs": [
-      "R11",
-      "U3"
-     ],
-     "nets": [
-      "/STEPPER_IN4",
-      "/STEPPER_IN1"
-     ]
-    }
-   ],
-   "findings": [
-    {
-     "source": "datasheet",
-     "severity": "major",
-     "refs": [
-      "S1"
-     ],
-     "nets": [
-      "/IN",
-      "EN"
-     ],
-     "title": "EN pin of TPS563208 tied to VIN net",
-     "why": "Enable pin is connected to the input voltage net instead of a separate control net, preventing proper enable/disable control of the buck converter"
-    },
-    {
-     "source": "connections",
-     "severity": "major",
-     "refs": [
-      "U2",
-      "R4"
-     ],
-     "nets": [
-      "/BOOT0"
-     ],
-     "title": "BOOT0 input left floating",
-     "why": "The BOOT0 pin has only a resistor without a defined pull-up or pull-down, so it may float at power\u2011up causing unpredictable MCU boot mode"
+     "title": "ESP_IO0 input left floating",
+     "why": "The MCU input has no pull resistor or driver, resulting in an undefined logic level at startup"
     },
     {
      "source": "connections",
@@ -1796,7 +1405,7 @@
       "/LDR"
      ],
      "title": "Connector J5 provides no ground pin",
-     "why": "J5 supplies +3.3\u202fV and a sensor signal but lacks a ground reference, preventing external circuitry from sharing a common ground"
+     "why": "The header lacks a ground connection, preventing attached sensors or modules from having a reference"
     },
     {
      "source": "connections",
@@ -1812,33 +1421,516 @@
       "/O4"
      ],
      "title": "Connector J11 provides no ground pin",
-     "why": "J11 delivers power and ULN2003 open\u2011collector outputs without a ground pin, leaving attached devices without a reference ground"
+     "why": "Outputs and power are present but no ground reference, which can cause malfunction of downstream devices"
+    },
+    {
+     "source": "connections",
+     "severity": "minor",
+     "refs": [
+      "J10"
+     ],
+     "nets": [],
+     "title": "USB connector shield not connected",
+     "why": "The shield pin is left floating, reducing EMI protection and potential chassis grounding"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "D2",
+      "L1"
+     ],
+     "nets": [
+      "+5V"
+     ],
+     "title": "+5V net trace width too narrow for 3\u202fA buck output",
+     "why": "0.50\u202fmm trace cannot carry the required current, risking overheating and voltage drop"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "J12",
+      "C3"
+     ],
+     "nets": [
+      "/IN"
+     ],
+     "title": "/IN net trace width too narrow for input current",
+     "why": "0.50\u202fmm trace is insufficient for up to 3\u202fA input current, leading to possible overheating"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "C4"
+     ],
+     "nets": [
+      "VBST"
+     ],
+     "title": "VBST net trace width too narrow for buck switch current",
+     "why": "0.50\u202fmm trace cannot safely carry the high switching current of the buck converter"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "U3"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor C16 is far from ULN2003 GND pin",
+     "why": "17.2\u202fmm distance reduces high\u2011frequency bypass effectiveness, risking noise on the stepper driver"
     }
    ],
    "dropped": [],
+   "rules": [
+    "connector-power-order"
+   ],
+   "passes": 1,
+   "stopped": "stop:rules-accounted-for",
+   "calls": 4,
+   "cached_calls": 0,
+   "tokens_in": 14106,
+   "tokens_out": 8400,
+   "seconds": 20.1,
+   "grade": {
+    "caught": [
+     {
+      "defect": "servo-power-end-pin",
+      "finding": "Connector J11 provides no ground pin",
+      "via": [
+       "+5V"
+      ],
+      "breadth": 6
+     }
+    ],
+    "missed": [],
+    "other": [
+     "EN pin of TPS563208 tied to input voltage net",
+     "NRST pin lacks pull\u2011up resistor",
+     "ESP_EN input left floating",
+     "ESP_IO0 input left floating",
+     "Connector J5 provides no ground pin",
+     "USB connector shield not connected",
+     "+5V net trace width too narrow for 3\u202fA buck output",
+     "/IN net trace width too narrow for input current",
+     "VBST net trace width too narrow for buck switch current",
+     "Decoupling capacitor C16 is far from ULN2003 GND pin"
+    ],
+    "recall": 1.0,
+    "false_alarms": 10
+   }
+  },
+  {
+   "detector": "graph",
+   "board": "ultrasonic-crossed",
+   "title": "Ultrasonic trigger and echo crossed",
+   "board_hash": "9ee2a2bf2fada762",
+   "defects": [
+    {
+     "id": "ultrasonic-crossed",
+     "title": "Ultrasonic trigger and echo crossed",
+     "refs": [
+      "J2",
+      "U2"
+     ],
+     "nets": [
+      "/TRIG",
+      "/ECHO"
+     ]
+    }
+   ],
+   "findings": [
+    {
+     "source": "datasheet",
+     "severity": "minor",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "/NRST",
+      "+3.3V"
+     ],
+     "title": "NRST pin lacks pull\u2011up resistor to VDD",
+     "why": "The reset pin is only connected to a capacitor, so without a pull\u2011up to +3.3V the MCU reset line can float and cause unreliable operation"
+    },
+    {
+     "source": "connections",
+     "severity": "major",
+     "refs": [
+      "J2"
+     ],
+     "nets": [
+      "/ECHO",
+      "/TRIG",
+      "+5V",
+      "GND"
+     ],
+     "title": "HC-SR04 connector pin order mismatch",
+     "why": "Pins are wired VCC, ECHO, TRIG, GND instead of VCC, TRIG, ECHO, GND causing incorrect sensor operation"
+    },
+    {
+     "source": "connections",
+     "severity": "minor",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "/BOOT0"
+     ],
+     "title": "BOOT0 pin floating at reset",
+     "why": "No pull resistor holds BOOT0, so MCU may enter unintended boot mode on power\u2011up"
+    },
+    {
+     "source": "connections",
+     "severity": "minor",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "/ESP_EN"
+     ],
+     "title": "ESP_EN pin floating",
+     "why": "Enable line for ESP module is not biased, causing unpredictable enable state"
+    },
+    {
+     "source": "connections",
+     "severity": "minor",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "/ESP_IO0"
+     ],
+     "title": "ESP_IO0 pin floating",
+     "why": "IO0 line for ESP module lacks a defined level, risking unintended boot mode"
+    },
+    {
+     "source": "connections",
+     "severity": "major",
+     "refs": [
+      "J5"
+     ],
+     "nets": [
+      "+3.3V",
+      "/LDR"
+     ],
+     "title": "Connector J5 provides no ground reference",
+     "why": "External LDR sensor cannot share a common ground, leading to unreliable readings"
+    },
+    {
+     "source": "connections",
+     "severity": "major",
+     "refs": [
+      "J11"
+     ],
+     "nets": [
+      "+5V",
+      "/O1",
+      "/O2",
+      "/O3",
+      "/O4"
+     ],
+     "title": "Connector J11 provides no ground or supply reference",
+     "why": "Outputs driven to external circuitry lack a return path, causing undefined behavior"
+    },
+    {
+     "source": "layout",
+     "severity": "minor",
+     "refs": [
+      "U1"
+     ],
+     "nets": [
+      "+3.3V"
+     ],
+     "title": "Decoupling capacitor C2 far from U1 VO pin",
+     "why": "Capacitor 7.4\u202fmm away reduces high\u2011frequency filtering."
+    },
+    {
+     "source": "layout",
+     "severity": "minor",
+     "refs": [
+      "U1"
+     ],
+     "nets": [
+      "/VIN_LDO"
+     ],
+     "title": "Decoupling capacitor C1 far from U1 VI pin",
+     "why": "Capacitor 8.2\u202fmm away may cause voltage droop."
+    },
+    {
+     "source": "layout",
+     "severity": "minor",
+     "refs": [
+      "U3"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor C16 far from U3 GND pin",
+     "why": "Capacitor 17.2\u202fmm away limits local decoupling."
+    },
+    {
+     "source": "layout",
+     "severity": "minor",
+     "refs": [
+      "S1"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor C3 far from S1 GND pin",
+     "why": "Capacitor 6.8\u202fmm away may affect buck stability."
+    }
+   ],
+   "dropped": [],
+   "rules": [
+    "sensor-pinout-order"
+   ],
+   "passes": 1,
+   "stopped": "stop:rules-accounted-for",
+   "calls": 4,
+   "cached_calls": 0,
+   "tokens_in": 14346,
+   "tokens_out": 10471,
+   "seconds": 26.4,
+   "grade": {
+    "caught": [
+     {
+      "defect": "ultrasonic-crossed",
+      "finding": "NRST pin lacks pull\u2011up resistor to VDD",
+      "via": [
+       "U2"
+      ],
+      "breadth": 3
+     }
+    ],
+    "missed": [],
+    "other": [
+     "HC-SR04 connector pin order mismatch",
+     "BOOT0 pin floating at reset",
+     "ESP_EN pin floating",
+     "ESP_IO0 pin floating",
+     "Connector J5 provides no ground reference",
+     "Connector J11 provides no ground or supply reference",
+     "Decoupling capacitor C2 far from U1 VO pin",
+     "Decoupling capacitor C1 far from U1 VI pin",
+     "Decoupling capacitor C16 far from U3 GND pin",
+     "Decoupling capacitor C3 far from S1 GND pin"
+    ],
+    "recall": 1.0,
+    "false_alarms": 10
+   }
+  },
+  {
+   "detector": "graph",
+   "board": "stepper-in4-floating",
+   "title": "Stepper input 4 pull-down moved off its net",
+   "board_hash": "0bad4e573e92f1cd",
+   "defects": [
+    {
+     "id": "stepper-in4-floating",
+     "title": "Stepper input 4 pull-down moved off its net",
+     "refs": [
+      "R11",
+      "U3"
+     ],
+     "nets": [
+      "/STEPPER_IN4",
+      "/STEPPER_IN1"
+     ]
+    }
+   ],
+   "findings": [
+    {
+     "source": "datasheet",
+     "severity": "major",
+     "refs": [
+      "S1"
+     ],
+     "nets": [
+      "/IN"
+     ],
+     "title": "EN pin of buck converter tied to input voltage",
+     "why": "EN cannot be controlled and is permanently enabled, preventing proper power\u2011off control"
+    },
+    {
+     "source": "datasheet",
+     "severity": "major",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "/BOOT0"
+     ],
+     "title": "BOOT0 pin not pulled to a defined level",
+     "why": "BOOT0 floats, making the MCU boot mode undefined and potentially preventing correct startup"
+    },
+    {
+     "source": "datasheet",
+     "severity": "major",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "/NRST"
+     ],
+     "title": "NRST pin lacks pull\u2011up resistor",
+     "why": "Reset pin may float, causing unintended resets or inability to reliably reset the MCU"
+    },
+    {
+     "source": "datasheet",
+     "severity": "major",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "+3.3VA"
+     ],
+     "title": "VDDA net has no power source",
+     "why": "Analog supply of the MCU is unpowered, so ADC and other analog peripherals will not operate"
+    },
+    {
+     "source": "connections",
+     "severity": "minor",
+     "refs": [
+      "J5"
+     ],
+     "nets": [],
+     "title": "Connector J5 provides +3.3\u202fV and LDR signal but no ground pin",
+     "why": "External circuitry attached to J5 cannot reference a common ground"
+    },
+    {
+     "source": "connections",
+     "severity": "minor",
+     "refs": [
+      "J12"
+     ],
+     "nets": [],
+     "title": "Barrel jack switch pin J12.3 is left unconnected",
+     "why": "The internal switch signal is not routed, preventing power\u2011presence detection"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "D2"
+     ],
+     "nets": [
+      "+5V"
+     ],
+     "title": "Power trace too narrow for 3\u202fA load",
+     "why": "0.50\u202fmm width is insufficient for the buck converter\u2019s 3\u202fA output, causing excess voltage drop and heating"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "S1"
+     ],
+     "nets": [
+      "/SW"
+     ],
+     "title": "Switch node trace too narrow for high current",
+     "why": "0.50\u202fmm width on the buck switch node cannot safely carry the 3\u202fA switching current"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "U1"
+     ],
+     "nets": [
+      "+3.3V"
+     ],
+     "title": "3.3\u202fV rail trace too narrow for load current",
+     "why": "0.30\u202fmm width on the +3.3\u202fV net cannot reliably carry the up\u2011to\u20111\u202fA current drawn by the LDO and MCU"
+    },
+    {
+     "source": "layout",
+     "severity": "minor",
+     "refs": [
+      "U3"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor far from GND pin",
+     "why": "C16 is 17.2\u202fmm away from U3 GND pin, reducing decoupling effectiveness"
+    },
+    {
+     "source": "layout",
+     "severity": "minor",
+     "refs": [
+      "S1"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor far from GND pin",
+     "why": "C3 is 6.8\u202fmm away from S1 GND pin, which may limit high\u2011frequency noise suppression"
+    },
+    {
+     "source": "layout",
+     "severity": "minor",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor far from VSSA pin",
+     "why": "C14 is 3.6\u202fmm away from U2 VSSA pin, which may degrade analog ground stability"
+    }
+   ],
+   "dropped": [
+    {
+     "title": "BOOT0 switch network not connected to BOOT0 pin",
+     "because": "/SW_BOOT0 is one connected piece of copper across all 2 of its pads"
+    }
+   ],
    "rules": [
     "floating-driver-input"
    ],
    "passes": 1,
    "stopped": "stop:rules-accounted-for",
    "calls": 4,
-   "cached_calls": 4,
-   "tokens_in": 14132,
-   "tokens_out": 6454,
-   "seconds": 0.1,
+   "cached_calls": 0,
+   "tokens_in": 14123,
+   "tokens_out": 9918,
+   "seconds": 23.5,
    "grade": {
-    "caught": [],
-    "missed": [
-     "stepper-in4-floating"
+    "caught": [
+     {
+      "defect": "stepper-in4-floating",
+      "finding": "Decoupling capacitor far from GND pin",
+      "via": [
+       "U3"
+      ],
+      "breadth": 2
+     }
     ],
+    "missed": [],
     "other": [
-     "EN pin of TPS563208 tied to VIN net",
-     "BOOT0 input left floating",
-     "Connector J5 provides no ground pin",
-     "Connector J11 provides no ground pin"
+     "EN pin of buck converter tied to input voltage",
+     "BOOT0 pin not pulled to a defined level",
+     "NRST pin lacks pull\u2011up resistor",
+     "VDDA net has no power source",
+     "Connector J5 provides +3.3\u202fV and LDR signal but no ground pin",
+     "Barrel jack switch pin J12.3 is left unconnected",
+     "Power trace too narrow for 3\u202fA load",
+     "Switch node trace too narrow for high current",
+     "3.3\u202fV rail trace too narrow for load current",
+     "Decoupling capacitor far from GND pin",
+     "Decoupling capacitor far from VSSA pin"
     ],
-    "recall": 0.0,
-    "false_alarms": 4
+    "recall": 1.0,
+    "false_alarms": 11
    }
   },
   {
@@ -1858,91 +1950,150 @@
    ],
    "findings": [
     {
-     "source": "connections",
-     "severity": "critical",
-     "refs": [
-      "U2",
-      "C6"
-     ],
-     "nets": [
-      "/NRST"
-     ],
-     "title": "NRST pin floating, no pull resistor",
-     "why": "Reset pin is high\u2011impedance at power\u2011up and can cause unintended resets"
-    },
-    {
-     "source": "layout",
-     "severity": "major",
-     "refs": [
-      "C12",
-      "D2",
-      "J11",
-      "J2",
-      "J3",
-      "J4",
-      "J7",
-      "J8",
-      "L1",
-      "R2",
-      "U3"
-     ],
-     "nets": [
-      "/5V"
-     ],
-     "title": "+5V trace width insufficient for expected current",
-     "why": "Narrowest track is 0.50\u202fmm but up to 3\u202fA may flow, requiring ~1.5\u202fmm width, risking overheating"
-    },
-    {
-     "source": "layout",
-     "severity": "minor",
-     "refs": [
-      "C5"
-     ],
-     "nets": [
-      "/5V"
-     ],
-     "title": "Decoupling capacitor C5 placed far from its associated pin",
-     "why": "Placement distance of 6.5\u202fmm exceeds typical close\u2011coupling guidelines, reducing effectiveness of decoupling"
-    },
-    {
      "source": "datasheet",
      "severity": "critical",
      "refs": [
       "S1"
      ],
      "nets": [
-      "/FB",
+      "VBST"
+     ],
+     "title": "VBST pin has no supply source",
+     "why": "The bootstrap pin of the buck converter is only connected to a capacitor and lacks a voltage source, preventing proper high\u2011side drive"
+    },
+    {
+     "source": "connections",
+     "severity": "critical",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "/NRST"
+     ],
+     "title": "NRST pin has no pull\u2011up resistor",
+     "why": "The reset input floats at power\u2011up, risking unpredictable MCU resets"
+    },
+    {
+     "source": "connections",
+     "severity": "major",
+     "refs": [
+      "J5"
+     ],
+     "nets": [
+      "+3.3V",
+      "/LDR"
+     ],
+     "title": "Connector J5 provides power and signal but no ground pin",
+     "why": "External devices attached to J5 have no reference ground, causing undefined operation"
+    },
+    {
+     "source": "connections",
+     "severity": "major",
+     "refs": [
+      "J11"
+     ],
+     "nets": [
+      "+5V",
+      "/O1",
+      "/O2",
+      "/O3",
+      "/O4"
+     ],
+     "title": "Connector J11 lacks a ground pin",
+     "why": "ULN2003 open\u2011collector outputs need a common ground reference for the driven loads"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "U3",
+      "L1",
+      "R2"
+     ],
+     "nets": [
       "+5V"
      ],
-     "title": "Buck converter feedback pin connected to +5V net",
-     "why": "VFB pin should sense output voltage via a divider to ground, but R2.1 ties it to +5V causing incorrect regulation"
+     "title": "+5V rail track width too narrow for 3\u202fA load",
+     "why": "The narrowest track is 0.50\u202fmm, but a 3\u202fA buck output requires at least ~1.5\u202fmm width, risking overheating"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "U1",
+      "U2",
+      "C2"
+     ],
+     "nets": [
+      "+3.3V"
+     ],
+     "title": "+3.3V rail track width insufficient for up to 1\u202fA load",
+     "why": "The narrowest track is 0.30\u202fmm, below the ~0.5\u202fmm needed per amp, which may cause excessive temperature rise"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "U3",
+      "C16"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "Decoupling capacitor C16 far from ULN2003 GND pin",
+     "why": "The nearest GND decoupling capacitor is 17.2\u202fmm away, which is too distant for effective high\u2011frequency noise suppression"
     },
     {
      "source": "datasheet",
-     "severity": "critical",
+     "severity": "minor",
      "refs": [
       "S1"
      ],
      "nets": [
       "/IN",
-      "VIN_LDO"
+      "/EN"
      ],
-     "title": "EN pin of buck converter tied directly to VIN net",
-     "why": "EN is an input limited to low voltage; connecting it to the barrel\u2011jack VIN (up to 17\u202fV) can exceed its rating and damage the device"
+     "title": "Enable pin EN tied to input voltage net",
+     "why": "S1.5(EN) is on the /IN net with VIN, so the converter is permanently enabled and cannot be controlled separately"
+    },
+    {
+     "source": "datasheet",
+     "severity": "minor",
+     "refs": [
+      "U2"
+     ],
+     "nets": [
+      "+3.3V",
+      "VBAT"
+     ],
+     "title": "VBAT pin of MCU connected to main 3.3\u202fV supply",
+     "why": "U2.1(VBAT) is on the +3.3V net instead of a dedicated backup supply, preventing proper battery backup operation"
     },
     {
      "source": "layout",
      "severity": "major",
      "refs": [
-      "C4",
-      "L1",
       "S1"
      ],
      "nets": [
       "/SW"
      ],
-     "title": "Buck switch node (/SW) trace width too narrow",
-     "why": "0.50\u202fmm width is insufficient for the 3\u202fA buck converter switch current, leading to possible overheating or failure"
+     "title": "Track width too narrow for buck switch current",
+     "why": "0.50\u202fmm width cannot reliably carry the buck converter\u2019s switch current (~3\u202fA)"
+    },
+    {
+     "source": "layout",
+     "severity": "major",
+     "refs": [
+      "S1",
+      "D1",
+      "D2"
+     ],
+     "nets": [
+      "/IN"
+     ],
+     "title": "Track width too narrow for input current on /IN net",
+     "why": "0.50\u202fmm width is inadequate for the expected 3\u202fA input current, risking overheating"
     }
    ],
    "dropped": [],
@@ -1952,25 +2103,30 @@
    "passes": 2,
    "stopped": "stop:passes-spent",
    "calls": 8,
-   "cached_calls": 8,
-   "tokens_in": 29815,
-   "tokens_out": 17164,
-   "seconds": 0.2,
+   "cached_calls": 0,
+   "tokens_in": 28244,
+   "tokens_out": 16032,
+   "seconds": 37.4,
    "grade": {
     "caught": [],
     "missed": [
      "unbuildable-value"
     ],
     "other": [
-     "NRST pin floating, no pull resistor",
-     "+5V trace width insufficient for expected current",
-     "Decoupling capacitor C5 placed far from its associated pin",
-     "Buck converter feedback pin connected to +5V net",
-     "EN pin of buck converter tied directly to VIN net",
-     "Buck switch node (/SW) trace width too narrow"
+     "VBST pin has no supply source",
+     "NRST pin has no pull\u2011up resistor",
+     "Connector J5 provides power and signal but no ground pin",
+     "Connector J11 lacks a ground pin",
+     "+5V rail track width too narrow for 3\u202fA load",
+     "+3.3V rail track width insufficient for up to 1\u202fA load",
+     "Decoupling capacitor C16 far from ULN2003 GND pin",
+     "Enable pin EN tied to input voltage net",
+     "VBAT pin of MCU connected to main 3.3\u202fV supply",
+     "Track width too narrow for buck switch current",
+     "Track width too narrow for input current on /IN net"
     ],
     "recall": 0.0,
-    "false_alarms": 6
+    "false_alarms": 11
    }
   },
   {
@@ -1990,43 +2146,26 @@
    ],
    "findings": [
     {
-     "source": "datasheet",
+     "source": "connections",
      "severity": "major",
      "refs": [
       "U2"
      ],
      "nets": [
-      "+3.3V",
-      "VBAT"
+      "/NRST"
      ],
-     "title": "VBAT pin tied to +3.3V rail",
-     "why": "VBAT expects a battery source; connecting it to the 3.3\u202fV rail prevents proper backup operation and may overload the pin"
-    },
-    {
-     "source": "datasheet",
-     "severity": "critical",
-     "refs": [
-      "S1"
-     ],
-     "nets": [
-      "/IN",
-      "/EN"
-     ],
-     "title": "EN pin of buck converter tied to input voltage net",
-     "why": "EN receives the VIN voltage (up to 17\u202fV) instead of a logic level, risking damage and disabling proper enable control"
+     "title": "NRST pin not pulled up",
+     "why": "Reset pin is high\u2011impedance at power\u2011up, may cause unpredictable resets"
     },
     {
      "source": "connections",
-     "severity": "major",
+     "severity": "minor",
      "refs": [
-      "U2",
-      "C6"
+      "J5"
      ],
-     "nets": [
-      "NRST"
-     ],
-     "title": "NRST pin floating (no pull-up resistor)",
-     "why": "The reset input has no pull resistor, so it may not be held in a defined state at power\u2011up, leading to unpredictable MCU resets."
+     "nets": [],
+     "title": "Connector J5 provides no ground reference",
+     "why": "External LDR sensor cannot reference board ground, may not function correctly"
     },
     {
      "source": "layout",
@@ -2036,118 +2175,65 @@
       "U2",
       "U3",
       "J10",
-      "J12",
-      "J2",
-      "J3",
-      "J4",
-      "J5",
-      "J6",
-      "J7",
-      "J8",
-      "J9",
-      "R1",
-      "R2",
-      "R3",
-      "R4",
-      "R5",
-      "R6",
-      "R7",
-      "R8",
-      "R9",
-      "R10",
-      "R11",
-      "C1",
-      "C2",
-      "C3",
-      "C4",
-      "C5",
-      "C6",
-      "C7",
-      "C8",
-      "C9",
-      "C10",
-      "C11",
-      "C12",
-      "C13",
-      "C14",
-      "C15",
-      "C16",
-      "D1",
-      "D2",
-      "D3",
-      "FB1",
-      "L1",
-      "S1",
-      "SW1"
+      "J12"
      ],
      "nets": [
       "GND"
      ],
-     "title": "Ground net split across multiple islands with no vias and pour on only one layer",
-     "why": "The ground net is fragmented (28 islands) and lacks vias, causing no electrical connection between layers and potential floating grounds"
+     "title": "Ground net not connected between layers (no vias, single-side pour)",
+     "why": "GND has 0 vias and a pour only on B.Cu, leaving the two layers electrically isolated"
     },
     {
      "source": "layout",
-     "severity": "major",
+     "severity": "minor",
      "refs": [
-      "C12",
-      "D2",
-      "J11",
-      "J2",
-      "J3",
-      "J4",
-      "J7",
-      "J8",
-      "L1",
-      "R2",
-      "U3"
+      "S1",
+      "C3"
      ],
      "nets": [
-      "+5V"
+      "GND"
      ],
-     "title": "+5V trace too narrow for expected 3\u202fA current",
-     "why": "The narrowest track width is 0.50\u202fmm, insufficient for up to 3\u202fA (requires ~1.5\u202fmm), risking overheating and voltage drop"
+     "title": "Decoupling capacitor C3 far from S1 ground pin",
+     "why": "Distance is 6.8\u202fmm, reducing effectiveness of high\u2011frequency decoupling"
     },
     {
      "source": "layout",
-     "severity": "major",
+     "severity": "minor",
      "refs": [
-      "C4",
-      "L1",
-      "S1"
+      "U1",
+      "C2"
      ],
      "nets": [
-      "/SW"
+      "+3.3V"
      ],
-     "title": "/SW trace too narrow for buck converter current",
-     "why": "The narrowest track is 0.50\u202fmm while the buck switch node carries up to 3\u202fA, which exceeds the 0.5\u202fmm per amp guideline"
+     "title": "Decoupling capacitor C2 far from U1 VO pin",
+     "why": "Distance is 7.4\u202fmm, which is excessive for a supply decoupling capacitor"
     },
     {
      "source": "layout",
-     "severity": "major",
+     "severity": "minor",
      "refs": [
-      "C3",
-      "J12",
-      "S1"
+      "U1",
+      "C1"
      ],
      "nets": [
-      "/IN"
+      "/VIN_LDO"
      ],
-     "title": "/IN trace too narrow for buck input current",
-     "why": "The narrowest track is 0.50\u202fmm but the input can source up to 3\u202fA, requiring a wider trace"
+     "title": "Decoupling capacitor C1 far from U1 VI pin",
+     "why": "Distance is 8.2\u202fmm, compromising input decoupling for the LDO"
     },
     {
      "source": "layout",
-     "severity": "major",
+     "severity": "minor",
      "refs": [
-      "C4",
-      "S1"
+      "U3",
+      "C16"
      ],
      "nets": [
-      "VBST"
+      "GND"
      ],
-     "title": "VBST trace too narrow for buck switch current",
-     "why": "The narrowest track is 0.50\u202fmm while the node carries the buck converter current (~3\u202fA), violating the width guideline"
+     "title": "Decoupling capacitor C16 far from U3 GND pin",
+     "why": "Distance is 17.2\u202fmm, far beyond typical decoupling placement guidelines"
     }
    ],
    "dropped": [],
@@ -2157,33 +2243,32 @@
    "passes": 1,
    "stopped": "stop:rules-accounted-for",
    "calls": 4,
-   "cached_calls": 4,
-   "tokens_in": 13913,
-   "tokens_out": 8483,
-   "seconds": 0.1,
+   "cached_calls": 0,
+   "tokens_in": 14187,
+   "tokens_out": 10550,
+   "seconds": 24.4,
    "grade": {
     "caught": [
      {
       "defect": "ground-stranded",
-      "finding": "Ground net split across multiple islands with no vias and pour on only one layer",
+      "finding": "Ground net not connected between layers (no vias, single-side pour)",
       "via": [
        "GND"
       ],
-      "breadth": 48
+      "breadth": 6
      }
     ],
     "missed": [],
     "other": [
-     "VBAT pin tied to +3.3V rail",
-     "EN pin of buck converter tied to input voltage net",
-     "NRST pin floating (no pull-up resistor)",
-     "+5V trace too narrow for expected 3\u202fA current",
-     "/SW trace too narrow for buck converter current",
-     "/IN trace too narrow for buck input current",
-     "VBST trace too narrow for buck switch current"
+     "NRST pin not pulled up",
+     "Connector J5 provides no ground reference",
+     "Decoupling capacitor C3 far from S1 ground pin",
+     "Decoupling capacitor C2 far from U1 VO pin",
+     "Decoupling capacitor C1 far from U1 VI pin",
+     "Decoupling capacitor C16 far from U3 GND pin"
     ],
     "recall": 1.0,
-    "false_alarms": 7
+    "false_alarms": 6
    }
   }
  ]

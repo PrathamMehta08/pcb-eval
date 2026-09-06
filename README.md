@@ -36,95 +36,122 @@ other splits them across a LangGraph pipeline of three specialists plus an
 adjudicator.
 
 `openai/gpt-oss-120b` · prompts `bab4450ceef8` · schema `234a1c9dd4ac` · corpus `c945775a879c`
+· full record in [`results/latest.json`](results/latest.json)
 
 | board | one prompt | the graph |
 |---|---|---|
-| clean (no defect) | 5 findings | 4 findings |
+| clean (no defect) | 4 findings | 6 findings |
 | `vfb-vbst-swap` | caught | caught |
-| `stepper-common-open` | **missed** | caught |
-| `servo-power-end-pin` | caught | caught |
+| `stepper-common-open` | caught | caught |
+| `servo-power-end-pin` | **missed** | caught |
 | `ultrasonic-crossed` | caught | caught |
-| `stepper-in4-floating` | caught | **missed** |
-| `unbuildable-value` | caught | **missed** |
+| `stepper-in4-floating` | caught | caught |
+| `unbuildable-value` | **missed** | **missed** |
 | `ground-stranded` | caught | caught |
-| **recall** | **6 of 7** | **5 of 7** |
-| **false alarms on the clean board** | **5** | **4** |
+| **recall** | **5 of 7** | **6 of 7** |
+| **false alarms on the clean board** | **4** | **6** |
+| calls per board | 1 | 4, or 8 when the gate loops |
 
 By the metric the plan specified — a finding matches a defect when their
-component refs or net names intersect — the single prompt wins.
+component refs or net names intersect — the graph wins on recall and loses on
+false alarms.
 
-**That number is wrong, and the interesting result is why.**
+**Both numbers are softer than they look, and that is the more useful result.**
 
 ## The metric is too generous, and here is the proof
 
 Overlap cannot tell a finding that *identified* a defect from one that merely
-*mentioned a part the defect touches*. Every match is recorded with `via`, the
-identifier the match rested on, and `breadth`, how many names the finding threw
-at the board. Read the pairs:
+*mentioned a part the defect touches*. So every match records `via`, the
+identifier it rested on, and `breadth`, how many names the finding threw at the
+board. Reading the pairs is a judgement, not a computation — here is the data so
+you can disagree with mine.
 
-**One prompt — three of its six catches are coincidences.**
+**One prompt — two of its five catches are real.**
 
-| defect | matched on | the finding that "caught" it |
-|---|---|---|
-| `vfb-vbst-swap` | `S1` | /IN trace width insufficient for barrel-jack input current |
-| `servo-power-end-pin` | `J4`, `+5V` | +5 V trace width too narrow for load *(named 11 things)* |
-| `ultrasonic-crossed` | `U2` | NRST pin lacks pull-up resistor |
-| `stepper-in4-floating` | `U3`, `/STEPPER_IN4` | Series resistor missing on stepper driver input ✅ |
-| `unbuildable-value` | `R4` | Resistor R4 has no defined value ✅ |
-| `ground-stranded` | `GND` | Ground net split into multiple copper islands with no vias ✅ |
+| defect | matched on | the finding that "caught" it | real? |
+|---|---|---|---|
+| `vfb-vbst-swap` | `S1` | Enable pin of buck converter tied to VIN net | no |
+| `stepper-common-open` | `+5V` | Buck feedback network sets output ~3.3 V | no |
+| `ultrasonic-crossed` | `U2` | NRST pin lacks pull-up resistor | no |
+| `stepper-in4-floating` | `U3`, `/STEPPER_IN4` | Missing series resistor on stepper driver input 4 | **yes** |
+| `ground-stranded` | `GND` | GND net split into multiple copper islands | **yes** |
 
-The first three are a trace-width observation that happens to name the buck, a
-power-rail observation that happens to name a rail every servo header sits on,
-and a reset-pin observation that happens to name the 48-pin MCU. None of them
-found the defect.
+**The graph — three of its six.**
 
-**The graph — four of its five catches name the defect exactly.**
+| defect | matched on | the finding that caught it | real? |
+|---|---|---|---|
+| `vfb-vbst-swap` | `S1`, `/FB`, `VBST` | **Feedback pin wired to VBST net instead of VFB net** | **yes** |
+| `stepper-common-open` | `J11`, `/O5` | Connector J11 provides only control signals with no ground or supply pins | **yes** |
+| `servo-power-end-pin` | `+5V` | Connector J11 provides no ground pin — J11, not J4 | no |
+| `ultrasonic-crossed` | `U2` | NRST pin lacks pull-up resistor to VDD | no |
+| `stepper-in4-floating` | `U3` | Decoupling capacitor far from GND pin | no |
+| `ground-stranded` | `GND` | Ground net not connected between layers (no vias, single-side pour) | **yes** |
 
-| defect | matched on | the finding that caught it |
-|---|---|---|
-| `vfb-vbst-swap` | `S1` | EN pin of buck converter tied to VIN net |
-| `stepper-common-open` | `J11`, `/O5` | J11 connector provides only driver outputs with no ground or supply pins ✅ |
-| `servo-power-end-pin` | `J4`, `+5V`, `GND` | Servo connector J4 pin order incorrect ✅ |
-| `ultrasonic-crossed` | `J2`, `/ECHO`, `/TRIG` | HC-SR04 header pin order swapped ✅ |
-| `ground-stranded` | `GND` | Ground net split across multiple islands with no vias and pour on only one layer ✅ |
-
-So the honest scoreboard is the other way round:
+So the honest scoreboard is:
 
 |  | overlap recall | catches that actually name the defect |
 |---|---|---|
-| one prompt | 6 of 7 | **3** |
-| the graph | 5 of 7 | **4** |
+| one prompt | 5 of 7 | **2** |
+| the graph | 6 of 7 | **3** |
+
+The graph's win is narrow, and the interesting part is *which* one it wins on:
+the feedback-and-bootstrap swap, named exactly — "Feedback pin wired to VBST net
+instead of VFB net". The single prompt has never produced that sentence, in
+either sweep. It is the defect that most needs the datasheet's own pin names,
+which is what the `datasheet` node exists to read.
+
+Neither detector found `unbuildable-value`, a resistor whose value is the letter
+`R`. The deterministic rule catches it in a millisecond. That is the division of
+labour the whole design argues for, and it is worth more than the recall column.
 
 **What this corpus mainly has to say is about the schema, not the model.**
 Grading exactly would need a finding to carry a machine-checkable claim — the
 kind of defect, and the specific pin or net it is about — instead of a sentence
-plus a bag of references. `{"claim": "connector-pin-order", "ref": "J4"}` can be
-scored. "Servo connector J4 pin order incorrect" can only be pattern-matched,
-and pattern-matching on refs is what produced the flattering number above.
+plus a bag of references. `{"claim": "pin-on-wrong-net", "ref": "S1", "pin": "4"}`
+can be scored. "Feedback pin wired to VBST net instead of VFB net" can only be
+pattern-matched, and pattern-matching on refs is what produced both flattering
+recall numbers above.
 
-Neither prompt was edited after the scores were seen. One harness bug was fixed
-after the first run and both detectors were re-scored: reviewers write `D2.2`
-meaning pin 2 of D2, and the adjudicator's contradiction check was reading that
-as a part that does not exist and throwing out twenty correct findings.
+### What is not being claimed
+
+Seven seeded defects is a small corpus and the sweep has been run twice. Both
+runs put the two detectors within one defect of each other and both showed the
+same pattern of coincidental matches, but one defect of difference on seven
+boards is not a result that would survive a third model or a second board.
+
+Neither prompt was edited after any score was seen; `prompt_hash` is there to
+make that checkable. Two harness bugs were fixed between the runs and everything
+was re-scored:
+
+- **The first sweep was invalid.** The distiller took a list of "focus" refs and
+  printed the geometry around them, ending with the literal word `edited` — so
+  the prompt named the part that had just been broken on a seeded board and said
+  nothing at all on the clean one. `distill()` now takes the board and nothing
+  else, and the plumbing that fed it is gone rather than merely unused.
+- Reviewers write `D2.2` meaning pin 2 of D2, and the adjudicator's
+  contradiction check read that as a part that does not exist, throwing out
+  twenty correct findings.
 
 ### What it cost
 
-One full sweep from cold: 48 model calls, 144k tokens in, 90k out, **$0.075**,
-205 seconds wall clock at two concurrent requests and a 40k-token-per-minute
-budget. Re-running is free — the disk cache is keyed on `(model, prompt)`, so
-re-scoring after a harness change costs nothing and takes four seconds.
+The full sweep: 44 model calls, 154k tokens in, 105k out, **$0.086**, 251
+seconds at two concurrent requests. Re-running is free — the disk cache is keyed
+on `(model, prompt)`, so re-scoring after a harness change costs nothing and
+takes four seconds.
 
-Every call is logged to `results/calls.jsonl` with its tokens, seconds and
-dollars. Every sweep is stamped with the prompt hash, the schema hash and the
-corpus hash, because a score that outlives the system it measured is worse than
-no score.
+Every call is logged with its tokens, seconds and dollars. Every sweep is
+stamped with the prompt hash, the schema hash and the corpus hash, because a
+score that outlives the system it measured is worse than no score.
 
 ## What a netlist cannot see
 
-The distilled board is 2,845 tokens, down from 98 KB of netlist XML and 520 KB
-of extracted JSON. The part that matters is the copper summary — per net, its
-pads, **how many separate copper islands those pads sit on**, its track length
-and narrowest width, its vias, and which layers carry a pour.
+The distilled board is 2,918 tokens at worst across the eight, down from 98 KB
+of netlist XML and 520 KB of extracted JSON. The part that matters is the copper
+summary — per net, its pads, **how many separate copper islands those pads sit
+on**, its track length and narrowest width, its vias, and which layers carry a
+pour. Alongside it goes one more measurement: how far each supply pin sits from
+the nearest capacitor on its own net, which is how the ULN2003's ground pin at
+17.2 mm becomes visible.
 
 That island count is a real measurement, not a heuristic: a union-find over
 pads, track segments, vias and filled zone polygons, with pads placed through
@@ -176,7 +203,7 @@ The scored sweep needs a Groq key in `.env` (copy `.env.example`):
 ```
 
 `tests/run.py` is the contract: one check per row of the build order, each
-asserting the thing that row claims. `place()`, the transform every view and
+asserting the thing that row claims. Ten of ten pass. `place()`, the transform every view and
 every copper check rests on, is pinned to six pad centres read out of KiCad's
 own `layer-F_Cu.svg` plot — in Python and again in JavaScript.
 
