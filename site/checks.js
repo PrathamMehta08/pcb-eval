@@ -313,12 +313,25 @@ export function boardFacts(board) {
     counts.set(key, groups.filter((g) => g.some((i) => i.kind === "pad")).length);
     pads.set(key, groups.reduce((n, g) => n + g.filter((i) => i.kind === "pad").length, 0));
   }
+  // Which nets something holds at a level, for the floating check. Held-ness
+  // belongs to the net, not the part.
+  const held = new Set();
+  for (const net of board.nets) {
+    const key = net.name.replace(/^\//, "").toUpperCase();
+    if (isRail(net.name) || isGround(net.name)) {
+      held.add(key);
+      continue;
+    }
+    if (net.nodes.some((n) => reachesRail(board, n, net.name))) held.add(key);
+  }
+
   return {
     refs: new Set(board.components.map((c) => c.ref.toUpperCase())),
     nets: new Set(board.nets.map((n) => n.name.replace(/^\//, "").toUpperCase())),
     islands: counts,
     pads,
     values: new Map(board.components.map((c) => [c.ref.toUpperCase(), c.value || ""])),
+    held,
   };
 }
 
@@ -355,4 +368,76 @@ export function contradiction(item, facts) {
     }
   }
   return "";
+}
+
+/**
+ * The critic: deterministic, and typed by the finding's own `claim`.
+ *
+ * The mirror of graph/verify.py. It is deliberately not the same function as
+ * `contradiction` above — that one is the grader, frozen so the sweep compares
+ * architectures on a ruler neither of them can move. This one does the work.
+ *
+ * Kinds nothing can settle from a netlist and copper are passed through rather
+ * than guessed at: `pin_floating` needs to know what firmware configures a pin
+ * as, and `trace_undersized` needs a current the extraction does not carry.
+ */
+const CHECKABLE = new Set([
+  "net_split",
+  "value_unbuildable",
+  "missing_component",
+  "decoupling_distance",
+  // Held-ness is a property of the net, never of the part: a part is not
+  // floating as a whole, only one of its pins is. Judging it on the part marks
+  // every powered IC as held and deletes the real floating-input defect.
+  "pin_floating",
+]);
+
+const squeeze = (s) => s.split(/\s+/).join(" ").toUpperCase();
+const normNet = (s) => String(s ?? "").trim().toUpperCase().replace(/^\//, "");
+
+export function verify(item, facts, distilled) {
+  const claim = String(item.claim || "").trim();
+  const subject = String(item.subject || "").trim();
+
+  // A subject that is not on this board: the finding is about a different one.
+  if (subject) {
+    const s = normNet(subject);
+    if (!facts.refs.has(s) && !facts.nets.has(s)) {
+      return `its subject ${subject} is not on this board`;
+    }
+  }
+
+  // Evidence that is not in the board data. A reviewer that cannot copy a line
+  // supporting its claim did not read one.
+  const evidence = String(item.evidence || "").trim();
+  if (evidence && evidence.length > 12 && !squeeze(distilled).includes(squeeze(evidence))) {
+    return `its evidence is not a line in the board data: "${evidence.slice(0, 60)}"`;
+  }
+
+  if (CHECKABLE.has(claim)) {
+    const s = normNet(subject);
+    if (claim === "net_split") {
+      for (const name of [s, ...(item.nets || []).map(normNet)]) {
+        if (facts.islands.get(name) === 1 && (facts.pads.get(name) || 0) >= 2) {
+          return `${name} is one connected piece of copper across all ${facts.pads.get(name)} of its pads`;
+        }
+      }
+    } else if (claim === "value_unbuildable") {
+      for (const ref of [s, ...(item.refs || []).map(normNet)]) {
+        const value = facts.values.get(ref) || "";
+        if (/\d/.test(value)) return `${ref} has the value ${value}, which can be ordered`;
+      }
+    } else if (claim === "missing_component") {
+      if (facts.refs.has(s)) return `${s} is on this board`;
+    } else if (claim === "pin_floating") {
+      for (const name of [s, ...(item.nets || []).map(normNet)]) {
+        if (facts.held.has(name)) {
+          return `${name} is held at a level by a resistor or inductor to a rail`;
+        }
+      }
+    }
+  }
+
+  // The frozen floor, so an untyped finding is still held to the old checks.
+  return contradiction(item, facts);
 }

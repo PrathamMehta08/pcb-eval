@@ -542,6 +542,80 @@ def check_graph(c: Check) -> None:
     # what makes the loop go round, and what makes it stop.
     run_node(c, "graph_browser.mjs")
 
+    # The typed claim, its subject, and the critic that reads them.
+    from graph.state import normalise_subject
+    from graph.verify import facts, verify
+    from harness.distill import distill
+
+    # Reviewers name pins, not parts: `S1.4`, `S1.6(VBST)`, `U3.8`. Read
+    # literally those are parts that do not exist, and the critic throws the
+    # finding out for a formatting habit. That is not hypothetical - it deleted
+    # the real defect on vfb-vbst-swap the first time this field was wired up.
+    for raw, want in (
+        ("S1.4", "S1"),
+        ("S1.6(VBST)", "S1"),
+        ("U2.44(BOOT0,in)", "U2"),
+        ("S1", "S1"),
+        ("/FB", "/FB"),
+        ("GND", "GND"),
+        # A real net name that contains brackets has to survive whole.
+        ("unconnected-(J12-Pad3)", "unconnected-(J12-Pad3)"),
+    ):
+        c.equals(normalise_subject(raw), want, f"subject {raw!r} normalises to {want!r}")
+
+    clean = load_board()
+    f = facts(clean)
+    distilled = distill(clean)
+    real_line = "R3,R4,R8,R9,R10,R11 10k 0402"
+    c.that(real_line in distilled, "the evidence line used below is really in the board")
+
+    for label, item, refuted in (
+        (
+            "a net the copper says is one piece",
+            {"claim": "net_split", "subject": "GND", "nets": ["GND"], "title": "GND is in pieces", "evidence": real_line},
+            True,
+        ),
+        (
+            "a value that can be ordered",
+            {"claim": "value_unbuildable", "subject": "R4", "refs": ["R4"], "title": "R4 has no value", "evidence": real_line},
+            True,
+        ),
+        (
+            "a part claimed missing that is present",
+            {"claim": "missing_component", "subject": "U2", "refs": ["U2"], "title": "U2 absent", "evidence": real_line},
+            True,
+        ),
+        (
+            "a subject that is not on the board",
+            {"claim": "pin_miswired", "subject": "U9", "refs": ["U9"], "title": "U9 miswired", "evidence": real_line},
+            True,
+        ),
+        (
+            "evidence that appears nowhere in the board",
+            {"claim": "pin_miswired", "subject": "S1", "refs": ["S1"], "title": "FB on VBST", "evidence": "S1 pin 4 measured 3.7 V under load"},
+            True,
+        ),
+        (
+            "a kind no measurement settles",
+            {"claim": "pin_floating", "subject": "U3", "refs": ["U3"], "title": "U3.4 floats", "evidence": real_line},
+            False,
+        ),
+    ):
+        why = verify(item, f, distilled)
+        c.that(bool(why) == refuted, f"the critic {'refutes' if refuted else 'passes'} {label}: {why or 'passed'}")
+
+    # The critic and the grader must not be the same function. If a stricter
+    # critic also graded, a new architecture would beat the old one by moving
+    # the ruler rather than by finding more.
+    import graph.verify as V
+    from harness.grade import refuted as graded
+    c.that(V.verify is not V.contradiction, "the critic is not the grader")
+    c.that(callable(graded), "grading still goes through harness.grade.refuted")
+
+    # Manufacturability is measured, and silent on a board that is buildable.
+    from harness.dfm import run_dfm
+    c.equals(len(run_dfm(clean)), 0, "no DFM finding on the board as manufactured")
+
     from graph.build import MAX_PASSES, run_graph
     from harness.ops import apply_edits
     from harness.presets import BY_ID, edits_for

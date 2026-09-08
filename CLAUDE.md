@@ -55,6 +55,31 @@ KiCad. The bare layout was the routing view with the copper hidden. `tests.run 7
 asserts `renderSchematic` and `data-view="layout"` are *absent*, so they cannot
 creep back unnoticed.
 
+**The critic and the grader are different functions, and must stay that way.**
+`graph/verify.py::verify()` is the critic the graph runs. `contradiction()` in
+`graph/nodes/adjudicate.py` is what `harness/grade.py::refuted()` scores every
+detector with, so it is the measuring stick and is frozen. Collapse them and a
+stricter critic beats the previous architecture by moving the ruler instead of
+by finding more — the sweep would report an improvement that is an artefact.
+`key()` in `graph/state.py` is frozen for the same reason: it is the grading and
+gate identity.
+
+**A finding's `subject` is a part, not a pin.** Reviewers write `S1.4`,
+`S1.6(VBST)` and `U3.8`. Taken literally those are parts that are not on the
+board, and the critic deletes the finding for a formatting habit — it deleted the
+real defect on `vfb-vbst-swap` the first time this field was wired up, which is
+the same bug as harness bug #2 in the README, in a field that did not exist when
+that one was fixed. Everything goes through `normalise_subject()`, and a net
+name that legitimately contains brackets — `unconnected-(J12-Pad3)` — has to
+survive it whole.
+
+**DFM rules skip `np_thru_hole` pads.** A non-plated hole has the pad and the
+drill the same size by definition, so annular ring does not apply. The first
+version flagged six: four mounting holes and two switch alignment pegs. Nothing
+in the seeded corpus is a DFM defect, so these rules are unscored by the eval and
+deliberately stay out of the gate — looping the reviewers over a finding geometry
+already settled just spends calls.
+
 **The page's review prompt is generated.** `tools/sync_prompt.py` writes it into
 `site/review.js` from `graph/prompts.py`; the builder refuses a stale copy.
 

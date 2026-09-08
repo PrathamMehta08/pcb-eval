@@ -1,6 +1,6 @@
 """The review graph: ingest, three reviewers, adjudicate, gate.
 
-    ingest        deterministic: distil, run the rule checks
+    ingest        deterministic: distil, rule checks, manufacturability checks
       |
     datasheet     pin function against what the pin is wired to
       |
@@ -8,7 +8,10 @@
       |
     layout        placement and routing: width against current, ground return
       |
-    adjudicate    dedupe, then let the board refute what it can
+    adjudicate    dedupe on typed claims, then the critic
+      |
+    critic        deterministic, inside adjudicate: per claim kind, the board
+                  answers. No model reviews another model's work.
       |
     gate          back to datasheet, or stop
 
@@ -30,6 +33,7 @@ from graph.nodes.adjudicate import make_adjudicate
 from graph.nodes.review import reviewers
 from graph.state import ReviewState, key
 from harness.checks import run_checks
+from harness.dfm import run_dfm
 from harness.distill import distill
 
 MAX_PASSES = 2
@@ -41,6 +45,10 @@ def ingest(state: ReviewState) -> dict:
     return {
         "distilled": distill(board),
         "deterministic": run_checks(board),
+        # The fourth evaluator, and the only one that is pure geometry. It does
+        # not feed the gate: a DFM finding is already complete, and looping the
+        # reviewers over it would spend calls to be told what the board said.
+        "dfm": run_dfm(board),
         "findings": [],
         "confirmed": [],
         "calls": [],

@@ -25,7 +25,7 @@
 // that, so what this can show is the answer as it streams, what each node
 // proposed, and every decision the graph made — but not the private thinking.
 
-import { boardFacts, contradiction, runChecks } from "./checks.js";
+import { boardFacts, runChecks, verify } from "./checks.js";
 import { approxTokens, distill } from "./distill.js";
 import {
   adjudicatePrompt,
@@ -60,6 +60,9 @@ function normalise(items, source) {
       title,
       why: String(item.why || "").trim(),
       fix: String(item.fix || "").trim(),
+      claim: String(item.claim || "").trim(),
+      subject: normaliseSubject(item.subject),
+      evidence: String(item.evidence || "").trim(),
     });
   }
   return out;
@@ -67,6 +70,24 @@ function normalise(items, source) {
 
 const DESIGNATOR = /^[A-Za-z]{1,3}\d+$/;
 const NODE_REF = /^([A-Za-z]{1,3}\d+)\.[A-Za-z0-9_]+/;
+
+/**
+ * `S1.4` and `S1.6(VBST)` mean pin 4 and pin 6 of S1. The subject is S1.
+ *
+ * The same habit `tidy` exists for. Left literal, a subject of `S1.4` is a part
+ * that is not on the board, and the critic throws the finding out for a
+ * formatting convention — which is exactly what it did to the real defect on
+ * `vfb-vbst-swap` the first time this field was wired up.
+ */
+function normaliseSubject(value) {
+  const text = String(value ?? "").trim();
+  const node = NODE_REF.exec(text);
+  if (node) return node[1];
+  const head = text.split("(")[0].trim();
+  // Never inside a net name like `unconnected-(J12-Pad3)`, which is real.
+  if (DESIGNATOR.test(head)) return head;
+  return text.replace(/,$/, "");
+}
 
 /**
  * Sort the model's refs and nets into refs and nets.
@@ -110,12 +131,26 @@ function key(item) {
 
 const overlaps = (a, b) => [...a].some((v) => b.has(v));
 
-/** Same refs and nets, same defect. Keep the most severe wording. */
+/** The typed identity: the same kind of defect about the same thing. */
+function claimKey(item) {
+  const claim = String(item.claim || "").trim().toLowerCase();
+  const subject = String(item.subject || "").trim().toUpperCase().replace(/^\//, "");
+  if (!claim || !subject || claim === "other") return "";
+  return `c:${claim}|${subject}`;
+}
+
+/**
+ * Same defect, same subject: one finding. Keep the most severe wording.
+ *
+ * Two reviewers finding one defect used to collide only if their ref and net
+ * lists happened to intersect, so one problem in two wordings survived as two.
+ */
 function dedupe(items) {
   const rank = { critical: 0, major: 1, minor: 2 };
   const best = new Map();
   for (const item of items) {
-    const k = [...key(item)].sort().join("|") || `t:${item.title.toLowerCase()}`;
+    const k =
+      claimKey(item) || [...key(item)].sort().join("|") || `t:${item.title.toLowerCase()}`;
     const current = best.get(k);
     if (!current || (rank[item.severity] ?? 3) < (rank[current.severity] ?? 3)) {
       best.set(k, item);
@@ -263,7 +298,7 @@ export async function runGraph(board, ask, { onStep, signal } = {}) {
     confirmed = [];
     dropped = [];
     for (const item of kept) {
-      const why = contradiction(item, facts);
+      const why = verify(item, facts, distilled);
       if (why) dropped.push({ ...item, dropped: why });
       else confirmed.push(item);
     }

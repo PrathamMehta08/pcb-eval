@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 
 from graph.prompts import SYSTEM, adjudicate_prompt
-from graph.state import ReviewState, key
+from graph.state import ReviewState, claim_key, key
 from harness.checks import islands
 
 #: Words that make a finding a claim about connectivity that copper can settle.
@@ -77,14 +77,21 @@ def contradiction(item: dict, facts: dict) -> str:
 
 
 def dedupe(items: list[dict]) -> list[dict]:
-    """Same refs and nets, same defect. Keep the most severe wording."""
+    """Same defect, same subject: one finding. Keep the most severe wording.
+
+    Identity is the typed claim where the reviewer gave one - a kind plus the
+    thing it is about. Two reviewers finding the same defect used to collide
+    only if their ref and net lists happened to intersect, so one problem in
+    two wordings survived as two findings and both went to the merge call.
+    Untyped findings fall back to the old ref-and-net identity.
+    """
     rank = {"critical": 0, "major": 1, "minor": 2}
-    best: dict[frozenset, dict] = {}
-    order: list[frozenset] = []
+    best: dict = {}
+    order: list = []
     for item in items:
-        k = key(item)
-        if not k:
-            k = frozenset([f"t:{item['title'].lower()}"])
+        k = claim_key(item)
+        if k is None:
+            k = key(item) or frozenset([f"t:{item['title'].lower()}"])
         if k not in best:
             best[k] = item
             order.append(k)
@@ -105,7 +112,12 @@ def _numbered(items: list[dict]) -> str:
 def make_adjudicate(client):
     def adjudicate(state: ReviewState) -> dict:
         findings = dedupe(state.get("findings", []))
-        facts = board_facts(state["board"])
+        # The critic's facts, not the grader's: `verify` measures things
+        # `board_facts` does not carry, and `board_facts` stays frozen because
+        # it is what `harness/grade.py` scores every detector with.
+        from graph.verify import facts as critic_facts
+
+        facts = critic_facts(state["board"])
         calls = list(state.get("calls", []))
 
         # A model merges wordings; that is a language judgement, not a measurement.
@@ -123,14 +135,22 @@ def make_adjudicate(client):
                     kept = [findings[i] for i in picks]
             calls.append({**info, "node": "adjudicate", "found": len(kept)})
 
-        # Then the board refutes what it can. No model is consulted here.
+        # Then the critic, which asks the board rather than a model. Imported
+        # here because graph.verify imports `contradiction` from this module.
+        from graph.verify import verify
+
         confirmed, dropped = [], []
         for item in kept:
-            reason = contradiction(item, facts)
+            reason = verify(item, facts, state["distilled"])
             if reason:
                 dropped.append({**item, "dropped": reason})
             else:
                 confirmed.append(item)
+
+        # Manufacturability findings are measurements, so they join the report
+        # already verified. They are appended rather than adjudicated: there is
+        # nothing for a model to merge, and nothing for the critic to doubt.
+        confirmed = confirmed + list(state.get("dfm", []))
 
         return {
             "findings": findings,

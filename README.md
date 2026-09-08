@@ -34,162 +34,148 @@ it, let alone find it.
 ## Results
 
 Eight boards - one clean, seven seeded. Two detectors, given the same distilled
-board, the same output schema, the same model and the same temperature, and
-pointed at the same data sections in the same words. The only thing that varies
-is that one asks a single flat prompt to do all three jobs, and the other splits
-them across a LangGraph pipeline of three specialists plus an adjudicator.
+board, the same model and the same temperature, and pointed at the same data
+sections in the same words. One asks a single flat prompt to do all three jobs;
+the other splits them across a LangGraph pipeline of three specialists, a merge,
+and a deterministic critic.
 
 **The whole sweep is run five times.** One run of this cannot be told apart from
-noise: an earlier single-run sweep put both detectors at 7 of 7, and that number
-turns out to be the top of the range rather than the typical case. Everything
-below is a median over five trials with the full range beside it, and the
-per-trial numbers are in the record.
+noise: an earlier single-run sweep put both detectors at 7 of 7, and that turned
+out to be the top of the range rather than the typical case. Everything below is
+a median over five trials with the full range beside it.
 
-`openai/gpt-oss-120b` - 5 trials - 216 calls - prompts `b6cfd574e684` - schema
+`openai/gpt-oss-120b` - 5 trials - 225 calls - prompts `96d80c10c401` - schema
 `cd607fa645b8` - corpus `d2138f0ecf8d` - full record in
 [`results/latest.json`](results/latest.json)
 
 | per trial, median (min-max) | one prompt | the graph |
 |---|---|---|
-| defects matched, of 7 | 5 (5-7) | **6 (6-7)** |
-| findings on the clean board | 7 (5-8) | **5 (2-7)** |
-| unmatched findings on the seeded boards | **41 (37-43)** | 48 (39-55) |
-| findings the copper refutes - proposed | 2 (1-2) | 3 (3-7) |
+| defects matched, of 7 | 5 (5-7) | **6 (4-6)** |
+| findings on the clean board | 7 (5-8) | **3 (2-5)** |
+| unmatched findings on the seeded boards | 41 (37-43) | **17 (14-27)** |
+| findings the copper refutes - proposed | 2 (1-2) | **1 (0-3)** |
 | **findings the copper refutes - reported** | **2 (1-2)** | **0 (0-0)** |
 | model calls per board | 1 | 4, or 8 when the gate loops |
 
-Over all five trials: 28 of 35 for the single prompt, 32 of 35 for the graph.
+Over five trials: 28 of 35 for the single prompt, 27 of 35 for the graph.
 
 ### The row that needs no opinion
 
 A finding that says a net is split into copper islands, on a net whose copper is
 one connected piece, is wrong - and the geometry says so. `harness/grade.py`
-measures that over both what each detector *proposed* and what it *reported*, so
-the graph earns nothing merely for having a stage the baseline lacks.
+measures that over both what each detector *proposed* and what it *reported*.
 
 **The graph reported zero board-refuted claims in all five trials. The single
-prompt reported one or two in every trial, and never zero.** The ranges do not
-overlap, and the graph's variance on it is nil.
+prompt reported one or two in every trial, and never zero.** It is the only
+comparison whose ranges do not overlap, and the graph's variance on it is nil.
 
-That is the design in one number, and it is the only number here that needs no
-judgement: LLM nodes propose, deterministic checks dispose, and the referee is
-the board. It is also the only comparison in this table whose ranges separate
-cleanly - every other row overlaps.
+That is the design in one number: LLM nodes propose, deterministic checks
+dispose, and the referee is the board.
 
-### Where recall comes from, and why 7 of 7 was not real
+### What the architecture change actually bought
+
+The graph was rebuilt once the repeated sweep made its weaknesses measurable.
+Three versions, same corpus, same ruler:
+
+| over 5 trials | caught /35 | clean-board | seeded noise | refuted reported | noise per catch |
+|---|---|---|---|---|---|
+| graph v1 - untyped findings | **32** | 25 | 241 | 0 | 8.3 |
+| graph v2 - typed claims | 31 | 36 | 194 | 0 | 7.4 |
+| **graph v3 - current** | 27 | **17** | **97** | **0** | **4.2** |
+| one prompt | 28 | 33 | 202 | 8 | 8.4 |
+
+**v3 beats the single prompt on every column.** Against v1 it is a trade, not an
+improvement: 57% less noise for five fewer catches, and the honest summary is
+that the corpus is too small to say whether that trade is worth taking.
+
+Everything v3 lost is one defect. `stepper-in4-floating` went 4 of 5 to 0 of 5,
+and every other defect moved by at most one. That defect is caught **5 times out
+of 5 by a five-line deterministic rule**, for no tokens - which is the argument
+this project keeps arriving at from different directions.
+
+### A vocabulary is a prompt
+
+The single most useful result here came from a one-word change.
+
+v2 offered the reviewers a closed list of claim kinds, one of which was
+`trace_undersized`. On the clean board they filed **twelve** of them - a third of
+everything they reported there - each resting on a current figure the board data
+does not contain and the critic therefore could not refute. There is no supply
+current anywhere in the extraction; the model supplied it.
+
+Removing that one word from the list, and stating plainly that the data carries
+no current, load, power, temperature or timing figure, took clean-board findings
+from 36 to 17 and seeded noise from 194 to 97.
+
+Offering a category is an instruction to fill it. This is the same failure as a
+report template with a mandatory section per topic, and it is worth knowing
+before adding thermal, signal-integrity or power-integrity stages to a system
+whose input carries no current, no stackup and no ambient.
+
+### Where recall comes from
 
 Per defect, out of five trials:
 
-| defect | one prompt | the graph |
-|---|---|---|
-| `vfb-vbst-swap` | 5 | 5 |
-| `servo-power-end-pin` | 5 | 5 |
-| `ultrasonic-crossed` | 5 | 5 |
-| `ground-stranded` | 5 | 5 |
-| `stepper-common-open` | 4 | 5 |
-| `stepper-in4-floating` | 3 | 4 |
-| `unbuildable-value` | **1** | **3** |
+| defect | v1 | v2 | **v3** | one prompt |
+|---|---|---|---|---|
+| `vfb-vbst-swap` | 5 | 5 | 5 | 5 |
+| `servo-power-end-pin` | 5 | 5 | 5 | 5 |
+| `ultrasonic-crossed` | 5 | 5 | 5 | 5 |
+| `stepper-common-open` | 5 | 5 | 5 | 4 |
+| `ground-stranded` | 5 | 5 | 4 | 5 |
+| `unbuildable-value` | 3 | 4 | 3 | **1** |
+| `stepper-in4-floating` | 4 | 2 | **0** | 3 |
 
-Four of the seven are caught every time by both, and the comparison lives
-entirely in the other three. `unbuildable-value` - a resistor whose value reads
-`R`, which no assembler can buy - is the noisiest: the single prompt found it
-once in five. The earlier single-run sweep caught it with both detectors, which
-was a one-in-five draw for the baseline written up as though it were the norm.
-
-The deterministic rule in `harness/checks.py` catches it five times out of five,
-for no tokens, which is the argument the whole project is making.
+Five of the seven are near-saturated for everything. The comparison lives in the
+last two, and both of those are caught 5 of 5 by a deterministic rule.
 
 ### The matching rule is generous, and one detector exploits it
 
-A finding matches a defect when their component refs or net names intersect.
-That cannot tell a finding that *identified* a defect from one that merely
-*named a part the defect touches*, so every match records `breadth`: how many
+A finding matches a defect when their component refs or net names intersect,
+which cannot tell a finding that *identified* a defect from one that merely
+*named a part the defect touches*. So every match records `breadth`: how many
 refs and nets the finding threw at the board.
 
-| breadth of a matched finding | one prompt | the graph |
+| breadth of a matched finding | one prompt | graph v3 |
 |---|---|---|
-| median | 2 | 4 |
-| mean | 8.46 | 4.09 |
-| 90th percentile | 37 | 6 |
-| largest | **50** | **8** |
+| median | 2 | 3 |
+| mean | 8.46 | **3.44** |
+| largest | **50** | **6** |
 | share naming 10 or more | **14%** | **0%** |
 
-The single prompt's matches are bimodal. Just over half name two things or
-fewer, which is genuinely specific - and 14% name ten or more, one of them
-naming **50 refs and nets on a board with 53 components**. A finding that names
-most of the board intersects any defect you like. The graph never does this: its
-widest match names eight.
-
-Discounting matches above a breadth cutoff, out of 35:
-
-| a match may name at most | one prompt | the graph |
-|---|---|---|
-| no limit | 28 | 32 |
-| 20 | 24 | 32 |
-| 10 | 24 | 32 |
-| 6 | 23 | 31 |
-| 4 | 18 | 19 |
-| 2 | **15** | **6** |
-
-**This is the honest shape of the result, including where it turns over.** From
-a cutoff of 6 to 20 the graph leads by eight or nine and the lead is flat,
-because that band removes the single prompt's scattergun matches and touches
-almost none of the graph's. Below 4 the gap closes, and at 2 it reverses - the
-graph habitually names about four things (the part, the pin, the net, the
-connector at the other end) where the single prompt sometimes names exactly one.
-
-So *more specific* is the wrong word for what the graph is. The right one is
-*bounded*: it never buys a match by naming half the board, and the baseline does
-that in one match out of seven.
+The single prompt's matches are bimodal: half name two things or fewer, and 14%
+name ten or more - one of them naming **50 refs and nets on a board with 53
+components**. A finding that names most of the board intersects any defect you
+like. The graph never does this; its widest match names six.
 
 ### What is not being claimed
 
-- **It is one board.** Seven defects seeded into a single design - one MCU, one
-  power tree, one connector set - so they are not independent draws. Five trials
-  fix the noise in the measurement, not the narrowness of the corpus.
+- **It is one board.** Seven defects seeded into a single design, so they are not
+  independent draws. Five trials fix the noise in the measurement, not the
+  narrowness of the corpus.
+- **Recall here is the model's recall, not the system's.** The deterministic
+  rules always run, and on every one of the graph's eight misses the rule for
+  that defect fired. That is equally true of the other detectors, so it does not
+  make one better than another - it means recall over these seven defects is
+  worth less than it looks, for all of them.
 - **Only the automatic metrics are repeated.** Whether a finding *reads* as
-  identifying its defect is a judgement, and judging 5 x 14 pairs by hand would
-  be a worse number than not having one. `breadth` is the automatic proxy, and
-  the table above is what it says.
-- **The graph is noisier on the seeded boards**, 48 unmatched findings to 41,
-  and produces more findings overall - 298 to 263 across the sweep. It is
-  quieter only where it counts: the clean board, and refuted claims.
+  identifying its defect is a judgement; `breadth` is the automatic proxy.
 - **The clean-board count conflates two things.** Some of what both raise there
   is true and simply not a seeded defect: the ULN2003's decoupling capacitor
-  really is 17.2 mm from its ground pin.
-- **The refutation check is narrow.** It catches a part or net that does not
-  exist and a disconnection claim the copper denies. It says nothing about a
-  trace-width claim, which is much of what both detectors report.
+  really is 17.2 mm from its ground pin, and `NRST` really has no external pull.
+- **The refutation check is narrow.** It settles existence, split nets, values,
+  and whether a net is held at a level. It says nothing about a thermal or
+  current claim, which is why those are not solicited.
 - **Neither prompt was edited after a score was seen.** `prompt_hash` makes that
   checkable, and `tests/run.py` step 13 fails when the committed result predates
-  the current prompts - which has caught a stale result three times.
-
-Harness bugs fixed between runs, everything re-scored each time:
-
-1. **The first sweep was invalid.** The distiller took a list of "focus" refs and
-   printed the geometry around them, ending with the literal word `edited` - so
-   the prompt named the part that had just been broken on a seeded board and
-   said nothing on the clean one. `distill()` now takes the board and nothing
-   else.
-2. Reviewers write `D2.2` meaning pin 2 of D2, and the adjudicator's
-   contradiction check read that as a part that does not exist, throwing out
-   twenty correct findings.
-3. The layout node was told to read a `PLACEMENT` section the distiller had
-   stopped emitting. Both prompts now name the same sections in the same words.
-4. The schema gained a `fix` field, so a finding says what to do about itself
-   rather than only what is wrong.
-5. **Every sweep before this one was a single run**, and the headline it produced
-   - 7 of 7 against 7 of 7 - was the best draw of five for both detectors.
-   `--trials` folds a trial index into the cache key, so a repeat asks the model
-   again instead of replaying the answer it gave last time.
+  the current prompts.
 
 ### What it cost
 
-Five trials from cold: 216 model calls, 764k tokens in, 529k out, **$0.43**,
-18 minutes at two concurrent requests. That figure comes from the per-call token
+Five trials from cold: 225 model calls, 836k tokens in, 413k out, **$0.3729**,
+13 minutes at two concurrent requests. That figure comes from the per-call token
 counts rather than from what the run happened to spend, so it does not shrink to
-zero when the cache is warm. Re-scoring after a harness change is free; changing
-a prompt invalidates all of it.
+zero when the cache is warm.
 
 Every call is logged with its tokens, seconds and dollars. Every sweep carries
 the prompt hash, the schema hash and the corpus hash, because a score that

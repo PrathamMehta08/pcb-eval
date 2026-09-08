@@ -1194,12 +1194,25 @@ function boardFacts(board) {
     counts.set(key, groups.filter((g) => g.some((i) => i.kind === "pad")).length);
     pads.set(key, groups.reduce((n, g) => n + g.filter((i) => i.kind === "pad").length, 0));
   }
+  // Which nets something holds at a level, for the floating check. Held-ness
+  // belongs to the net, not the part.
+  const held = new Set();
+  for (const net of board.nets) {
+    const key = net.name.replace(/^\//, "").toUpperCase();
+    if (isRail(net.name) || isGround(net.name)) {
+      held.add(key);
+      continue;
+    }
+    if (net.nodes.some((n) => reachesRail(board, n, net.name))) held.add(key);
+  }
+
   return {
     refs: new Set(board.components.map((c) => c.ref.toUpperCase())),
     nets: new Set(board.nets.map((n) => n.name.replace(/^\//, "").toUpperCase())),
     islands: counts,
     pads,
     values: new Map(board.components.map((c) => [c.ref.toUpperCase(), c.value || ""])),
+    held,
   };
 }
 
@@ -1236,6 +1249,78 @@ function contradiction(item, facts) {
     }
   }
   return "";
+}
+
+/**
+ * The critic: deterministic, and typed by the finding's own `claim`.
+ *
+ * The mirror of graph/verify.py. It is deliberately not the same function as
+ * `contradiction` above — that one is the grader, frozen so the sweep compares
+ * architectures on a ruler neither of them can move. This one does the work.
+ *
+ * Kinds nothing can settle from a netlist and copper are passed through rather
+ * than guessed at: `pin_floating` needs to know what firmware configures a pin
+ * as, and `trace_undersized` needs a current the extraction does not carry.
+ */
+const CHECKABLE = new Set([
+  "net_split",
+  "value_unbuildable",
+  "missing_component",
+  "decoupling_distance",
+  // Held-ness is a property of the net, never of the part: a part is not
+  // floating as a whole, only one of its pins is. Judging it on the part marks
+  // every powered IC as held and deletes the real floating-input defect.
+  "pin_floating",
+]);
+
+const squeeze = (s) => s.split(/\s+/).join(" ").toUpperCase();
+const normNet = (s) => String(s ?? "").trim().toUpperCase().replace(/^\//, "");
+
+function verify(item, facts, distilled) {
+  const claim = String(item.claim || "").trim();
+  const subject = String(item.subject || "").trim();
+
+  // A subject that is not on this board: the finding is about a different one.
+  if (subject) {
+    const s = normNet(subject);
+    if (!facts.refs.has(s) && !facts.nets.has(s)) {
+      return `its subject ${subject} is not on this board`;
+    }
+  }
+
+  // Evidence that is not in the board data. A reviewer that cannot copy a line
+  // supporting its claim did not read one.
+  const evidence = String(item.evidence || "").trim();
+  if (evidence && evidence.length > 12 && !squeeze(distilled).includes(squeeze(evidence))) {
+    return `its evidence is not a line in the board data: "${evidence.slice(0, 60)}"`;
+  }
+
+  if (CHECKABLE.has(claim)) {
+    const s = normNet(subject);
+    if (claim === "net_split") {
+      for (const name of [s, ...(item.nets || []).map(normNet)]) {
+        if (facts.islands.get(name) === 1 && (facts.pads.get(name) || 0) >= 2) {
+          return `${name} is one connected piece of copper across all ${facts.pads.get(name)} of its pads`;
+        }
+      }
+    } else if (claim === "value_unbuildable") {
+      for (const ref of [s, ...(item.refs || []).map(normNet)]) {
+        const value = facts.values.get(ref) || "";
+        if (/\d/.test(value)) return `${ref} has the value ${value}, which can be ordered`;
+      }
+    } else if (claim === "missing_component") {
+      if (facts.refs.has(s)) return `${s} is on this board`;
+    } else if (claim === "pin_floating") {
+      for (const name of [s, ...(item.nets || []).map(normNet)]) {
+        if (facts.held.has(name)) {
+          return `${name} is held at a level by a resistor or inductor to a rail`;
+        }
+      }
+    }
+  }
+
+  // The frozen floor, so an untyped finding is still held to the old checks.
+  return contradiction(item, facts);
 }
 
 // ===== site/ops.js ====================================================
@@ -3215,6 +3300,9 @@ function normalise(items, source) {
       title,
       why: String(item.why || "").trim(),
       fix: String(item.fix || "").trim(),
+      claim: String(item.claim || "").trim(),
+      subject: normaliseSubject(item.subject),
+      evidence: String(item.evidence || "").trim(),
     });
   }
   return out;
@@ -3222,6 +3310,24 @@ function normalise(items, source) {
 
 const DESIGNATOR = /^[A-Za-z]{1,3}\d+$/;
 const NODE_REF = /^([A-Za-z]{1,3}\d+)\.[A-Za-z0-9_]+/;
+
+/**
+ * `S1.4` and `S1.6(VBST)` mean pin 4 and pin 6 of S1. The subject is S1.
+ *
+ * The same habit `tidy` exists for. Left literal, a subject of `S1.4` is a part
+ * that is not on the board, and the critic throws the finding out for a
+ * formatting convention — which is exactly what it did to the real defect on
+ * `vfb-vbst-swap` the first time this field was wired up.
+ */
+function normaliseSubject(value) {
+  const text = String(value ?? "").trim();
+  const node = NODE_REF.exec(text);
+  if (node) return node[1];
+  const head = text.split("(")[0].trim();
+  // Never inside a net name like `unconnected-(J12-Pad3)`, which is real.
+  if (DESIGNATOR.test(head)) return head;
+  return text.replace(/,$/, "");
+}
 
 /**
  * Sort the model's refs and nets into refs and nets.
@@ -3265,12 +3371,26 @@ function key(item) {
 
 const overlaps = (a, b) => [...a].some((v) => b.has(v));
 
-/** Same refs and nets, same defect. Keep the most severe wording. */
+/** The typed identity: the same kind of defect about the same thing. */
+function claimKey(item) {
+  const claim = String(item.claim || "").trim().toLowerCase();
+  const subject = String(item.subject || "").trim().toUpperCase().replace(/^\//, "");
+  if (!claim || !subject || claim === "other") return "";
+  return `c:${claim}|${subject}`;
+}
+
+/**
+ * Same defect, same subject: one finding. Keep the most severe wording.
+ *
+ * Two reviewers finding one defect used to collide only if their ref and net
+ * lists happened to intersect, so one problem in two wordings survived as two.
+ */
 function dedupe(items) {
   const rank = { critical: 0, major: 1, minor: 2 };
   const best = new Map();
   for (const item of items) {
-    const k = [...key(item)].sort().join("|") || `t:${item.title.toLowerCase()}`;
+    const k =
+      claimKey(item) || [...key(item)].sort().join("|") || `t:${item.title.toLowerCase()}`;
     const current = best.get(k);
     if (!current || (rank[item.severity] ?? 3) < (rank[current.severity] ?? 3)) {
       best.set(k, item);
@@ -3418,7 +3538,7 @@ async function runGraph(board, ask, { onStep, signal } = {}) {
     confirmed = [];
     dropped = [];
     for (const item of kept) {
-      const why = contradiction(item, facts);
+      const why = verify(item, facts, distilled);
       if (why) dropped.push({ ...item, dropped: why });
       else confirmed.push(item);
     }
@@ -3557,10 +3677,39 @@ const DATASHEET_PROMPT = [
   "Report only defects in your area. Do not comment on layout, copper, trace",
   "widths or placement \u2014 another reviewer has those.",
   "",
+  "Every finding must carry three extra fields, and a finding without them is",
+  "discarded unread:",
+  "",
+  "- `claim`: the kind of defect, from the list in the schema. Pick the one that",
+  "  fits; use \"other\" only when none does.",
+  "- `subject`: the one ref or net the finding is actually about. Not a list. If",
+  "  you cannot name a single subject, you are describing more than one finding.",
+  "- `evidence`: one line copied exactly from the board data above \u2014 the line that",
+  "  makes the claim true. Copy it character for character. Do not paraphrase it,",
+  "  and do not write a line that is not there.",
+  "",
+  "Name only what the finding needs. Listing extra refs and nets does not make a",
+  "finding stronger; it makes it unfalsifiable, and unfalsifiable findings are",
+  "thrown out.",
+  "",
+  "What the board data does not contain: any current, load, power, temperature or",
+  "timing figure. There is no supply current for any rail, no duty cycle, no",
+  "ambient, and no stackup beyond the layer count. A finding that depends on one of",
+  "those depends on a number you would have to supply yourself, and supplying it is",
+  "inventing evidence. Do not report trace width, current capacity, heating or",
+  "power dissipation. Report what the netlist, the copper geometry and the pin",
+  "functions can settle.",
+  "",
   "Use the exact ref and net strings from the board so findings can be matched to",
   "the design. Reply with JSON only, in exactly this shape:",
   "",
   "{\"findings\": [{",
+  "  \"claim\": one of \"pin_miswired\" | \"pinout_order\" | \"connector_incomplete\" |",
+  "           \"pin_floating\" | \"value_unbuildable\" | \"net_split\" |",
+  "           \"decoupling_distance\" | \"missing_component\" |",
+  "           \"manufacturability\" | \"other\",",
+  "  \"subject\": \"S1\" or \"/FB\" \u2014 the one ref or net this finding is about,",
+  "  \"evidence\": \"a line copied exactly from the board data above\",",
   "  \"severity\": \"critical\" | \"major\" | \"minor\",",
   "  \"refs\": [\"S1\"],",
   "  \"nets\": [\"/FB\", \"VBST\"],",
@@ -3597,10 +3746,39 @@ const CONNECTIONS_PROMPT = [
   "Report only defects in your area. Do not comment on layout, copper, trace",
   "widths or placement \u2014 another reviewer has those.",
   "",
+  "Every finding must carry three extra fields, and a finding without them is",
+  "discarded unread:",
+  "",
+  "- `claim`: the kind of defect, from the list in the schema. Pick the one that",
+  "  fits; use \"other\" only when none does.",
+  "- `subject`: the one ref or net the finding is actually about. Not a list. If",
+  "  you cannot name a single subject, you are describing more than one finding.",
+  "- `evidence`: one line copied exactly from the board data above \u2014 the line that",
+  "  makes the claim true. Copy it character for character. Do not paraphrase it,",
+  "  and do not write a line that is not there.",
+  "",
+  "Name only what the finding needs. Listing extra refs and nets does not make a",
+  "finding stronger; it makes it unfalsifiable, and unfalsifiable findings are",
+  "thrown out.",
+  "",
+  "What the board data does not contain: any current, load, power, temperature or",
+  "timing figure. There is no supply current for any rail, no duty cycle, no",
+  "ambient, and no stackup beyond the layer count. A finding that depends on one of",
+  "those depends on a number you would have to supply yourself, and supplying it is",
+  "inventing evidence. Do not report trace width, current capacity, heating or",
+  "power dissipation. Report what the netlist, the copper geometry and the pin",
+  "functions can settle.",
+  "",
   "Use the exact ref and net strings from the board so findings can be matched to",
   "the design. Reply with JSON only, in exactly this shape:",
   "",
   "{\"findings\": [{",
+  "  \"claim\": one of \"pin_miswired\" | \"pinout_order\" | \"connector_incomplete\" |",
+  "           \"pin_floating\" | \"value_unbuildable\" | \"net_split\" |",
+  "           \"decoupling_distance\" | \"missing_component\" |",
+  "           \"manufacturability\" | \"other\",",
+  "  \"subject\": \"S1\" or \"/FB\" \u2014 the one ref or net this finding is about,",
+  "  \"evidence\": \"a line copied exactly from the board data above\",",
   "  \"severity\": \"critical\" | \"major\" | \"minor\",",
   "  \"refs\": [\"S1\"],",
   "  \"nets\": [\"/FB\", \"VBST\"],",
@@ -3640,10 +3818,39 @@ const LAYOUT_PROMPT = [
   "Report only defects in your area. Do not comment on schematic connectivity, pin",
   "functions or part values \u2014 another reviewer has those.",
   "",
+  "Every finding must carry three extra fields, and a finding without them is",
+  "discarded unread:",
+  "",
+  "- `claim`: the kind of defect, from the list in the schema. Pick the one that",
+  "  fits; use \"other\" only when none does.",
+  "- `subject`: the one ref or net the finding is actually about. Not a list. If",
+  "  you cannot name a single subject, you are describing more than one finding.",
+  "- `evidence`: one line copied exactly from the board data above \u2014 the line that",
+  "  makes the claim true. Copy it character for character. Do not paraphrase it,",
+  "  and do not write a line that is not there.",
+  "",
+  "Name only what the finding needs. Listing extra refs and nets does not make a",
+  "finding stronger; it makes it unfalsifiable, and unfalsifiable findings are",
+  "thrown out.",
+  "",
+  "What the board data does not contain: any current, load, power, temperature or",
+  "timing figure. There is no supply current for any rail, no duty cycle, no",
+  "ambient, and no stackup beyond the layer count. A finding that depends on one of",
+  "those depends on a number you would have to supply yourself, and supplying it is",
+  "inventing evidence. Do not report trace width, current capacity, heating or",
+  "power dissipation. Report what the netlist, the copper geometry and the pin",
+  "functions can settle.",
+  "",
   "Use the exact ref and net strings from the board so findings can be matched to",
   "the design. Reply with JSON only, in exactly this shape:",
   "",
   "{\"findings\": [{",
+  "  \"claim\": one of \"pin_miswired\" | \"pinout_order\" | \"connector_incomplete\" |",
+  "           \"pin_floating\" | \"value_unbuildable\" | \"net_split\" |",
+  "           \"decoupling_distance\" | \"missing_component\" |",
+  "           \"manufacturability\" | \"other\",",
+  "  \"subject\": \"S1\" or \"/FB\" \u2014 the one ref or net this finding is about,",
+  "  \"evidence\": \"a line copied exactly from the board data above\",",
   "  \"severity\": \"critical\" | \"major\" | \"minor\",",
   "  \"refs\": [\"S1\"],",
   "  \"nets\": [\"/FB\", \"VBST\"],",

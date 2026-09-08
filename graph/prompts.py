@@ -21,10 +21,83 @@ SCHEMA = """{"findings": [{
   "fix": "one sentence naming the change that would correct it"
 }]}"""
 
+#: The graph's schema. Three fields the single prompt does not ask for, and each
+#: one exists to convert a judgement into something a machine can check:
+#:
+#:   claim     one of a closed vocabulary, so two reviewers describing the same
+#:             defect collide on identity rather than on wording, and so the
+#:             verifier knows which measurement settles it;
+#:   subject   the single ref or net the finding is really about, as against the
+#:             pile of names a finding throws when it is hedging;
+#:   evidence  a line copied from the board, so a claim that rests on nothing in
+#:             the data can be dropped without asking a model's opinion.
+#:
+#: This is the architecture change. The old schema could only be checked for
+#: existence and for two hard-coded phrasings; this one can be checked per kind.
+#: A vocabulary is a prompt. The first version of this list offered
+#: `trace_undersized`, and on the clean board the reviewers filed twelve of them
+#: - a quarter of everything they reported there - each resting on a current
+#: figure the board data does not contain and the critic therefore could not
+#: refute. Offering a category is an instruction to go and fill it, which is the
+#: same failure as a report template with a section per topic. So a kind earns
+#: its place here only if something can settle it.
+CLAIM_KINDS = (
+    "pin_miswired",
+    "pinout_order",
+    "connector_incomplete",
+    "pin_floating",
+    "value_unbuildable",
+    "net_split",
+    "decoupling_distance",
+    "missing_component",
+    "manufacturability",
+    "other",
+)
+
+GRAPH_SCHEMA = """{"findings": [{
+  "claim": one of "pin_miswired" | "pinout_order" | "connector_incomplete" |
+           "pin_floating" | "value_unbuildable" | "net_split" |
+           "decoupling_distance" | "missing_component" |
+           "manufacturability" | "other",
+  "subject": "S1" or "/FB" — the one ref or net this finding is about,
+  "evidence": "a line copied exactly from the board data above",
+  "severity": "critical" | "major" | "minor",
+  "refs": ["S1"],
+  "nets": ["/FB", "VBST"],
+  "problem": "one line naming the defect",
+  "why": "one sentence on the consequence",
+  "fix": "one sentence naming the change that would correct it"
+}]}"""
+
 SYSTEM = """You review printed circuit boards before they are manufactured. You
 report only what the data supports. An empty findings list is the correct answer
 for a board with no defects in your area, and inventing a defect is worse than
 missing one. You always reply with JSON only, no prose around it."""
+
+#: Appended to each reviewer's job. The single prompt never sees it.
+CLAIM_RULES = """
+Every finding must carry three extra fields, and a finding without them is
+discarded unread:
+
+- `claim`: the kind of defect, from the list in the schema. Pick the one that
+  fits; use "other" only when none does.
+- `subject`: the one ref or net the finding is actually about. Not a list. If
+  you cannot name a single subject, you are describing more than one finding.
+- `evidence`: one line copied exactly from the board data above — the line that
+  makes the claim true. Copy it character for character. Do not paraphrase it,
+  and do not write a line that is not there.
+
+Name only what the finding needs. Listing extra refs and nets does not make a
+finding stronger; it makes it unfalsifiable, and unfalsifiable findings are
+thrown out.
+
+What the board data does not contain: any current, load, power, temperature or
+timing figure. There is no supply current for any rail, no duty cycle, no
+ambient, and no stackup beyond the layer count. A finding that depends on one of
+those depends on a number you would have to supply yourself, and supplying it is
+inventing evidence. Do not report trace width, current capacity, heating or
+power dissipation. Report what the netlist, the copper geometry and the pin
+functions can settle."""
 
 BOARD_CONTEXT = """The board is a two-layer STM32F103 controller for a pill
 dispenser: a TPS563208 buck converter from a barrel jack, an AMS1117-3.3 LDO,
@@ -48,10 +121,15 @@ Here is the board.
 BOARD_SLOT = "<<<BOARD>>>"
 
 
-def _build(job: str, distilled: str) -> str:
+def _build(job: str, distilled: str, schema: str = SCHEMA) -> str:
     return f"{BOARD_CONTEXT}\n\n{job.strip()}\n" + _TAIL.format(
-        schema=SCHEMA, distilled=distilled
+        schema=schema, distilled=distilled
     )
+
+
+def _node(job: str, distilled: str) -> str:
+    """A reviewer's prompt: its job, the claim rules, and the graph schema."""
+    return _build(job.strip() + "\n" + CLAIM_RULES, distilled, GRAPH_SCHEMA)
 
 
 DATASHEET_JOB = """Your area is what each pin is for, against what it is wired to.
@@ -147,15 +225,15 @@ guess at."""
 
 
 def datasheet_prompt(distilled: str) -> str:
-    return _build(DATASHEET_JOB, distilled)
+    return _node(DATASHEET_JOB, distilled)
 
 
 def connections_prompt(distilled: str) -> str:
-    return _build(CONNECTIONS_JOB, distilled)
+    return _node(CONNECTIONS_JOB, distilled)
 
 
 def layout_prompt(distilled: str) -> str:
-    return _build(LAYOUT_JOB, distilled)
+    return _node(LAYOUT_JOB, distilled)
 
 
 def single_prompt(distilled: str) -> str:
@@ -188,6 +266,8 @@ def prompt_hash() -> str:
             SYSTEM,
             BOARD_CONTEXT,
             SCHEMA,
+            GRAPH_SCHEMA,
+            CLAIM_RULES,
             _TAIL,
             DATASHEET_JOB,
             CONNECTIONS_JOB,
