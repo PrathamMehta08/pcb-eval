@@ -20,6 +20,9 @@ class ReviewState(TypedDict, total=False):
     #: Manufacturability findings, also measured. Reported, but kept out of the
     #: gate: they are complete as they stand, so there is nothing to chase.
     dfm: list[dict]
+    #: Findings a datasheet settles, from harness/datasheet_checks.py. Also
+    #: measured, and also reported rather than chased.
+    datasheet: list[dict]
     #: Everything every LLM node has proposed, across every pass.
     findings: list[dict]
     #: What survived adjudication: deduped, and with contradictions removed.

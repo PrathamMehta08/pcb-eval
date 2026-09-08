@@ -150,7 +150,7 @@ def make_adjudicate(client):
         # Manufacturability findings are measurements, so they join the report
         # already verified. They are appended rather than adjudicated: there is
         # nothing for a model to merge, and nothing for the critic to doubt.
-        confirmed = confirmed + list(state.get("dfm", []))
+        confirmed = confirmed + list(state.get("dfm", [])) + list(state.get("datasheet", []))
 
         return {
             "findings": findings,

@@ -136,6 +136,32 @@ def corpus_hash(board_hashes: list[str]) -> str:
     return hashlib.sha256("|".join(sorted(board_hashes)).encode("utf-8")).hexdigest()[:12]
 
 
+def pipeline_hash() -> str:
+    """Which detectors ran, so a score cannot outlive the pipeline either.
+
+    `prompt_hash` catches a changed prompt and `corpus_hash` a changed board,
+    but adding a whole evaluator moved none of them - the research agent went in
+    and every hash stayed identical while the graph's output changed. A sweep
+    that silently stops describing the system is the exact failure the other two
+    hashes exist to prevent, so the deterministic side gets one too.
+    """
+    from graph.prompts import CLAIM_KINDS
+    from harness.checks import RULES
+    from harness.datasheet_checks import DATASHEET_RULES
+    from harness.dfm import DFM_RULES
+
+    blob = json.dumps(
+        {
+            "rules": sorted(name for name, _ in RULES),
+            "dfm": sorted(fn.__name__ for fn in DFM_RULES),
+            "datasheet": sorted(fn.__name__ for fn in DATASHEET_RULES),
+            "claims": sorted(CLAIM_KINDS),
+        },
+        sort_keys=True,
+    )
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:12]
+
+
 def schema_hash() -> str:
     """The finding shape plus the operation signatures the corpus was built from."""
     from graph.prompts import SCHEMA

@@ -30,7 +30,7 @@ from console import utf8  # noqa: E402
 from baseline.single_prompt import review_once  # noqa: E402
 from graph.build import run_graph  # noqa: E402
 from graph.prompts import prompt_hash  # noqa: E402
-from harness.grade import corpus_hash, grade, refuted, schema_hash, totals  # noqa: E402
+from harness.grade import corpus_hash, grade, pipeline_hash, refuted, schema_hash, totals  # noqa: E402
 from harness.llm import PRICE_IN, PRICE_OUT, Client  # noqa: E402
 from harness.ops import apply_edits, board_hash  # noqa: E402
 from harness.presets import PRESETS, edits_for  # noqa: E402
@@ -302,6 +302,7 @@ def main() -> int:
         "cost": cost,
         "prompt_hash": prompt_hash(),
         "schema_hash": schema_hash(),
+        "pipeline_hash": pipeline_hash(),
         # The corpus is the eight boards. It is deduplicated because scoring
         # them twice, or ten times, does not make it a different corpus.
         "corpus_hash": corpus_hash(sorted({r["board_hash"] for r in rows})),

@@ -33,7 +33,9 @@ from graph.nodes.adjudicate import make_adjudicate
 from graph.nodes.review import reviewers
 from graph.state import ReviewState, key
 from harness.checks import run_checks
+from harness.datasheet_checks import run_datasheet_checks
 from harness.dfm import run_dfm
+from harness.research import brief
 from harness.distill import distill
 
 MAX_PASSES = 2
@@ -49,6 +51,10 @@ def ingest(state: ReviewState) -> dict:
         # not feed the gate: a DFM finding is already complete, and looping the
         # reviewers over it would spend calls to be told what the board said.
         "dfm": run_dfm(board),
+        # The research agent, reading from its on-disk cache. Offline on
+        # purpose: a scored sweep must not depend on a vendor CDN being up.
+        # Populate the cache with `python -m harness.research`.
+        "datasheet": run_datasheet_checks(board, brief(board, offline=True)),
         "findings": [],
         "confirmed": [],
         "calls": [],

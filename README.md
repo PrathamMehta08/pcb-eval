@@ -257,6 +257,13 @@ Steps 1 through 11 need no API key at all.
 .venv/Scripts/python.exe tools/build_site.py   # dist/pcb-eval.html
 ```
 
+The research agent reads the datasheet URLs the schematic already carries, and
+needs the network once. Everything after that runs from its cache:
+
+```bash
+.venv/Scripts/python.exe -m harness.research   # fetch, cache, extract
+```
+
 The scored sweep needs a Groq key in `.env` (copy `.env.example`):
 
 ```bash

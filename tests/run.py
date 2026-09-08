@@ -680,7 +680,7 @@ def check_graph(c: Check) -> None:
 @step(13, "harness/run.py leaves a result stamped with all three hashes")
 def check_sweep(c: Check) -> None:
     from graph.prompts import prompt_hash
-    from harness.grade import corpus_hash, schema_hash
+    from harness.grade import corpus_hash, pipeline_hash, schema_hash
     from harness.run import corpus
     from harness.ops import board_hash
 
@@ -693,6 +693,12 @@ def check_sweep(c: Check) -> None:
         c.that(bool(result.get(key)), f"the result carries a {key}")
     c.equals(result["prompt_hash"], prompt_hash(), "prompt hash is current (prompts changed since the sweep?)")
     c.equals(result["schema_hash"], schema_hash(), "schema hash is current")
+    c.equals(
+        result.get("pipeline_hash"),
+        pipeline_hash(),
+        "pipeline hash is current (an evaluator was added or removed since the sweep; "
+        "rerun: python -m harness.run --trials 5 --tpm 40000 --concurrency 2)",
+    )
 
     cases = corpus()
     c.equals(len(cases), 8, "eight boards: one clean and seven seeded")
