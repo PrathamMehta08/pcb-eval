@@ -140,11 +140,30 @@ def main() -> int:
             }
         )
 
+    # Boards that are not presets, for rules no seeded defect happens to trip.
+    # A rule the fixture never fires is a rule whose two copies are compared
+    # only on their silence, which is no comparison at all.
+    EXTRA = [
+        {
+            # Reported from the page: the buck's input pin dropped onto a servo
+            # signal. Every rule stayed silent because `power-pin-miswired`
+            # needs the pin's library name to match a net name, and this pin is
+            # `VIN_3` against a net called `/IN`.
+            "id": "extra:power-pin-on-signal-net",
+            "edits": [_edit("move_pin", ref="S1", pin="3", to_net="/SERVO_2")],
+        }
+    ]
+
     # The rules run in the page too, so the browser copy answers to this.
     rules = []
-    for preset in [None] + PRESETS:
+    for preset in [None] + PRESETS + EXTRA:
         work = json.loads(json.dumps(board))
-        edits = [] if preset is None else edits_for(preset, work)
+        if preset is None:
+            edits = []
+        elif "edits" in preset:
+            edits = preset["edits"]
+        else:
+            edits = edits_for(preset, work)
         apply_edits(work, edits)
         found = run_checks(work)
         rules.append(

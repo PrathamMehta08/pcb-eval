@@ -284,12 +284,58 @@ function netIsland(board) {
   return out;
 }
 
+/**
+ * A supply pin must not share a net with an MCU port.
+ *
+ * `powerPinMiswired` only fires when the designer named a net after the pin, so
+ * it is blind whenever they did not: this board's buck takes its input on a pin
+ * the library calls `VIN_3`, and the net is called `/IN`. Move that pin onto a
+ * servo signal and every rule stayed silent, the gate saw nothing to chase, and
+ * the review stopped after one pass.
+ *
+ * Electrical type is the signal it uses instead, and the netlist always carries
+ * it: a `power_in` pin sharing copper with a `bidirectional` MCU port is not a
+ * choice anyone makes. Quiet on the board as manufactured, where none of the
+ * six nets carrying a supply pin also carries a GPIO.
+ */
+function powerPinOnSignalNet(board) {
+  const out = [];
+  for (const net of board.nets) {
+    const supplies = net.nodes.filter((n) => baseType(n.type) === "power_in");
+    const ports = net.nodes.filter((n) => baseType(n.type) === "bidirectional");
+    if (!supplies.length || !ports.length) continue;
+    const supply = supplies[0];
+    const port = ports[0];
+    out.push(
+      finding(
+        "power-pin-on-signal-net",
+        `${supply.ref} pin ${supply.pin} is a supply pin sharing ${net.name} ` +
+          `with the MCU port ${port.ref}.${port.pin}`,
+        `${net.name} carries both a power input and a general-purpose pin. ` +
+          "Either the port is being asked to source a rail, or the rail is " +
+          "backfeeding the port through its protection diode. Neither part " +
+          "survives that for long.",
+        {
+          refs: [...new Set([supply.ref, port.ref])].sort(),
+          nets: [net.name],
+          severity: "critical",
+          fix:
+            `Return ${supply.ref} pin ${supply.pin} to its supply net and leave ` +
+            `${net.name} to the signal.`,
+        }
+      )
+    );
+  }
+  return out;
+}
+
 const RULES = [
   powerPinMiswired,
   connectorNoReference,
   connectorPowerOrder,
   sensorPinoutOrder,
   floatingDriverInput,
+  powerPinOnSignalNet,
   unbuildableValue,
   netIsland,
 ];

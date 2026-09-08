@@ -361,6 +361,52 @@ def check_floating_driver_input(board: dict) -> list[dict]:
     return out
 
 
+@rule("power-pin-on-signal-net", "critical")
+def check_power_pin_on_signal_net(board: dict) -> list[dict]:
+    """A supply pin must not share a net with an MCU port.
+
+    `power-pin-miswired` only fires when the designer named a net after the pin,
+    so it is blind whenever they did not: this board's buck takes its input on a
+    pin the library calls `VIN_3`, and the net is called `/IN`. Move that pin
+    onto a servo signal and every rule stayed silent, the gate saw nothing to
+    chase, and the review stopped after one pass. That gap is what this closes.
+
+    The signal it uses is electrical type rather than naming, which the netlist
+    always carries: a `power_in` pin sharing copper with a `bidirectional` MCU
+    port is not a design choice anyone makes. The port drives a rail, or the
+    rail backfeeds the port, and one of the two parts dies.
+
+    Quiet on the board as manufactured: of its six nets carrying a supply pin -
+    +3.3V, +3.3VA, /IN, /VIN_LDO, GND, VBST - not one also carries a GPIO. It is
+    passives, regulator outputs and other supply pins all the way down.
+    """
+    out = []
+    for net in board["nets"]:
+        supplies = [n for n in net["nodes"] if base_type(n.get("type", "")) == "power_in"]
+        ports = [n for n in net["nodes"] if base_type(n.get("type", "")) == "bidirectional"]
+        if not supplies or not ports:
+            continue
+        supply = supplies[0]
+        port = ports[0]
+        out.append(
+            finding(
+                "power-pin-on-signal-net",
+                f"{supply['ref']} pin {supply['pin']} is a supply pin sharing {net['name']} "
+                f"with the MCU port {port['ref']}.{port['pin']}",
+                f"{net['name']} carries both a power input and a general-purpose pin. "
+                "Either the port is being asked to source a rail, or the rail is "
+                "backfeeding the port through its protection diode. Neither part "
+                "survives that for long.",
+                refs=sorted({supply["ref"], port["ref"]}),
+                nets=[net["name"]],
+                severity="critical",
+                fix=f"Return {supply['ref']} pin {supply['pin']} to its supply net and "
+                f"leave {net['name']} to the signal.",
+            )
+        )
+    return out
+
+
 @rule("unbuildable-value", "major")
 def check_unbuildable_value(board: dict) -> list[dict]:
     """A resistor, capacitor or inductor needs a magnitude, or it cannot be bought.

@@ -461,6 +461,31 @@
      "Y1"
     ]
    ]
+  },
+  {
+   "id": "extra:power-pin-on-signal-net",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "S1",
+      "pin": "3",
+      "to_net": "/SERVO_2"
+     }
+    }
+   ],
+   "rules": [
+    "power-pin-on-signal-net"
+   ],
+   "titles": [
+    "S1 pin 3 is a supply pin sharing /SERVO_2 with the MCU port U2.17"
+   ],
+   "refs": [
+    [
+     "S1",
+     "U2"
+    ]
+   ]
   }
  ]
 }
