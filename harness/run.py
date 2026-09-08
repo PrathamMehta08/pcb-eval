@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import statistics
 import sys
 import time
 from pathlib import Path
@@ -105,6 +106,56 @@ def run_one(detector: str, case: dict, client: Client) -> dict:
     return row
 
 
+#: The metrics a repeat can move. `caught` is here even though it has never
+#: moved off 7/7, because "it never moves" is a finding and only repeats show it.
+VARIES = (
+    "caught",
+    "false_alarms_on_clean",
+    "extra_findings_on_seeded",
+    "refuted_proposed",
+    "refuted_reported",
+)
+
+
+def spread(per_trial: list[dict]) -> dict:
+    """Median and range for each metric across the trials.
+
+    A point estimate from one run cannot be told apart from noise, and this
+    project's own history is the argument: an earlier sweep had the two
+    detectors level, and the published one has the graph further ahead than it
+    has ever been. Same code, same prompts, different draw. So the honest unit
+    of measurement is a distribution, and the range is reported next to the
+    median rather than tucked into a caveat.
+    """
+    out = {}
+    for metric in VARIES:
+        values = sorted(t[metric] for t in per_trial)
+        out[metric] = {
+            "median": statistics.median(values),
+            "min": values[0],
+            "max": values[-1],
+            "values": values,
+        }
+    return out
+
+
+def breadth_of(rows: list[dict]) -> dict:
+    """How many names each matched finding threw at the board.
+
+    The automatic match rule cannot tell identifying a defect from mentioning a
+    part it touches, and the only fix in the schema today is to record how wide
+    the finding cast. A match on a finding naming two things is worth more than
+    the same match on one naming nine, so a lower median is a more specific
+    detector. It is a proxy for the hand read, not a replacement for it.
+    """
+    widths = [c["breadth"] for r in rows for c in r["grade"]["caught"]]
+    return {
+        "matches": len(widths),
+        "median": statistics.median(widths) if widths else None,
+        "mean": round(statistics.fmean(widths), 2) if widths else None,
+    }
+
+
 def report(rows: list[dict]) -> str:
     """The grid, as it goes in the README."""
     detectors = sorted({r["detector"] for r in rows})
@@ -137,6 +188,46 @@ def report(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def by_trial(rows: list[dict], detector: str, trials: int) -> list[dict]:
+    """One totals row per trial, for one detector."""
+    return [
+        totals([r for r in rows if r["detector"] == detector and r["trial"] == t])
+        for t in range(1, trials + 1)
+    ]
+
+
+def across_trials(rows: list[dict], detectors: list[str], trials: int) -> str:
+    """The distribution, which is the only honest way to read a repeated sweep."""
+    lines = [f"across {trials} trials — median (min-max)", ""]
+    label = {
+        "caught": "defects matched, of 7",
+        "false_alarms_on_clean": "findings on the clean board",
+        "extra_findings_on_seeded": "unmatched findings on seeded",
+        "refuted_proposed": "board-refuted claims proposed",
+        "refuted_reported": "board-refuted claims reported",
+    }
+    spreads = {d: spread(by_trial(rows, d, trials)) for d in detectors}
+    width = max(len(v) for v in label.values()) + 2
+    lines.append("".ljust(width) + "".join(d.ljust(20) for d in detectors))
+    for metric, text in label.items():
+        cells = []
+        for d in detectors:
+            s = spreads[d][metric]
+            cells.append(f"{s['median']:g} ({s['min']}-{s['max']})".ljust(20))
+        lines.append(text.ljust(width) + "".join(cells))
+
+    lines.append("")
+    lines.append("".ljust(width) + "".join(d.ljust(20) for d in detectors))
+    cells = []
+    for d in detectors:
+        b = breadth_of([r for r in rows if r["detector"] == d])
+        # No matches at all when only the clean board ran; it has no defects.
+        text = "-" if b["median"] is None else f"{b['median']:g} median, {b['mean']} mean"
+        cells.append(text.ljust(20))
+    lines.append("names per matched finding".ljust(width) + "".join(cells))
+    return "\n".join(lines)
+
+
 def main() -> int:
     utf8()
     ap = argparse.ArgumentParser(description=__doc__)
@@ -145,6 +236,12 @@ def main() -> int:
     ap.add_argument("--concurrency", type=int, default=2)
     ap.add_argument("--tpm", type=int, default=8000, help="token budget per minute")
     ap.add_argument("--model", default="")
+    ap.add_argument(
+        "--trials",
+        type=int,
+        default=1,
+        help="repeat the whole sweep N times and report median and range",
+    )
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 
@@ -157,21 +254,33 @@ def main() -> int:
 
     client = Client(model=args.model, concurrency=args.concurrency, tpm=args.tpm)
     rows = []
-    for detector in detectors:
-        for case in cases:
-            row = run_one(detector, case, client)
-            rows.append(row)
-            g = row["grade"]
-            mark = "·" if not case["defects"] else ("+" if g["caught"] else "-")
-            print(
-                f"{mark} {detector:<7} {case['id']:<22} "
-                f"{len(row['findings'])} findings, {g['false_alarms']} unmatched, "
-                f"{row['calls']} calls, {row['seconds']}s"
-            )
+    for trial in range(1, args.trials + 1):
+        # Trials start at 1, so none of them reuses the pre-trials cache. The
+        # published single run was scored under the same code, but it is not
+        # folded in here as a sixth sample: it is the run that was read and
+        # written up, and a draw you have already looked at is not a draw.
+        client.trial = trial
+        if args.trials > 1:
+            print(f"--- trial {trial} of {args.trials}")
+        for detector in detectors:
+            for case in cases:
+                row = run_one(detector, case, client)
+                row["trial"] = trial
+                rows.append(row)
+                g = row["grade"]
+                mark = "·" if not case["defects"] else ("+" if g["caught"] else "-")
+                print(
+                    f"{mark} {detector:<7} {case['id']:<22} "
+                    f"{len(row['findings'])} findings, {g['false_alarms']} unmatched, "
+                    f"{row['calls']} calls, {row['seconds']}s"
+                )
 
     print()
     print(report(rows))
     print()
+    if args.trials > 1:
+        print(across_trials(rows, detectors, args.trials))
+        print()
     print(f"usage {client.usage.as_dict()}")
 
     # What this run spent depends on how much of it was cached, which makes it
@@ -193,9 +302,17 @@ def main() -> int:
         "cost": cost,
         "prompt_hash": prompt_hash(),
         "schema_hash": schema_hash(),
-        "corpus_hash": corpus_hash([r["board_hash"] for r in rows]),
+        # The corpus is the eight boards. It is deduplicated because scoring
+        # them twice, or ten times, does not make it a different corpus.
+        "corpus_hash": corpus_hash(sorted({r["board_hash"] for r in rows})),
         "usage": client.usage.as_dict(),
+        "trials": args.trials,
         "totals": {d: totals([r for r in rows if r["detector"] == d]) for d in detectors},
+        "by_trial": {d: by_trial(rows, d, args.trials) for d in detectors},
+        "spread": {d: spread(by_trial(rows, d, args.trials)) for d in detectors},
+        "breadth": {
+            d: breadth_of([r for r in rows if r["detector"] == d]) for d in detectors
+        },
         "rows": rows,
     }
     out = args.out or RESULTS / f"sweep-{time.strftime('%Y%m%d-%H%M%S')}.json"

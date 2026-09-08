@@ -106,6 +106,11 @@ class Client:
     max_tokens: int = 4000
     concurrency: int = 2
     tpm: int = 8000
+    #: Which repeat of the sweep this is. Folded into the cache key so trial 2
+    #: asks the model again rather than replaying trial 1 — without it, running
+    #: the sweep five times measures the cache and reports zero variance.
+    #: Trial 0 keeps the pre-trials key, so the published run still replays.
+    trial: int = 0
     cache_dir: Path = CACHE_DIR
     log_path: Path = LOG_PATH
     usage: Usage = field(default_factory=Usage)
@@ -150,6 +155,8 @@ class Client:
             f"{self.CACHE_FORMAT}\n{self.model}\n{self.temperature}\n"
             f"{self.max_tokens}\n{label}\n{prompt}"
         )
+        if self.trial:
+            blob = f"trial{self.trial}\n{blob}"
         return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:24]
 
     def _cached(self, key: str) -> dict | None:

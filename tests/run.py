@@ -624,18 +624,41 @@ def check_sweep(c: Check) -> None:
     c.equals(len(cases), 8, "eight boards: one clean and seven seeded")
     c.equals(
         result["corpus_hash"],
-        corpus_hash([board_hash(case["board"]) for case in cases] * 2),
+        corpus_hash(sorted({board_hash(case["board"]) for case in cases})),
         "corpus hash is current (the seeded boards changed since the sweep?)",
     )
 
+    # A single run cannot be told apart from noise, so the committed sweep is
+    # repeated and the README quotes a median and a range. One trial is still a
+    # valid sweep; it just cannot say anything about spread.
+    trials = result.get("trials", 1)
+    c.that(trials >= 5, f"the committed sweep repeats the corpus ({trials} trials)")
+
     detectors = {row["detector"] for row in result["rows"]}
     c.equals(detectors, {"single", "graph"}, "both detectors ran")
-    c.equals(len(result["rows"]), 16, "eight boards times two detectors")
+    c.equals(len(result["rows"]), 16 * trials, "eight boards times two detectors times the trials")
+    c.that(
+        all("trial" in row for row in result["rows"]),
+        "every row says which trial it came from",
+    )
+    for detector in ("single", "graph"):
+        seen = {row["trial"] for row in result["rows"] if row["detector"] == detector}
+        c.equals(seen, set(range(1, trials + 1)), f"{detector} ran every trial")
     for row in result["rows"]:
         if not c.that("grade" in row, f"{row['board']} was graded"):
             break
     clean_rows = [r for r in result["rows"] if not r["defects"]]
-    c.equals(len(clean_rows), 2, "the clean board was run under both detectors")
+    c.equals(len(clean_rows), 2 * trials, "the clean board was run under both detectors")
+
+    # The spread is the point of repeating, so it has to be in the record
+    # rather than recomputed by whoever reads it.
+    for detector in ("single", "graph"):
+        s = result.get("spread", {}).get(detector, {})
+        if not c.that(s, f"the result carries {detector}'s spread across trials"):
+            break
+        for metric in ("caught", "false_alarms_on_clean", "refuted_reported"):
+            got = s.get(metric, {}).get("values", [])
+            c.equals(len(got), trials, f"{detector}/{metric} has one value per trial")
 
     # The refutation count is the one number here that needs no judgement, so
     # it has to be present rather than optional.
