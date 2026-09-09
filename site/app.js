@@ -174,11 +174,55 @@ function startDrag(event, target, at) {
  * safe to do to the log itself rather than only to the display - the log is the
  * edit list, and it still has to reproduce the board.
  */
-const ABSOLUTE = new Set(["set_value", "move_footprint", "rotate_footprint", "move_pin"]);
+const ABSOLUTE = new Set([
+  "set_value",
+  "move_footprint",
+  "rotate_footprint",
+  "move_pin",
+  "set_track_width",
+]);
 
-/** What an edit is about, so two edits to the same thing can be recognised. */
-const target = (entry) =>
-  `${entry.op}:${entry.args.ref || ""}:${entry.args.pin || ""}`;
+/** Edits to copper rather than to a part. Graded differently, see `grade`. */
+const COPPER_OPS = new Set([
+  "set_track_width",
+  "delete_track",
+  "delete_via",
+  "toggle_zone",
+]);
+
+/**
+ * What an edit is about, so two edits to the same thing can be recognised.
+ *
+ * The id of whatever was edited, not only the part. Keyed on the part alone,
+ * two width changes to one track did not collapse - they have no `ref` - and
+ * the log showed "0.5 to 0.1" and "0.1 to 0.15" as two separate things done,
+ * which the grader then expected two separate findings for. Worse, every track
+ * shared the empty key, so adding this operation without the id would have
+ * collapsed edits to *different* tracks into one.
+ */
+const target = (entry) => {
+  const a = entry.args || {};
+  return [entry.op, a.ref || "", a.pin || "", a.track_id || "", a.via_id || "", a.zone_id || ""].join(
+    ":"
+  );
+};
+
+/**
+ * One label for a run of edits to one thing: the first "from", the last "to".
+ *
+ * The merged entry keeps the older state so undo reaches the start of the run,
+ * and it was keeping the newer label, so a track taken 0.5 to 0.1 to 0.15 read
+ * "0.1 to 0.15" - the middle of a change nobody made as a change on its own.
+ *
+ * Generic over any label written as one arrow, which is how every operation
+ * that can be coalesced writes its own. A label without an arrow is left alone:
+ * a rotation says where it ended up and has no start to preserve.
+ */
+function mergedLabel(before, after) {
+  const ARROW = " → ";
+  if (!before.includes(ARROW) || !after.includes(ARROW)) return after;
+  return before.split(ARROW)[0] + ARROW + after.split(ARROW).slice(1).join(ARROW);
+}
 
 function record(edit) {
   try {
@@ -198,6 +242,8 @@ function record(edit) {
         from_value: last.from_value ?? entry.from_value,
         from_xy: last.from_xy ?? entry.from_xy,
         from_rot: last.from_rot ?? entry.from_rot,
+        from_width: last.from_width ?? entry.from_width,
+        label: mergedLabel(last.label, entry.label),
       };
     } else {
       state.log.push(entry);
@@ -741,7 +787,8 @@ function expectedFromState() {
       netOfZone.get(args.zone_id),
     ].filter(Boolean);
     if (entry.op === "swap_pins") nets.push(...netsOf(args.ref));
-    return { id: `edit-${i}`, title: entry.label, refs, nets: [...new Set(nets)] };
+    const kind = COPPER_OPS.has(entry.op) ? "copper" : "part";
+    return { id: `edit-${i}`, title: entry.label, refs, nets: [...new Set(nets)], kind };
   });
 }
 

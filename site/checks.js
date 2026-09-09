@@ -701,7 +701,56 @@ export function railCapacity(board) {
   return out;
 }
 
-export const DFM_RULES = [annularRing, drillSize, trackWidth];
+/**
+ * A supply rail that necks down to a fraction of its own width.
+ *
+ * 0.15 mm clears the 0.127 mm a process can etch, so `dfm-track-width` is
+ * silent on it - and it still carries only about 0.6 A, which on a rail routed
+ * everywhere else at 0.5 mm is a constriction the designer did not intend.
+ * Manufacturability and current are different questions and this is the second
+ * one.
+ *
+ * It needs no load current and no datasheet, because the board states the
+ * intent itself: what the rest of that rail is routed at is what the rail is
+ * for. A rail laid out uniformly says nothing here however thin it is - that is
+ * a choice, and `dfm-track-width` covers it if it goes below what can be made.
+ */
+const BOTTLENECK_RATIO = 0.6;
+
+function railBottleneck(board) {
+  const rails = supplyRails(board);
+  const widths = new Map();
+  for (const track of board.layout.tracks) {
+    if (!track.net || !rails.has(track.net)) continue;
+    if (!widths.has(track.net)) widths.set(track.net, []);
+    widths.get(track.net).push(track.width);
+  }
+
+  const out = [];
+  for (const [net, all] of [...widths].sort()) {
+    if (all.length < 3) continue;
+    const sorted = [...all].sort((a, b) => a - b);
+    const narrowest = sorted[0];
+    const typical = sorted[Math.floor(sorted.length / 2)];
+    if (narrowest >= typical * BOTTLENECK_RATIO) continue;
+    out.push(
+      dfmFinding(
+        "rail-bottleneck",
+        `${net} necks down to ${narrowest} mm where the rail is mostly ${typical} mm`,
+        `The narrow segment carries about ${ampacity(narrowest).toFixed(2)} A against ` +
+          `${ampacity(typical).toFixed(2)} A for the rest of the rail, so the whole rail is ` +
+          "limited by that one segment however wide the copper is either side of it.",
+        `Widen it to the ${typical} mm the rail is routed at elsewhere.`,
+        [],
+        [net],
+        "major"
+      )
+    );
+  }
+  return out;
+}
+
+export const DFM_RULES = [annularRing, drillSize, trackWidth, railBottleneck];
 
 export function runDfm(board) {
   return DFM_RULES.flatMap((rule) => rule(board));

@@ -224,6 +224,24 @@ const norm = (value) => String(value || "").trim().toUpperCase().replace(/^\//, 
  * `expected` is a list of {id, title, refs, nets} taken from what was actually
  * edited, so this grades a preset and a hand-made edit the same way.
  */
+/**
+ * Is this finding about the copper itself, rather than about something on it?
+ *
+ * Judged on the rule where there is one, because a rule's identity is exact,
+ * and on the wording where the finding came from a model. The wording test is
+ * loose on purpose: a false match here costs a wrong "caught", and a miss costs
+ * a wrong "missed", so it is tuned to the vocabulary these findings actually
+ * use rather than to catching every phrasing imaginable.
+ */
+const COPPER_RULES = new Set(["dfm-track-width", "rail-ampacity", "rail-bottleneck", "net-island"]);
+const COPPER_WORDS =
+  /\b(track|trace|width|narrow|thin|copper|ampacity|current[- ]carrying|cross[- ]section|pour|island|routed?|routing)\b/i;
+
+function aboutCopper(finding) {
+  if (finding.rule && COPPER_RULES.has(finding.rule)) return true;
+  return COPPER_WORDS.test(`${finding.title || ""} ${finding.why || ""}`);
+}
+
 export function grade(findings, expected) {
   const caught = [];
   const missed = [];
@@ -236,7 +254,14 @@ export function grade(findings, expected) {
       if (claimed.has(i)) return false;
       const fRefs = (finding.refs || []).map(norm);
       const fNets = (finding.nets || []).map(norm);
-      return fRefs.some((r) => refs.has(r)) || fNets.some((n) => nets.has(n));
+      if (!fRefs.some((r) => refs.has(r)) && !fNets.some((n) => nets.has(n))) return false;
+      // Sharing a net is enough for an edit to a part, which is a small thing
+      // on that net. It is not enough for an edit to copper: narrowing one
+      // segment of +3.3V puts that rail on the expectation, and +3.3V reaches
+      // half the board, so a finding about a capacitor's dielectric or its
+      // placement distance would claim the edit and report as caught. Both of
+      // those happened. A copper edit is only met by a finding about copper.
+      return want.kind === "copper" ? aboutCopper(finding) : true;
     });
     if (hit >= 0) {
       claimed.add(hit);

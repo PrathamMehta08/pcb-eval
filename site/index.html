@@ -449,10 +449,13 @@ kbd {
 /* ------------------------------------------------------------- graph rail ---
    The review used to be a list of steps, which showed what happened without
    showing that anything moved. Five nodes, two of which ask a model. */
-.gr-rail { list-style: none; margin: 0 0 14px; padding: 0; }
-.ro-graph-done { padding: 12px 14px 2px; border-top: 1px solid var(--line-soft); }
+/* The same 14px inset every other block in this panel uses. The rail had none,
+   so the node names sat against the left edge and the `model` tag against the
+   right, which is the one place in the panel where text touches the frame. */
+.gr-rail { list-style: none; margin: 0 0 14px; padding: 0 14px; }
+.ro-graph-done { padding: 12px 0 2px; border-top: 1px solid var(--line-soft); }
 .ro-graph-done h4 {
-  margin: 0 0 8px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+  margin: 0 0 8px; padding: 0 14px; font-family: var(--mono); font-size: 10px; font-weight: 600;
   letter-spacing: .12em; text-transform: uppercase; color: #5d666e;
 }
 .gr-node {
