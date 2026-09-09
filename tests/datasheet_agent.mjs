@@ -154,6 +154,86 @@ const only = (answer) => agent.verifyFacts(answer, PAGES);
   check(dropped[0]?.reason.includes("outside the range"), `and says why: ${dropped[0]?.reason}`);
 }
 
+// Two table columns read as one answer. This reached a user's screen as a
+// thermal resistance of "42.6 32.4 C/W": not a clean number, so it fell through
+// to the string branch and skipped both the value-in-quote and the range check.
+{
+  const { facts, dropped } = only({
+    facts: [
+      {
+        name: "theta_ja",
+        value: "70 32.4",
+        unit: "C/W",
+        page: 2,
+        quote: "Thermal resistance RthJA 70 C/W for the SOIC-16 package.",
+      },
+    ],
+  });
+  check(!facts.theta_ja, "two columns read as one value are refused");
+  check(
+    dropped[0]?.reason.includes("not a single number"),
+    `and says why: ${dropped[0]?.reason}`
+  );
+}
+
+// A parameter with no range is free text, and stays free text.
+{
+  const { facts } = only({
+    facts: [
+      {
+        name: "required_external_part",
+        value: "a catch diode",
+        unit: "",
+        page: 1,
+        quote: "Each output is rated 500 mA continuous collector current.",
+      },
+    ],
+  });
+  check(
+    facts.required_external_part?.[0]?.value === "a catch diode",
+    "a parameter that is not a number is still allowed to be words"
+  );
+}
+
+// A regulator needs an input capacitor and an output capacitor and a catch
+// diode. Keeping the first and discarding the rest reported one of several
+// requirements as though it were the requirement.
+{
+  const { facts } = only({
+    facts: ["input capacitor", "output capacitor", "a catch diode"].map((v) => ({
+      name: "required_external_part",
+      value: v,
+      page: 1,
+      quote: "Each output is rated 500 mA continuous collector current.",
+    })),
+  });
+  check(
+    facts.required_external_part?.length === 3,
+    `a parameter with several answers keeps them all, got ${facts.required_external_part?.length}`
+  );
+}
+
+// One document, one family. A value read off a sibling part's row is worse than
+// no value, so the row it came from travels with it.
+{
+  const { facts } = only({
+    facts: [
+      {
+        name: "theta_ja",
+        value: 70,
+        unit: "C/W",
+        page: 2,
+        applies_to: "SOIC-16",
+        quote: "Thermal resistance RthJA 70 C/W for the SOIC-16 package.",
+      },
+    ],
+  });
+  check(
+    facts.theta_ja?.applies_to === "SOIC-16",
+    "a fact records which variant or condition its row was for"
+  );
+}
+
 // A parameter nobody asked about is not a parameter.
 {
   const { facts } = only({

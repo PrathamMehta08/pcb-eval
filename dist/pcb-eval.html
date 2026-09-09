@@ -3356,6 +3356,10 @@ const WANTED = [
     query: "connect capacitor between pin required external components bootstrap enable pull-up",
     unit: "",
     range: null,
+    // A regulator wants an input capacitor and an output capacitor and a catch
+    // diode and an inductor. Keeping the first and discarding the rest reported
+    // one of four requirements as though it were the requirement.
+    many: true,
     enables: "required_external_part",
   },
 ];
@@ -3367,11 +3371,16 @@ const WANTED = [
  * returns the passage that is vaguely about all of them - which is usually the
  * contents page, and contents pages are already dropped for that reason.
  */
-function evidenceFor(pages, source = "document") {
+function evidenceFor(pages, source = "document", part = "") {
   const idx = index(chunk(pages, { source }));
   const seen = new Map();
   for (const want of WANTED) {
-    for (const hit of search(idx, want.query, 2)) {
+    // The part number goes into every query. One document often covers a whole
+    // family - an LM2576 and an LM2576HV differ by twenty volts of input range
+    // and share a datasheet - so a passage that names the exact part is the one
+    // worth reading, and BM25 ranks a rare exact token like "LM2576HVS" highly
+    // when it is in the query at all.
+    for (const hit of search(idx, `${part} ${want.query}`.trim(), 2)) {
       const key = `${hit.page}:${hit.index}`;
       if (!seen.has(key)) seen.set(key, hit);
     }
@@ -3392,6 +3401,20 @@ const PROMPT_HEAD = [
   "Report nothing for a parameter the passages do not state. That is the",
   "expected answer for most parameters in most documents.",
   "",
+  "ONE DOCUMENT, SEVERAL PARTS",
+  "",
+  "A datasheet usually covers a family, and the members differ. An LM2576 and",
+  "an LM2576HV share a document and not an input voltage range. Report the row",
+  "for the exact part named below, and put what that row applies to in",
+  "`applies_to` - the part number, the package, the temperature range, whatever",
+  "the table says it is conditioned on. If the passages state a value only for",
+  "a different member of the family, report nothing for that parameter: a",
+  "neighbour's number is worse than no number, because it looks like an answer.",
+  "",
+  "Some parameters have more than one answer - a regulator needs an input",
+  "capacitor and an output capacitor and a catch diode. Report each as its own",
+  "entry rather than choosing between them.",
+  "",
   "WHAT TO LOOK FOR",
 ];
 
@@ -3403,6 +3426,7 @@ const PROMPT_TAIL = [
   "",
   '{"facts": [{"name": "<one of the names above>", "value": <number or string>,',
   '  "unit": "<the unit as printed>", "page": <page number>,',
+  '  "applies_to": "<the part number or condition this row is for, if the passage says>",',
   '  "quote": "<the words from the passage that state it, copied exactly>"}]}',
   "",
   "The quote must be copied character for character from a passage above. Do",
@@ -3415,9 +3439,9 @@ const PROMPT_TAIL = [
 function agentPrompt(part, value, evidence) {
   const lines = [
     ...PROMPT_HEAD,
-    ...WANTED.map((w) => `- ${w.name}: ${w.ask}`),
+    ...WANTED.map((w) => `- ${w.name}: ${w.ask}${w.many ? " (may have several)" : ""}`),
     "",
-    `THE PART  ${part}${value ? ` (${value})` : ""}`,
+    `THE PART  ${value || part} — the board calls it ${part}`,
     "",
     "PASSAGES",
     "",
@@ -3475,30 +3499,51 @@ function verifyFacts(answer, pages) {
       why("the quote is not in the document");
       continue;
     }
-    const numeric = typeof raw.value === "number" || /^-?[\d.]+$/.test(String(raw.value));
-    if (numeric) {
+    // A parameter that declares a range is a number, and it has to arrive as
+    // one. "42.6 32.4" is two columns of a table read as a single answer, and
+    // it used to survive: it is not a clean number, so it fell through to the
+    // string branch and skipped both the value-in-quote check and the range
+    // check on its way to being displayed as a thermal resistance.
+    const wantsNumber = Boolean(spec.range);
+    const single = /^-?\d+(?:\.\d+)?$/.test(String(raw.value).trim());
+    if (wantsNumber) {
+      if (!single) {
+        why(`${JSON.stringify(raw.value)} is not a single number`);
+        continue;
+      }
       const value = Number(raw.value);
       if (!numbersIn(quote).includes(value)) {
         why("the value does not appear in its own quote");
         continue;
       }
-      if (spec.range && (value < spec.range[0] || value > spec.range[1])) {
+      if (value < spec.range[0] || value > spec.range[1]) {
         why(`${value} is outside the range a ${spec.label.toLowerCase()} takes`);
         continue;
       }
     }
-    if (kept[spec.name]) continue;
-    kept[spec.name] = {
+    if (kept[spec.name] && !spec.many) continue;
+    const fact = {
       label: spec.label,
-      value: numeric ? Number(raw.value) : String(raw.value),
+      value: wantsNumber ? Number(raw.value) : String(raw.value),
       unit: String(raw.unit || spec.unit || ""),
-      shown: numeric
+      shown: wantsNumber
         ? `${Number(raw.value)}${spec.unit ? ` ${spec.unit}` : ""}`
         : String(raw.value),
       page: Number(raw.page) || null,
       quote: quote.slice(0, 240),
+      // Which member of the family, or which operating condition, this row is
+      // for. A datasheet that covers an LM2576 and an LM2576HV states an input
+      // range twice, and a value with no condition beside it is a value nobody
+      // can tell was the right one.
+      applies_to: String(raw.applies_to || "").slice(0, 80),
       enables: spec.enables,
     };
+    if (spec.many) {
+      kept[spec.name] = [...(kept[spec.name] || []), fact];
+      if (kept[spec.name].length > 4) kept[spec.name].length = 4;
+    } else {
+      kept[spec.name] = fact;
+    }
   }
   return { facts: kept, dropped };
 }
@@ -3511,17 +3556,40 @@ function verifyFacts(answer, pages) {
  * that could not be read leaves its checks gated, which is the state the board
  * was already in, and is a much better outcome than refusing the attachment.
  */
+const readings = new Map();
+
+/** A cheap stable key for a document's text, so the same file is read once. */
+function fingerprint(pages) {
+  const text = pages.join("\n");
+  let h = 5381;
+  for (let i = 0; i < text.length; i += 1) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+  return `${text.length}:${h.toString(36)}`;
+}
+
 async function readDatasheet(ask, { part, value, pages }) {
-  const evidence = evidenceFor(pages, part);
+  // The same PDF attached to three parts gave three different answers - 60 V,
+  // 40 V and 63 V for one input range - because the agent was asked three
+  // times and a model asked twice does not answer twice the same way. It is a
+  // property of the document, so it is read once per document and the answer is
+  // shared. That is also two calls cheaper.
+  const seen = fingerprint(pages);
+  if (readings.has(seen)) return readings.get(seen);
+
+  const evidence = evidenceFor(pages, part, value);
   if (!evidence.length) return { facts: {}, dropped: [], evidence: 0 };
   let answer = null;
   try {
     answer = await ask(agentPrompt(part, value, evidence));
   } catch {
+    // Not remembered: a document that could not be read this time is worth
+    // trying again, and caching the failure would make one dropped connection
+    // permanent for as long as the page is open.
     return { facts: {}, dropped: [], evidence: evidence.length, failed: true };
   }
   const { facts, dropped } = verifyFacts(answer, pages);
-  return { facts, dropped, evidence: evidence.length };
+  const result = { facts, dropped, evidence: evidence.length };
+  readings.set(seen, result);
+  return result;
 }
 
 // ===== site/docs.js ===================================================
@@ -3771,8 +3839,11 @@ function factsBlock(board) {
   const docs = docsFor(board.meta.name);
   const lines = ["DATASHEET PARAMETERS  read from the attached documents, quoted"];
   for (const ref of [...docs.keys()].sort()) {
-    for (const [key, fact] of Object.entries(docs.get(ref).facts || {})) {
-      lines.push(`${ref} ${key}: ${fact.shown} (p${fact.page}) "${fact.quote}"`);
+    for (const [key, value] of Object.entries(docs.get(ref).facts || {})) {
+      for (const fact of Array.isArray(value) ? value : [value]) {
+        const where = fact.applies_to ? `, ${fact.applies_to}` : "";
+        lines.push(`${ref} ${key}: ${fact.shown} (p${fact.page}${where}) "${fact.quote}"`);
+      }
     }
   }
   return lines.length > 1 ? lines : [];
@@ -3785,6 +3856,20 @@ function factsBlock(board) {
  */
 function factsOf(boardName, ref) {
   return docFor(boardName, ref)?.facts || {};
+}
+
+/**
+ * Every fact as one flat list, because some parameters have several answers.
+ *
+ * A regulator needs an input capacitor and an output capacitor and a catch
+ * diode, so `required_external_part` holds a list where the others hold a
+ * value. Everything that displays them wants the same shape, and building that
+ * shape in each of them is how one of them ends up showing "[object Object]".
+ */
+function factsList(boardName, ref) {
+  return Object.entries(factsOf(boardName, ref)).flatMap(([name, value]) =>
+    (Array.isArray(value) ? value : [value]).map((fact) => ({ name, ...fact }))
+  );
 }
 
 function passagesBlock(board) {
@@ -6872,7 +6957,7 @@ function renderDocs() {
     .sort((a, b) => (a[1].status === b[1].status ? 0 : a[1].status === "missing" ? -1 : 1))
     .map(([ref, s]) => {
       const comp = state.board.components.find((c) => c.ref === ref);
-      const facts = Object.entries(factsOf(state.board.meta.name, ref));
+      const facts = factsList(state.board.meta.name, ref);
       return `<div class="dv-row ${s.status}" data-ref="${escapeHtml(ref)}">
         <div class="dv-head">
           <b>${escapeHtml(ref)}</b>
@@ -6896,8 +6981,9 @@ function renderDocs() {
           facts.length
             ? `<ul class="dv-facts">${facts
                 .map(
-                  ([, f]) => html`<li title="${f.quote}"
-                    ><span>${f.label}</span><b>${f.shown}</b><em>p${f.page}</em></li>`
+                  (f) => html`<li title="${f.quote}"
+                    ><span>${f.label}${f.applies_to ? ` · ${f.applies_to}` : ""}</span
+                    ><b>${f.shown}</b><em>p${f.page}</em></li>`
                 )
                 .join("")}</ul>`
             : s.doc && s.doc.read === "read"
@@ -7019,25 +7105,23 @@ function openDocs(ref) {
    * a human glance, so they are the last ones to hide.
    */
   function readOut(boardName, part) {
-    const facts = factsOf(boardName, part);
-    const found = Object.entries(facts);
+    const found = factsList(boardName, part);
     if (!found.length) {
-      return `<p class="dm-none">None of the parameters it looks for are in this
-        document: an input voltage range, a junction-to-ambient resistance, a
-        maximum junction temperature, a required bootstrap capacitor, an enable
-        requirement, an output current. Its text is still searched when the
+      return `<p class="dm-none">None of the parameters it looks for are stated
+        for this part in this document. Its text is still searched when the
         board is reviewed, so passages from it can still reach a reviewer.</p>`;
     }
     return (
       '<ul class="dm-facts">' +
       found
         .map(
-          ([, f]) => html`<li class="${f.confidence === "low" ? "unsure" : ""}"
-            ><span class="dm-label">${f.label}</span
+          (f) => html`<li
+            ><span class="dm-label">${f.label}${
+            f.applies_to ? ` · ${f.applies_to}` : ""
+          }</span
             ><span class="dm-value">${f.shown}</span
-            ><span class="dm-page">p${f.page}${
-            f.confidence === "low" ? " · unsure" : ""
-          }</span><span class="dm-quote">${f.quote}</span></li>`
+            ><span class="dm-page">p${f.page}</span
+            ><span class="dm-quote">${f.quote}</span></li>`
         )
         .join("") +
       "</ul>"

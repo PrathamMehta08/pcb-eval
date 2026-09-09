@@ -74,7 +74,12 @@ from typing import Annotated, TypedDict
 
 from langgraph.graph import END, StateGraph
 
-from graph.prompts import SYSTEM, critic_prompt, second_look_prompt, single_prompt
+from graph.prompts import (
+    SYSTEM,
+    conservative_critic_prompt,
+    second_look_prompt,
+    single_prompt,
+)
 from graph.state import key, normalise
 from graph.verify import facts as board_facts
 from graph.verify import verify
@@ -197,6 +202,20 @@ def make_second_look(client):
     return second_look
 
 
+def _with_ids(items: list[dict]) -> list[dict]:
+    """Give every finding an id before the critic is asked about it.
+
+    `apply_verdicts` matches a verdict to a finding by id, and discards a
+    verdict for an id it did not send - which is right, because an invented id
+    is the shape an added finding would take and the critic may not add. But
+    findings off `normalise` carry no id, so the lookup was empty, every verdict
+    was discarded as unrecognised, and the critic kept everything it was handed.
+    It was a call spent for no effect, and the numbers V8 first published were
+    measured with it inert.
+    """
+    return [{**item, "id": f"F{i + 1:03d}"} for i, item in enumerate(items)]
+
+
 def validate(state: PCBState) -> dict:
     """The deterministic gate, and the only one that cannot be argued with.
 
@@ -217,7 +236,27 @@ def validate(state: PCBState) -> dict:
             rejected.append({**item, "dropped": why})
         else:
             kept.append(item)
-    return {"validated": kept, "rejected": rejected}
+    return {"validated": _with_ids(kept), "rejected": rejected}
+
+
+def _for_critic(items: list[dict]) -> str:
+    """The findings as the critic sees them: what this schema actually holds.
+
+    Deliberately without an `evidence:` line. The graph's formatter prints one,
+    and against the baseline's schema - which has no evidence field - every
+    finding arrived reading "evidence: (none quoted)". The critic rejected four
+    hundred and nine of them across five trials, the entire reviewer output, for
+    failing to supply a field nothing had asked them for.
+    """
+    nl = chr(10)
+    return nl.join(
+        f"{item['id']}  [{item.get('severity', 'major')}] {item['title']}"
+        + nl + f"     refs {', '.join(item.get('refs') or []) or '-'};"
+        + f" nets {', '.join(item.get('nets') or []) or '-'}"
+        + nl + f"     why: {item.get('why', '')}"
+        + nl + f"     fix: {item.get('fix', '')}"
+        for item in items
+    )
 
 
 def make_critic(client):
@@ -227,23 +266,24 @@ def make_critic(client):
         items = state.get("validated") or []
         if not items:
             return {"verified": [], "calls": []}
-        numbered = "\n".join(
-            f"{i}. [{item['severity']}] {item['title']}"
-            f" (refs {', '.join(item.get('refs') or []) or '-'};"
-            f" nets {', '.join(item.get('nets') or []) or '-'})\n   {item.get('why', '')}"
-            for i, item in enumerate(items)
-        )
         parsed, info = client.json(
-            critic_prompt(numbered), label="v7:critic", system=SYSTEM
+            conservative_critic_prompt(_for_critic(items)),
+            label="v7:critic",
+            system=SYSTEM,
         )
         kept, dropped = apply_verdicts(items, parsed.get("verdicts") or [])
+        # `apply_verdicts` returns (finding, reason) pairs; `validate` returns
+        # findings carrying `dropped`. One shape reaches the record, so they are
+        # made to agree here rather than by whoever reads the result.
         return {
             "verified": kept,
-            "rejected": (state.get("rejected") or []) + dropped,
+            "rejected": (state.get("rejected") or [])
+            + [{**item, "dropped": reason} for item, reason in dropped],
             "calls": [{**info, "node": "critic", "found": len(kept)}],
         }
 
     return critic
+
 
 
 def aggregate(state: PCBState) -> dict:

@@ -244,8 +244,11 @@ export function factsBlock(board) {
   const docs = docsFor(board.meta.name);
   const lines = ["DATASHEET PARAMETERS  read from the attached documents, quoted"];
   for (const ref of [...docs.keys()].sort()) {
-    for (const [key, fact] of Object.entries(docs.get(ref).facts || {})) {
-      lines.push(`${ref} ${key}: ${fact.shown} (p${fact.page}) "${fact.quote}"`);
+    for (const [key, value] of Object.entries(docs.get(ref).facts || {})) {
+      for (const fact of Array.isArray(value) ? value : [value]) {
+        const where = fact.applies_to ? `, ${fact.applies_to}` : "";
+        lines.push(`${ref} ${key}: ${fact.shown} (p${fact.page}${where}) "${fact.quote}"`);
+      }
     }
   }
   return lines.length > 1 ? lines : [];
@@ -258,6 +261,20 @@ export function factsBlock(board) {
  */
 export function factsOf(boardName, ref) {
   return docFor(boardName, ref)?.facts || {};
+}
+
+/**
+ * Every fact as one flat list, because some parameters have several answers.
+ *
+ * A regulator needs an input capacitor and an output capacitor and a catch
+ * diode, so `required_external_part` holds a list where the others hold a
+ * value. Everything that displays them wants the same shape, and building that
+ * shape in each of them is how one of them ends up showing "[object Object]".
+ */
+export function factsList(boardName, ref) {
+  return Object.entries(factsOf(boardName, ref)).flatMap(([name, value]) =>
+    (Array.isArray(value) ? value : [value]).map((fact) => ({ name, ...fact }))
+  );
 }
 
 export function passagesBlock(board) {

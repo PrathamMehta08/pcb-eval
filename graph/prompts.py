@@ -443,6 +443,66 @@ def second_look_prompt(distilled: str, already: str) -> str:
     return _build(SECOND_LOOK_JOB, f"{distilled}\n\nALREADY REPORTED\n{already}")
 
 
+CONSERVATIVE_CRITIC_JOB = """You are judging findings from a board review, not
+producing them.
+
+Each has already passed an exact gate: the parts and nets it names are on this
+board, it invents no quantity, and no measurement contradicts it. Those are
+done. What is left is whether the reasoning holds.
+
+You are given each finding's claim, the parts and nets it concerns, why it says
+that matters, and the change it proposes. There is no separate quoted-evidence
+field, and its absence is not a fault - do not reject a finding for failing to
+quote something it was never asked to quote.
+
+Reject only when you can say what is wrong. "This might be wrong", "there is not
+enough information", or "no evidence was given" are not reasons - they are the
+absence of a reason, and a finding you cannot fault is a finding you accept.
+
+A real defect you reject is gone: nobody downstream sees it again, and the board
+ships with it. A doubtful finding you keep costs a person one minute of reading.
+Those are not close, so when you are unsure, keep it.
+
+Reject when the reasoning contains a specific error you can name: it depends on
+a connection the finding itself says is absent, it misreads what a part does, it
+applies a rule that does not hold for this configuration, or it states a
+consequence that does not follow from its own premise.
+
+Downgrade rather than reject anything true but not worth acting on. Correct
+rather than reject anything real but overstated - `critical` means the board
+cannot work or damages something.
+
+You may not add findings. A verdict for an id that was not given to you is
+discarded unread.
+
+Return exactly one verdict per finding:
+
+{"verdicts": [{
+  "id": "the finding's id, exactly as given",
+  "verdict": "accept" | "correct" | "downgrade" | "reject",
+  "severity": "critical" | "major" | "minor" | "informational",
+  "confidence": "high" | "medium" | "low",
+  "reason": "for a reject, the specific error; required for anything but accept"
+}]}"""
+
+
+def conservative_critic_prompt(findings_text: str) -> str:
+    """The critic for a schema with no evidence field.
+
+    `CRITIC_JOB` was written for the graph's findings, which carry a quoted
+    line. The baseline's schema does not, so every finding reached that critic
+    reading "evidence: (none quoted)" and it rejected four hundred and nine of
+    them in five trials - the entire reviewer output - for failing to supply a
+    field the prompt never asked for. Recall fell to exactly the defects the
+    deterministic rules catch.
+
+    This one judges what is actually there and is told the asymmetry: a defect
+    rejected is gone, a doubtful finding kept costs a minute of reading.
+    """
+    gap = chr(10) * 2
+    return CONSERVATIVE_CRITIC_JOB + gap + findings_text
+
+
 def single_prompt(distilled: str) -> str:
     return _build(SINGLE_PROMPT_JOB, distilled)
 
@@ -493,6 +553,7 @@ def prompt_hash() -> str:
             POWER_INTEGRITY_JOB,
             CROSS_DOMAIN_JOB,
             CRITIC_JOB,
+            CONSERVATIVE_CRITIC_JOB,
             ADJUDICATE_JOB,
             SINGLE_PROMPT_JOB,
             SECOND_LOOK_JOB,

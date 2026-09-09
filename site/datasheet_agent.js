@@ -94,6 +94,10 @@ export const WANTED = [
     query: "connect capacitor between pin required external components bootstrap enable pull-up",
     unit: "",
     range: null,
+    // A regulator wants an input capacitor and an output capacitor and a catch
+    // diode and an inductor. Keeping the first and discarding the rest reported
+    // one of four requirements as though it were the requirement.
+    many: true,
     enables: "required_external_part",
   },
 ];
@@ -105,11 +109,16 @@ export const WANTED = [
  * returns the passage that is vaguely about all of them - which is usually the
  * contents page, and contents pages are already dropped for that reason.
  */
-export function evidenceFor(pages, source = "document") {
+export function evidenceFor(pages, source = "document", part = "") {
   const idx = index(chunk(pages, { source }));
   const seen = new Map();
   for (const want of WANTED) {
-    for (const hit of search(idx, want.query, 2)) {
+    // The part number goes into every query. One document often covers a whole
+    // family - an LM2576 and an LM2576HV differ by twenty volts of input range
+    // and share a datasheet - so a passage that names the exact part is the one
+    // worth reading, and BM25 ranks a rare exact token like "LM2576HVS" highly
+    // when it is in the query at all.
+    for (const hit of search(idx, `${part} ${want.query}`.trim(), 2)) {
       const key = `${hit.page}:${hit.index}`;
       if (!seen.has(key)) seen.set(key, hit);
     }
@@ -130,6 +139,20 @@ const PROMPT_HEAD = [
   "Report nothing for a parameter the passages do not state. That is the",
   "expected answer for most parameters in most documents.",
   "",
+  "ONE DOCUMENT, SEVERAL PARTS",
+  "",
+  "A datasheet usually covers a family, and the members differ. An LM2576 and",
+  "an LM2576HV share a document and not an input voltage range. Report the row",
+  "for the exact part named below, and put what that row applies to in",
+  "`applies_to` - the part number, the package, the temperature range, whatever",
+  "the table says it is conditioned on. If the passages state a value only for",
+  "a different member of the family, report nothing for that parameter: a",
+  "neighbour's number is worse than no number, because it looks like an answer.",
+  "",
+  "Some parameters have more than one answer - a regulator needs an input",
+  "capacitor and an output capacitor and a catch diode. Report each as its own",
+  "entry rather than choosing between them.",
+  "",
   "WHAT TO LOOK FOR",
 ];
 
@@ -141,6 +164,7 @@ const PROMPT_TAIL = [
   "",
   '{"facts": [{"name": "<one of the names above>", "value": <number or string>,',
   '  "unit": "<the unit as printed>", "page": <page number>,',
+  '  "applies_to": "<the part number or condition this row is for, if the passage says>",',
   '  "quote": "<the words from the passage that state it, copied exactly>"}]}',
   "",
   "The quote must be copied character for character from a passage above. Do",
@@ -153,9 +177,9 @@ const PROMPT_TAIL = [
 export function agentPrompt(part, value, evidence) {
   const lines = [
     ...PROMPT_HEAD,
-    ...WANTED.map((w) => `- ${w.name}: ${w.ask}`),
+    ...WANTED.map((w) => `- ${w.name}: ${w.ask}${w.many ? " (may have several)" : ""}`),
     "",
-    `THE PART  ${part}${value ? ` (${value})` : ""}`,
+    `THE PART  ${value || part} — the board calls it ${part}`,
     "",
     "PASSAGES",
     "",
@@ -213,30 +237,51 @@ export function verifyFacts(answer, pages) {
       why("the quote is not in the document");
       continue;
     }
-    const numeric = typeof raw.value === "number" || /^-?[\d.]+$/.test(String(raw.value));
-    if (numeric) {
+    // A parameter that declares a range is a number, and it has to arrive as
+    // one. "42.6 32.4" is two columns of a table read as a single answer, and
+    // it used to survive: it is not a clean number, so it fell through to the
+    // string branch and skipped both the value-in-quote check and the range
+    // check on its way to being displayed as a thermal resistance.
+    const wantsNumber = Boolean(spec.range);
+    const single = /^-?\d+(?:\.\d+)?$/.test(String(raw.value).trim());
+    if (wantsNumber) {
+      if (!single) {
+        why(`${JSON.stringify(raw.value)} is not a single number`);
+        continue;
+      }
       const value = Number(raw.value);
       if (!numbersIn(quote).includes(value)) {
         why("the value does not appear in its own quote");
         continue;
       }
-      if (spec.range && (value < spec.range[0] || value > spec.range[1])) {
+      if (value < spec.range[0] || value > spec.range[1]) {
         why(`${value} is outside the range a ${spec.label.toLowerCase()} takes`);
         continue;
       }
     }
-    if (kept[spec.name]) continue;
-    kept[spec.name] = {
+    if (kept[spec.name] && !spec.many) continue;
+    const fact = {
       label: spec.label,
-      value: numeric ? Number(raw.value) : String(raw.value),
+      value: wantsNumber ? Number(raw.value) : String(raw.value),
       unit: String(raw.unit || spec.unit || ""),
-      shown: numeric
+      shown: wantsNumber
         ? `${Number(raw.value)}${spec.unit ? ` ${spec.unit}` : ""}`
         : String(raw.value),
       page: Number(raw.page) || null,
       quote: quote.slice(0, 240),
+      // Which member of the family, or which operating condition, this row is
+      // for. A datasheet that covers an LM2576 and an LM2576HV states an input
+      // range twice, and a value with no condition beside it is a value nobody
+      // can tell was the right one.
+      applies_to: String(raw.applies_to || "").slice(0, 80),
       enables: spec.enables,
     };
+    if (spec.many) {
+      kept[spec.name] = [...(kept[spec.name] || []), fact];
+      if (kept[spec.name].length > 4) kept[spec.name].length = 4;
+    } else {
+      kept[spec.name] = fact;
+    }
   }
   return { facts: kept, dropped };
 }
@@ -249,15 +294,38 @@ export function verifyFacts(answer, pages) {
  * that could not be read leaves its checks gated, which is the state the board
  * was already in, and is a much better outcome than refusing the attachment.
  */
+const readings = new Map();
+
+/** A cheap stable key for a document's text, so the same file is read once. */
+function fingerprint(pages) {
+  const text = pages.join("\n");
+  let h = 5381;
+  for (let i = 0; i < text.length; i += 1) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+  return `${text.length}:${h.toString(36)}`;
+}
+
 export async function readDatasheet(ask, { part, value, pages }) {
-  const evidence = evidenceFor(pages, part);
+  // The same PDF attached to three parts gave three different answers - 60 V,
+  // 40 V and 63 V for one input range - because the agent was asked three
+  // times and a model asked twice does not answer twice the same way. It is a
+  // property of the document, so it is read once per document and the answer is
+  // shared. That is also two calls cheaper.
+  const seen = fingerprint(pages);
+  if (readings.has(seen)) return readings.get(seen);
+
+  const evidence = evidenceFor(pages, part, value);
   if (!evidence.length) return { facts: {}, dropped: [], evidence: 0 };
   let answer = null;
   try {
     answer = await ask(agentPrompt(part, value, evidence));
   } catch {
+    // Not remembered: a document that could not be read this time is worth
+    // trying again, and caching the failure would make one dropped connection
+    // permanent for as long as the page is open.
     return { facts: {}, dropped: [], evidence: evidence.length, failed: true };
   }
   const { facts, dropped } = verifyFacts(answer, pages);
-  return { facts, dropped, evidence: evidence.length };
+  const result = { facts, dropped, evidence: evidence.length };
+  readings.set(seen, result);
+  return result;
 }

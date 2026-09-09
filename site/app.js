@@ -26,7 +26,6 @@ import {
   attach,
   detach,
   docFor,
-  factsOf,
   loadDocs,
   pagesOfPdf,
   setFacts,
@@ -1350,7 +1349,7 @@ function renderDocs() {
     .sort((a, b) => (a[1].status === b[1].status ? 0 : a[1].status === "missing" ? -1 : 1))
     .map(([ref, s]) => {
       const comp = state.board.components.find((c) => c.ref === ref);
-      const facts = Object.entries(factsOf(state.board.meta.name, ref));
+      const facts = factsList(state.board.meta.name, ref);
       return `<div class="dv-row ${s.status}" data-ref="${escapeHtml(ref)}">
         <div class="dv-head">
           <b>${escapeHtml(ref)}</b>
@@ -1374,8 +1373,9 @@ function renderDocs() {
           facts.length
             ? `<ul class="dv-facts">${facts
                 .map(
-                  ([, f]) => html`<li title="${f.quote}"
-                    ><span>${f.label}</span><b>${f.shown}</b><em>p${f.page}</em></li>`
+                  (f) => html`<li title="${f.quote}"
+                    ><span>${f.label}${f.applies_to ? ` · ${f.applies_to}` : ""}</span
+                    ><b>${f.shown}</b><em>p${f.page}</em></li>`
                 )
                 .join("")}</ul>`
             : s.doc && s.doc.read === "read"
@@ -1497,25 +1497,23 @@ function openDocs(ref) {
    * a human glance, so they are the last ones to hide.
    */
   function readOut(boardName, part) {
-    const facts = factsOf(boardName, part);
-    const found = Object.entries(facts);
+    const found = factsList(boardName, part);
     if (!found.length) {
-      return `<p class="dm-none">None of the parameters it looks for are in this
-        document: an input voltage range, a junction-to-ambient resistance, a
-        maximum junction temperature, a required bootstrap capacitor, an enable
-        requirement, an output current. Its text is still searched when the
+      return `<p class="dm-none">None of the parameters it looks for are stated
+        for this part in this document. Its text is still searched when the
         board is reviewed, so passages from it can still reach a reviewer.</p>`;
     }
     return (
       '<ul class="dm-facts">' +
       found
         .map(
-          ([, f]) => html`<li class="${f.confidence === "low" ? "unsure" : ""}"
-            ><span class="dm-label">${f.label}</span
+          (f) => html`<li
+            ><span class="dm-label">${f.label}${
+            f.applies_to ? ` · ${f.applies_to}` : ""
+          }</span
             ><span class="dm-value">${f.shown}</span
-            ><span class="dm-page">p${f.page}${
-            f.confidence === "low" ? " · unsure" : ""
-          }</span><span class="dm-quote">${f.quote}</span></li>`
+            ><span class="dm-page">p${f.page}</span
+            ><span class="dm-quote">${f.quote}</span></li>`
         )
         .join("") +
       "</ul>"
