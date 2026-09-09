@@ -39,7 +39,6 @@ import {
   grade,
   MIN_INTERVAL_MS,
   review,
-  reviewCache,
   ReviewUnavailable,
 } from "./review.js";
 
@@ -1046,9 +1045,7 @@ function renderOverlay() {
   const verdict = state.verdict;
   overlay.innerHTML = `
     <div class="ro-head">
-      <h3>${findings.length} finding${findings.length === 1 ? "" : "s"}${
-        verdict.cached ? " · from cache" : ""
-      }</h3>
+      <h3>${findings.length} finding${findings.length === 1 ? "" : "s"}</h3>
       <div class="ro-score">
         <div class="${caught.length ? "good" : ""}"><b>${caught.length}</b>
           <span>caught${total ? ` of ${total}` : ""}</span></div>
@@ -1207,10 +1204,6 @@ function renderReview() {
       <div class="score-cell ${other.length ? "warn" : ""}">
         <b>${other.length}</b><span>also raised</span></div>
     </div>
-    ${state.verdict.cached ? `<p class="cached">Replayed from this browser's cache — no call was made.</p>` : ""}
-    <p class="hint">The findings are on the Review tab, grouped by whether they
-      matched something you changed. They were listed here as well, which is one
-      list of twelve in a 420px column beside the same twelve in a wider one.</p>
   `;
 
   for (const button of panel.querySelectorAll(".finding")) {

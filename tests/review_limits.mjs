@@ -91,7 +91,17 @@ async function expectCode(promise, code, label) {
   check(/JSON only/i.test(prompt), "the prompt asks for JSON only");
 }
 
-// ------------------------------------------------- caching, then the interval
+// -------------------------------------- no cache, and then the interval
+//
+// Reviewing the same board twice used to replay the first answer. That is
+// defensible while the page is paying for the call and is not what anyone
+// pressing the button a second time is asking for: a reviewer that returns the
+// same words is not evidence the words were right, and this model does not
+// return the same words twice anyway.
+//
+// What is left is the cooldown, which is a different thing. It is not a quota
+// and it does not care which board you are on - it stops a held-down button
+// from hammering a service that may already be failing.
 
 {
   useStore();
@@ -103,27 +113,46 @@ async function expectCode(promise, code, label) {
 
   const first = await review.review(sample, work, {});
   check(sample.reviews === 1, `the first review runs the graph once (${sample.asked} calls)`);
-  check(first.cached === false, "the first review is not a cache hit");
+  check(first.findings.length === 1, "and returns what it found");
+  check(!("cached" in first), "a verdict no longer claims to be cached or not");
 
-  const second = await review.review(sample, work, {});
-  check(sample.reviews === 1, `a repeat of the same board must not run again (${sample.reviews})`);
-  check(second.cached === true, "the repeat is reported as cached");
-  check(second.findings.length === 1, "the cached verdict carries its findings");
+  // The same board again, inside the interval: refused by the clock, not by a
+  // cache. The distinction matters - a cache would have answered instantly.
+  await expectCode(review.review(sample, work, {}), "cooldown", "the same board, too soon");
+  check(sample.reviews === 1, "and a refused review did not run the graph");
 
-  // A different board misses the cache, and the ten seconds then bite.
+  // A different board, still inside the interval: refused the same way. Under
+  // a cache this was the case that got through, because it missed the cache and
+  // only then met the clock.
   const edited = clone(board);
   applyEdits(edited, [{ op: "set_value", args: { ref: "R4", value: "R" } }]);
-  await expectCode(review.review(sample, edited, {}), "cooldown", "ten second interval");
-  check(sample.reviews === 1, "a refused review must not have run the graph again");
+  await expectCode(review.review(sample, edited, {}), "cooldown", "another board, too soon");
+  check(sample.reviews === 1, "and that one did not run the graph either");
+}
+
+// Past the interval, the same board runs again rather than replaying.
+{
+  useStore();
+  const review = await load();
+  const sample = stubSample([
+    { severity: "minor", refs: ["R4"], nets: [], title: "something", why: "y" },
+  ]);
+  const work = clone(board);
+
+  await review.review(sample, work, {});
+  localStorage.setItem("pcb-eval.lastReview.v1", String(Date.now() - 60_000));
+  await review.review(sample, work, {});
+  check(
+    sample.reviews === 2,
+    `the same board reviewed twice runs twice, got ${sample.reviews}`
+  );
 }
 
 // ------------------------------------------------------------ no session cap
 //
 // The page used to stop after five reviews per browser, which fell hardest on
 // the person exploring their own board. The count is still kept, because how
-// many reviews have run is worth knowing, but nothing is refused on it. The
-// cooldown is what remains, and it is a different thing: it stops a held-down
-// button from hammering a service that is already failing.
+// many reviews have run is worth knowing, but nothing is refused on it.
 
 {
   useStore();
@@ -134,26 +163,8 @@ async function expectCode(promise, code, label) {
   const sample = stubSample();
   const fresh = clone(board);
   applyEdits(fresh, [{ op: "set_value", args: { ref: "R5", value: "2k2" } }]);
-  const out = await review.review(sample, fresh, {});
-  check(out.cached === false, "a board reviewed after 500 others still runs");
-  check(sample.reviews === 1, "and it really did run rather than answering from cache");
-}
-
-// A board already in the cache answers without running the graph, whatever the
-// count says. That was the point of the cache before the cap existed and it is
-// still the point now.
-{
-  useStore();
-  const review = await load();
-  const sample = stubSample([
-    { severity: "minor", refs: ["R4"], nets: [], title: "cached one", why: "" },
-  ]);
-  const work = clone(board);
-  applyEdits(work, [{ op: "set_value", args: { ref: "R4", value: "R" } }]);
-  await review.review(sample, work, {});
-  const replayed = await review.review(sample, work, {});
-  check(replayed.cached === true, "a cached board answers from the cache");
-  check(sample.reviews === 1, "and it did not run the graph again");
+  await review.review(sample, fresh, {});
+  check(sample.reviews === 1, "a board reviewed after 500 others still runs");
 }
 
 // ------------------------------------------- storage that is not there at all
@@ -176,8 +187,9 @@ async function expectCode(promise, code, label) {
   await expectCode(review.review(sample, other, {}), "cooldown", "interval without storage");
   check(sample.reviews === 1, "and no second review was run");
 
-  const again = await review.review(sample, work, {});
-  check(again.cached === true, "the cache still replays without storage");
+  // With storage blocked the limits still hold, from the in-memory copy that
+  // `readJSON` falls back to. There is nothing to replay - the cache is gone -
+  // so what is checked is that the clock and the counter survive.
   check(review.budget.used() === 1, `the counter still counts (${review.budget.used()})`);
 }
 
@@ -236,6 +248,6 @@ for (const failure of failures) console.error("  x " + failure);
 console.log(
   failures.length
     ? `${failures.length} review-limit checks failed`
-    : "cache, cooldown, an absent cap, blocked storage, absence and grading all hold"
+    : "an absent cache, the cooldown, an absent cap, blocked storage, absence and grading all hold"
 );
 process.exit(failures.length ? 1 : 0);
