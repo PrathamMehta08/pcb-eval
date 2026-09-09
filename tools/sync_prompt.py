@@ -24,11 +24,9 @@ sys.path.insert(0, str(ROOT))
 
 from console import utf8  # noqa: E402
 from graph.prompts import (  # noqa: E402
-    ADJUDICATE_JOB,
     BOARD_SLOT,
+    SECOND_LOOK_JOB,
     SYSTEM,
-    circuit_prompt,
-    physical_prompt,
     single_prompt_template,
 )
 
@@ -44,24 +42,27 @@ HEADER = """// The prompts, byte for byte the ones the harness sends. They come 
 
 
 TAIL = """
-export const NODE_PROMPTS = {
-  circuit: CIRCUIT_PROMPT,
-  physical: PHYSICAL_PROMPT,
-};
-
-/** The one flat prompt, for a single-call review. */
+/**
+ * The one reviewer, given the whole distilled board.
+ *
+ * Keeps the name the parity tests know it by. What they assert through it is
+ * the invariant that matters: the page sends the same prompt the flat-prompt
+ * detector sends, so the README's comparison is a statement about this page.
+ */
 export function buildPrompt(distilled) {
   return SINGLE_PROMPT + distilled;
 }
 
-/** One reviewer's job, plus the whole board. */
-export function nodePrompt(node, distilled) {
-  return NODE_PROMPTS[node] + distilled;
-}
-
-/** The merge step, which takes the findings as well as the board. */
-export function adjudicatePrompt(findingsText, distilled) {
-  return ADJUDICATE_JOB.replace("{findings}", findingsText).replace("{distilled}", distilled);
+/**
+ * The second look: the board again, plus the first pass's own findings.
+ *
+ * What it is shown is the reviewer's own output and nothing else - never the
+ * rule findings, never a defect list. A second pass told where the
+ * deterministic layer already looked is a second pass being handed the answer.
+ */
+export function secondLookPrompt(distilled, already) {
+  const gap = String.fromCharCode(10);
+  return SECOND_LOOK + distilled + gap + gap + "ALREADY REPORTED" + gap + already;
 }
 
 export { SYSTEM_PROMPT };
@@ -89,18 +90,20 @@ def block() -> str:
         "\n",
         _js_array("SINGLE_PROMPT", _head_of(single_prompt_template())),
         "\n",
+        # The second look's job text. The board and the first pass's findings
+        # are appended by the page, in that order.
+        _js_array("SECOND_LOOK", _head_of(_second_look_template())),
+        TAIL,
+        END,
     ]
-    for name, builder in (
-        ("CIRCUIT_PROMPT", circuit_prompt),
-        ("PHYSICAL_PROMPT", physical_prompt),
-    ):
-        parts.append(_js_array(name, _head_of(builder(BOARD_SLOT))))
-        parts.append("\n")
-    # The adjudicator has two slots rather than one, so it stays a template.
-    parts.append(_js_array("ADJUDICATE_JOB", ADJUDICATE_JOB))
-    parts.append(TAIL)
-    parts.append(END)
     return "".join(parts)
+
+
+def _second_look_template() -> str:
+    """The second-look job with the board slot where the board goes."""
+    from graph.prompts import _build
+
+    return _build(SECOND_LOOK_JOB, BOARD_SLOT)
 
 
 def main() -> int:

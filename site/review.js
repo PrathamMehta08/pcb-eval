@@ -87,43 +87,25 @@ const SINGLE_PROMPT = [
   "",
 ].join("\n");
 
-const CIRCUIT_PROMPT = [
-  "You are reviewing the circuit: what the parts are, what their",
-  "pins are for, and whether the wiring achieves what the design is trying to do.",
+const SECOND_LOOK = [
+  "You have already reviewed this board once. Below is the",
+  "board again, and the list of problems that were reported.",
   "",
-  "Read the design for intent first, then ask whether it is built that way. What is",
-  "worth reporting is usually an interaction between parts rather than a property",
-  "of one, so consider the power architecture as a whole, what each pin is for",
-  "against the net it sits on, what holds a node at a defined level before any",
-  "firmware runs, what a part needs alongside it to work at all, what a connector's",
-  "pin order implies about whatever plugs into it, and whether a part's value or",
-  "type suits the job it has been given.",
+  "Report what that list is missing.",
   "",
-  "Your evidence is the COMPONENTS and NETS sections and the RESEARCHED FACTS. A",
-  "researched fact is established; anything you know about a part that is not",
-  "listed there comes from your own training, and a finding resting on it must say",
-  "so in `assumption`.",
+  "A reviewer working through a board once tends to stop when it has something to",
+  "say about each area it looked at, and to look at the areas that suggested",
+  "themselves first. So go after what a first pass skips: a value that is right for",
+  "some other position in the circuit, a part connected the way its neighbour",
+  "should be, a stage that works but is fed from the wrong place, anything whose",
+  "consequence only appears when two parts are considered together.",
   "",
-  "You have no geometry: no copper, no placement, no distances, no layer",
-  "assignments. Another reviewer holds those and reports on them. Do not infer them",
-  "and do not comment on them.",
+  "Do not repeat anything already reported, and do not restate one of those",
+  "findings in different words. If the list is complete, report nothing - an empty",
+  "list is a real answer and a padded one costs the reader more than it gives.",
   "",
-  "Every finding must carry three extra fields, and a finding without them is",
-  "discarded unread:",
-  "",
-  "- `claim`: a short lowercase tag for the kind of defect, in your own words.",
-  "  Two findings about the same kind of problem should carry the same tag.",
-  "- `subject`: the one ref or net the finding is actually about. Not a list. If",
-  "  you cannot name a single subject, you are describing more than one finding.",
-  "- `evidence`: one line copied exactly from the board data above \u2014 the line that",
-  "  makes the claim true. Copy it character for character. Do not paraphrase it,",
-  "  and do not write a line that is not there.",
-  "",
-  "Name only what the finding needs. Listing extra refs and nets does not make a",
-  "finding stronger; it makes it unfalsifiable, and unfalsifiable findings are",
-  "thrown out.",
-  "",
-  "inventing evidence.",
+  "Do not report style, silkscreen or aesthetics, or anything you would have to",
+  "guess at.",
   "",
   "",
   "The board data carries no current, load, power, temperature or timing figure.",
@@ -135,9 +117,6 @@ const CIRCUIT_PROMPT = [
   "the design. Reply with JSON only, in exactly this shape:",
   "",
   "{\"findings\": [{",
-  "  \"claim\": \"a short lowercase tag naming the kind of defect, in your own words\",",
-  "  \"subject\": \"<the one ref or net this finding is about>\",",
-  "  \"evidence\": \"a line copied exactly from the board data above\",",
   "  \"severity\": \"critical\" | \"major\" | \"minor\",",
   "  \"refs\": [\"<ref>\", \"...\"],",
   "  \"nets\": [\"<net>\", \"...\"],",
@@ -151,107 +130,27 @@ const CIRCUIT_PROMPT = [
   "",
 ].join("\n");
 
-const PHYSICAL_PROMPT = [
-  "You are reviewing the physical board: where things sit and",
-  "how the copper joins them.",
-  "",
-  "Every number you have been given is a measurement, not a verdict. A distance is",
-  "only a defect once you can say why it matters for that pin on that net, and a",
-  "narrow track is only a defect if something about this design makes it one. Your",
-  "job is what the measurements mean together: the size of the loop a return",
-  "current is forced to take, whether the reference under a signal is continuous,",
-  "whether a capacitor that is on the correct net is near enough and on the right",
-  "layer to serve the pin it was put there for, what a pour's shape does to current",
-  "that has to cross it, which parts should be close and which should not, and what",
-  "a manufacturer or a test fixture would struggle with.",
-  "",
-  "Your evidence is the COPPER and DECOUPLING sections. You do not have pin",
-  "functions, part values or part descriptions: another reviewer holds those and",
-  "reports on netlist correctness and component selection. Do not infer them and do",
-  "not comment on them.",
-  "",
-  "Every finding must carry three extra fields, and a finding without them is",
-  "discarded unread:",
-  "",
-  "- `claim`: a short lowercase tag for the kind of defect, in your own words.",
-  "  Two findings about the same kind of problem should carry the same tag.",
-  "- `subject`: the one ref or net the finding is actually about. Not a list. If",
-  "  you cannot name a single subject, you are describing more than one finding.",
-  "- `evidence`: one line copied exactly from the board data above \u2014 the line that",
-  "  makes the claim true. Copy it character for character. Do not paraphrase it,",
-  "  and do not write a line that is not there.",
-  "",
-  "Name only what the finding needs. Listing extra refs and nets does not make a",
-  "finding stronger; it makes it unfalsifiable, and unfalsifiable findings are",
-  "thrown out.",
-  "",
-  "inventing evidence.",
-  "",
-  "",
-  "The board data carries no current, load, power, temperature or timing figure.",
-  "There is no supply current for any rail, no duty cycle and no ambient. A finding",
-  "that depends on one of those depends on a number you would have to supply",
-  "yourself, and supplying it is inventing evidence.",
-  "",
-  "Use the exact ref and net strings from the board so findings can be matched to",
-  "the design. Reply with JSON only, in exactly this shape:",
-  "",
-  "{\"findings\": [{",
-  "  \"claim\": \"a short lowercase tag naming the kind of defect, in your own words\",",
-  "  \"subject\": \"<the one ref or net this finding is about>\",",
-  "  \"evidence\": \"a line copied exactly from the board data above\",",
-  "  \"severity\": \"critical\" | \"major\" | \"minor\",",
-  "  \"refs\": [\"<ref>\", \"...\"],",
-  "  \"nets\": [\"<net>\", \"...\"],",
-  "  \"problem\": \"one line naming the defect\",",
-  "  \"why\": \"one sentence on the consequence\",",
-  "  \"fix\": \"one sentence naming the change that would correct it\"",
-  "}]}",
-  "",
-  "Here is the board.",
-  "",
-  "",
-].join("\n");
-
-const ADJUDICATE_JOB = [
-  "You are merging three reviews of one board into one list.",
-  "",
-  "Below are findings from three reviewers, each numbered. Some describe the same",
-  "defect in different words. Return the numbers to keep: one per real defect,",
-  "choosing the clearest wording, and dropping anything that is a restatement,",
-  "a suggestion rather than a defect, or a claim the board data does not support.",
-  "",
-  "Reply with JSON only:",
-  "",
-  "{\"keep\": [0, 3, 7], \"why\": \"one short sentence\"}",
-  "",
-  "Findings:",
-  "",
-  "{findings}",
-  "",
-  "Here is the board they reviewed.",
-  "",
-  "{distilled}",
-].join("\n");
-
-export const NODE_PROMPTS = {
-  circuit: CIRCUIT_PROMPT,
-  physical: PHYSICAL_PROMPT,
-};
-
-/** The one flat prompt, for a single-call review. */
+/**
+ * The one reviewer, given the whole distilled board.
+ *
+ * Keeps the name the parity tests know it by. What they assert through it is
+ * the invariant that matters: the page sends the same prompt the flat-prompt
+ * detector sends, so the README's comparison is a statement about this page.
+ */
 export function buildPrompt(distilled) {
   return SINGLE_PROMPT + distilled;
 }
 
-/** One reviewer's job, plus the whole board. */
-export function nodePrompt(node, distilled) {
-  return NODE_PROMPTS[node] + distilled;
-}
-
-/** The merge step, which takes the findings as well as the board. */
-export function adjudicatePrompt(findingsText, distilled) {
-  return ADJUDICATE_JOB.replace("{findings}", findingsText).replace("{distilled}", distilled);
+/**
+ * The second look: the board again, plus the first pass's own findings.
+ *
+ * What it is shown is the reviewer's own output and nothing else - never the
+ * rule findings, never a defect list. A second pass told where the
+ * deterministic layer already looked is a second pass being handed the answer.
+ */
+export function secondLookPrompt(distilled, already) {
+  const gap = String.fromCharCode(10);
+  return SECOND_LOOK + distilled + gap + gap + "ALREADY REPORTED" + gap + already;
 }
 
 export { SYSTEM_PROMPT };

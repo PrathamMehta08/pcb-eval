@@ -408,6 +408,53 @@ kbd {
   border-radius: 3px; background: var(--raised); color: var(--ink-mid);
 }
 
+/* ------------------------------------------------------------- graph rail ---
+   The review used to be a list of steps, which showed what happened without
+   showing that anything moved. Five nodes, two of which ask a model. */
+.gr-rail { list-style: none; margin: 0 0 14px; padding: 0; }
+.ro-graph-done { padding: 12px 14px 2px; border-top: 1px solid var(--line-soft); }
+.ro-graph-done h4 {
+  margin: 0 0 8px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; color: #5d666e;
+}
+.gr-node {
+  position: relative; display: grid; align-items: baseline;
+  grid-template-columns: 14px 1fr auto; gap: 2px 9px;
+  padding: 5px 0 5px 0;
+}
+.gr-edge {
+  position: absolute; left: 6px; top: -6px; height: 12px; width: 1px;
+  background: var(--line);
+}
+.gr-dot {
+  grid-column: 1; width: 9px; height: 9px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--ground); justify-self: center;
+}
+.gr-name {
+  grid-column: 2; font-family: var(--mono); font-size: 12px; color: #79828b;
+}
+.gr-kind {
+  grid-column: 3; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
+  text-transform: uppercase; color: #5d666e;
+}
+.gr-count {
+  grid-column: 2 / -1; font-size: 11px; color: #5d666e;
+  font-variant-numeric: tabular-nums;
+}
+.gr-node.model .gr-kind { color: var(--mint); }
+.gr-node.done .gr-dot { background: var(--ink-dim); border-color: var(--ink-dim); }
+.gr-node.done .gr-name { color: #b6bfc5; }
+.gr-node.on .gr-dot { background: var(--mint); border-color: var(--mint); }
+.gr-node.on .gr-name { color: #e6eae7; }
+.gr-node.on .gr-count { color: var(--mint); }
+@media (prefers-reduced-motion: no-preference) {
+  .gr-node.on .gr-dot { animation: gr-pulse 1.1s ease-in-out infinite; }
+}
+@keyframes gr-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 211, 154, .45); }
+  50% { box-shadow: 0 0 0 4px rgba(79, 211, 154, 0); }
+}
+
 /* ------------------------------------------------------- documentation view --
    The board used to carry a mark per part. It was a second object over the
    copper that could only say yes or no about one part at a time, and the real

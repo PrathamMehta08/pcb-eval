@@ -61,7 +61,10 @@ function stubSample(findings = []) {
   const stub = { asked: 0, reviews: 0, lastPrompt: "" };
   stub.json = async (prompt) => {
     stub.asked += 1;
-    if (prompt.includes("You are reviewing the circuit")) stub.reviews += 1;
+    // The first node's job text marks the start of a graph run. It was the
+    // circuit specialist's opening line; that reviewer no longer exists, and
+    // matching a line nothing sends counted every review as zero.
+    if (prompt.includes("Review this board before it is manufactured")) stub.reviews += 1;
     stub.lastPrompt = prompt;
     return { findings };
   };

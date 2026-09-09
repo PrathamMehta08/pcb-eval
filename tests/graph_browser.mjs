@@ -1,9 +1,20 @@
-// The browser graph against a stub Claude — the wiring, the loop, the gate.
+// site/graph.js against graph/v7.py: the page runs the architecture the sweep
+// measured, not a picture of it.
 //
-// The mirror of tests/run.py step 12, which does the same to graph/build.py.
-// Everything except the quality of the findings is decidable without a network:
-// which nodes run and in what order, whether the gate loops, and whether the
-// board throws out what it can refute.
+// Four situations, and the first two are the ones that make a recall number on
+// a seeded corpus worth reading at all.
+//
+//   The nodes run in order, and only two of them ask a model. A page that ran
+//   three specialists while the README reported one reviewer would be a page
+//   describing someone else's numbers.
+//
+//   The second look is shown the first pass's findings and nothing else. Shown
+//   the rule findings it would be told where the deterministic layer already
+//   looked, which on a seeded board is where the defect is.
+//
+//   The board refuses what it can disprove, without asking a model.
+//
+//   A finding naming a part that is not on the board never reaches the report.
 //
 //   node tests/graph_browser.mjs
 
@@ -13,159 +24,144 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { applyEdits } = await import("file://" + join(root, "site", "ops.js"));
-const { runGraph, MAX_PASSES, REVIEWERS } = await import("file://" + join(root, "site", "graph.js"));
+const { runGraph, MAX_PASSES, NODES, ASKS_MODEL } = await import(
+  "file://" + join(root, "site", "graph.js")
+);
 
 const board = JSON.parse(readFileSync(join(root, "boards", "stm32-good.json"), "utf8"));
-const clone = (v) => JSON.parse(JSON.stringify(v));
+const clone = (b) => JSON.parse(JSON.stringify(b));
 
 const failures = [];
 const check = (ok, message) => {
   if (!ok) failures.push(message);
 };
 
-/** A Claude that says what the test tells it to, and counts the asking. */
-function stub(byNode = {}) {
-  const asked = [];
+/** A stub model. `answers` is one reply per call, in order. */
+function stub(answers) {
+  const seen = { prompts: [], calls: 0 };
   const ask = async (prompt) => {
-    // Which node is asking is legible from the job at the top of the prompt.
-    const node =
-      REVIEWERS.find((n) => prompt.includes(JOB_MARK[n])) ??
-      (prompt.includes("merging three reviews") ? "adjudicate" : "?");
-    asked.push(node);
-    return byNode[node] ?? { findings: [] };
+    seen.prompts.push(prompt);
+    return answers[seen.calls++] ?? { findings: [] };
   };
-  ask.asked = asked;
+  ask.seen = seen;
   return ask;
 }
-const JOB_MARK = {
-  circuit: "You are reviewing the circuit",
-  physical: "You are reviewing the physical board",
-};
 
-// A clean board gives the rules nothing to chase: one pass, then stop.
+// --------------------------------------------------- the shape of the graph
+
 {
-  const ask = stub();
-  const out = await runGraph(clone(board), ask);
-  check(out.stopped === "stop:nothing-to-chase", `clean board stopped ${out.stopped}`);
-  check(out.passes === 1, `clean board took ${out.passes} passes`);
+  const ask = stub([{ findings: [] }, { findings: [] }]);
+  const out = await runGraph(clone(board), ask, {});
   check(
-    JSON.stringify(ask.asked) === JSON.stringify(REVIEWERS),
-    `every reviewer ran once, in order: ${ask.asked}`
+    JSON.stringify(out.steps.map((s) => s.node)) === JSON.stringify(NODES),
+    `the nodes run in order, got ${out.steps.map((s) => s.node).join(" -> ")}`
   );
-  check(out.steps[0].node === "ingest" && out.steps[0].measured, "ingest runs first and is measured");
-  check(out.steps.at(-1).node === "gate", "the gate runs last");
+  check(ask.seen.calls === 2, `two model calls for a board, got ${ask.seen.calls}`);
+  check(
+    ASKS_MODEL.size === 2 && ASKS_MODEL.has("review") && ASKS_MODEL.has("second_look"),
+    "and exactly the two nodes that say they ask a model do"
+  );
+  check(MAX_PASSES === 1, "one pass: the loop went with the gate that drove it");
+  check(out.stopped === "stop:one-pass", `stopped ${out.stopped}`);
 }
 
-// A board with one defect a rule catches, so the gate has something to chase.
-// The edit is written out rather than imported from the corpus: this file tests
-// the graph's wiring, and it should not start failing because a generator
-// picked a different site on a board it does not otherwise care about.
-const broken = clone(board);
-applyEdits(broken, [
-  { op: "set_value", args: { ref: "R1", value: "R" } },
-]);
+// ------------------------------------------- what the second look is shown
 
-// A rule fires and nothing the model says accounts for it: loop, then give up
-// rather than call the board clean.
 {
-  const ask = stub({
-    circuit: {
-      findings: [{ problem: "something unrelated", refs: ["U2"], severity: "minor", why: "", fix: "" }],
-    },
-  });
-  const out = await runGraph(clone(broken), ask);
-  check(out.stopped === "stop:passes-spent", `unaccounted rule stopped ${out.stopped}`);
-  check(out.passes === MAX_PASSES, `it used ${out.passes} of ${MAX_PASSES} passes`);
-  check(ask.asked.filter((n) => n === "circuit").length === 2, "the circuit node ran twice");
-  const gates = out.steps.filter((s) => s.node === "gate");
-  check(gates.length === 2, `two gate decisions, got ${gates.length}`);
-  check(gates[0].decision === "again", `the first gate said ${gates[0].decision}`);
-  check(
-    gates[0].unaccounted.includes("value-not-orderable"),
-    `the gate names what is outstanding: ${gates[0].unaccounted}`
-  );
-}
-
-// A finding that overlaps the rule ends it after one pass.
-{
-  const ask = stub({
-    circuit: {
-      findings: [{ problem: "R1 has no value", refs: ["R1"], severity: "major", why: "", fix: "Give it one." }],
-    },
-  });
-  const out = await runGraph(clone(broken), ask);
-  check(out.stopped === "stop:rules-accounted-for", `matched rule stopped ${out.stopped}`);
-  check(out.passes === 1, "in one pass");
-}
-
-// And the board throws out what it can refute, with no model consulted.
-{
-  const ask = stub({
-    circuit: {
-      findings: [
-        { problem: "U9 is wrong", refs: ["U9"], severity: "major", why: "", fix: "" },
-        { problem: "GND is stranded", nets: ["GND"], severity: "critical", why: "", fix: "" },
-        { problem: "R1 has no value", refs: ["R1"], severity: "major", why: "", fix: "" },
-      ],
-    },
-  });
-  const out = await runGraph(clone(broken), ask);
-  const droppedTitles = out.dropped.map((d) => d.title);
-  check(droppedTitles.includes("U9 is wrong"), `a part that does not exist is refuted: ${droppedTitles}`);
-  check(
-    droppedTitles.includes("GND is stranded"),
-    "a split claim the copper denies is refuted"
-  );
-  check(
-    out.findings.some((f) => f.title === "R1 has no value"),
-    "and the one the board agrees with survives"
-  );
-}
-
-// A reviewer writing D2.2 means pin 2 of D2, not a part called D2.2.
-{
-  const ask = stub({
-    physical: {
+  // The first pass finds something. Whatever it says must reach the second
+  // look; whatever the rules found must not.
+  const ask = stub([
+    {
       findings: [
         {
-          problem: "the +5V rail is thin",
-          refs: ["D2.2"],
-          nets: ["U2.1(VBAT,pwr-in)", "+5V"],
           severity: "major",
-          why: "",
-          fix: "Widen it.",
+          refs: ["R4"],
+          nets: [],
+          problem: "a thing the reviewer noticed",
+          why: "w",
+          fix: "f",
         },
       ],
     },
-  });
-  const out = await runGraph(clone(board), ask);
-  const item = out.findings[0];
-  check(Boolean(item), "the finding survived rather than being refuted as invented");
-  if (item) {
+    { findings: [] },
+  ]);
+  const work = clone(board);
+  // An edit the rules do catch, so there is something for a leak to leak.
+  applyEdits(work, [{ op: "set_value", args: { ref: "R4", value: "R" } }]);
+  const out = await runGraph(work, ask, {});
+  check(out.rules.length > 0, "the rules found something on this board");
+
+  const look = ask.seen.prompts[1];
+  check(
+    look.includes("ALREADY REPORTED") && look.includes("a thing the reviewer noticed"),
+    "the second look is shown the first pass's own findings"
+  );
+  for (const rule of out.rules) {
     check(
-      item.refs.includes("D2") && item.refs.includes("U2"),
-      `pin references become part references: ${JSON.stringify(item.refs)}`
+      !look.includes(rule.title),
+      `and not what the rules found: ${rule.title.slice(0, 40)}`
     );
-    check(item.nets.includes("+5V") && item.nets.length === 1, `nets: ${JSON.stringify(item.nets)}`);
   }
+  check(
+    !/HANDLED BY MEASUREMENT|net-island|value-not-orderable/.test(look),
+    "nor the names of the checks that run"
+  );
 }
 
-// Steps are reported as they run, so the page can show the pipeline moving.
+// ------------------------------------------ the board refuses what it can
+
 {
-  const seen = [];
-  const ask = stub();
-  await runGraph(clone(board), ask, {
-    onStep: (step) => seen.push(`${step.node}${step.running ? ":start" : ":done"}`),
-  });
-  check(seen.includes("circuit:start"), "a node is reported when it starts");
-  check(seen.includes("circuit:done"), "and again when it finishes");
-  check(seen.indexOf("circuit:start") < seen.indexOf("circuit:done"), "in that order");
+  const ask = stub([
+    {
+      findings: [
+        {
+          severity: "critical",
+          refs: ["U9"],
+          nets: [],
+          problem: "U9 is wired wrongly",
+          why: "w",
+          fix: "f",
+        },
+      ],
+    },
+    { findings: [] },
+  ]);
+  const out = await runGraph(clone(board), ask, {});
+  const dropped = out.dropped.map((d) => d.title);
+  check(
+    dropped.includes("U9 is wired wrongly"),
+    `a finding about a part that is not on the board is refused: ${JSON.stringify(dropped)}`
+  );
+  check(
+    !out.findings.some((f) => f.title === "U9 is wired wrongly"),
+    "and it does not reach the report"
+  );
+  const validate = out.steps.find((s) => s.node === "validate");
+  check(validate && !ASKS_MODEL.has("validate"), "and no model was asked whether to");
+}
+
+// -------------------------------------- the rules reach the report as well
+
+{
+  const work = clone(board);
+  applyEdits(work, [{ op: "set_value", args: { ref: "R4", value: "R" } }]);
+  const ask = stub([{ findings: [] }, { findings: [] }]);
+  const out = await runGraph(work, ask, {});
+  check(
+    out.findings.length >= out.rules.length,
+    "what the rules measured is reported even when the reviewer says nothing"
+  );
+  const aggregate = out.steps.find((s) => s.node === "aggregate");
+  check(
+    aggregate?.fromRules === out.rules.length,
+    `and the report says how many came from measurement, got ${aggregate?.fromRules}`
+  );
 }
 
 for (const failure of failures) console.error("  x " + failure);
 console.log(
   failures.length
-    ? `${failures.length} browser graph checks failed`
-    : "the browser graph runs its nodes in order, loops on an unaccounted rule, gives up rather than passing a bad board, and refutes what the copper denies"
+    ? `${failures.length} browser-graph checks failed`
+    : "the page walks the five nodes, asks the model twice, and leaks nothing to the second look"
 );
 process.exit(failures.length ? 1 : 0);

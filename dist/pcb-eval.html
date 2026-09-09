@@ -421,6 +421,53 @@ kbd {
   border-radius: 3px; background: var(--raised); color: var(--ink-mid);
 }
 
+/* ------------------------------------------------------------- graph rail ---
+   The review used to be a list of steps, which showed what happened without
+   showing that anything moved. Five nodes, two of which ask a model. */
+.gr-rail { list-style: none; margin: 0 0 14px; padding: 0; }
+.ro-graph-done { padding: 12px 14px 2px; border-top: 1px solid var(--line-soft); }
+.ro-graph-done h4 {
+  margin: 0 0 8px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; color: #5d666e;
+}
+.gr-node {
+  position: relative; display: grid; align-items: baseline;
+  grid-template-columns: 14px 1fr auto; gap: 2px 9px;
+  padding: 5px 0 5px 0;
+}
+.gr-edge {
+  position: absolute; left: 6px; top: -6px; height: 12px; width: 1px;
+  background: var(--line);
+}
+.gr-dot {
+  grid-column: 1; width: 9px; height: 9px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--ground); justify-self: center;
+}
+.gr-name {
+  grid-column: 2; font-family: var(--mono); font-size: 12px; color: #79828b;
+}
+.gr-kind {
+  grid-column: 3; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
+  text-transform: uppercase; color: #5d666e;
+}
+.gr-count {
+  grid-column: 2 / -1; font-size: 11px; color: #5d666e;
+  font-variant-numeric: tabular-nums;
+}
+.gr-node.model .gr-kind { color: var(--mint); }
+.gr-node.done .gr-dot { background: var(--ink-dim); border-color: var(--ink-dim); }
+.gr-node.done .gr-name { color: #b6bfc5; }
+.gr-node.on .gr-dot { background: var(--mint); border-color: var(--mint); }
+.gr-node.on .gr-name { color: #e6eae7; }
+.gr-node.on .gr-count { color: var(--mint); }
+@media (prefers-reduced-motion: no-preference) {
+  .gr-node.on .gr-dot { animation: gr-pulse 1.1s ease-in-out infinite; }
+}
+@keyframes gr-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 211, 154, .45); }
+  50% { box-shadow: 0 0 0 4px rgba(79, 211, 154, 0); }
+}
+
 /* ------------------------------------------------------- documentation view --
    The board used to carry a mark per part. It was a second object over the
    copper that could only say yes or no about one part at a time, and the real
@@ -2163,105 +2210,42 @@ function distill(board) {
 // ===== site/packs.js ==================================================
 
 /**
- * Evidence packs, in the browser. The mirror of harness/packs.py.
+ * The one thing a model is shown about the board, in the browser.
  *
- * The same boundary the harness enforces: a reviewer is handed its pack and
- * nothing else, so what it can say is bounded by what it was shown. The circuit
- * reviewer has no copper to speculate about; the physical reviewer has no pin
- * semantics to duplicate.
+ * V8 has a single reviewer holding the whole board, so there is a single pack.
+ * It used to be two - a circuit pack with no geometry and a physical pack with
+ * no pin semantics - and the split was removed because five sweeps said it cost
+ * recall: a reviewer holding half a board speculates about the other half.
  *
- * One honest difference from the Python. The page cannot fetch a datasheet, and
- * must not depend on a vendor CDN to review a board someone just dropped on it,
- * so the documents are the ones somebody attached to a part. What reaches a
- * reviewer is the same either way: passages, verbatim, with the page they came
- * from. Everything else is built from the same sections in the same order.
+ * ONE DIFFERENCE FROM THE HARNESS, AND IT IS DELIBERATE
+ *
+ * The harness runs its sweeps offline, so its reviewer pack is the distilled
+ * board and nothing else. The page can have more: if someone has attached a
+ * datasheet to a part, what was read out of it goes in here. That is the whole
+ * point of attaching one, and it is why the page's review can be better than
+ * the sweep's on a board whose parts are documented.
+ *
+ * Both blocks are empty for a board nobody has attached anything to, which is
+ * the ordinary state, and then the pack is exactly the distilled board.
  */
 
 
 
-const PACK_VERSION = "1";
-
-/** Rules whose findings belong to the physical reviewer rather than the circuit one. */
-const GEOMETRY_RULES = new Set([
-  "net-island",
-  "dfm-annular-ring",
-  "dfm-drill-size",
-  "dfm-track-width",
-]);
-
-function header(board) {
-  return [
-    `BOARD ${board.meta.name}`,
-    `${board.components.length} components, ${board.nets.length} nets, ` +
-      `${board.layout.footprints.length} footprints.`,
-  ];
-}
-
-/**
- * What was already measured, so a reviewer does not spend its call repeating it.
- *
- * Written as findings that have been reported, never as a list of the kinds of
- * defect that exist: a reviewer handed a taxonomy fills it in, which is measured
- * behaviour rather than a worry.
- */
-function findingsBlock(findings, title) {
-  if (!findings.length) {
-    return [
-      title,
-      "Nothing. No deterministic check failed in this area, which is not the " +
-        "same as the area being correct.",
-    ];
-  }
-  return [
-    title,
-    ...findings.map((f) => {
-      const refs = (f.refs || []).join(", ") || "-";
-      const nets = (f.nets || []).join(", ") || "-";
-      return `- ${f.title} (refs ${refs}; nets ${nets})`;
-    }),
-  ];
-}
+const PACK_VERSION = "2";
 
 const join = (blocks) =>
   blocks.filter((b) => b && b.length).map((b) => b.join("\n")).join("\n\n");
 
-function circuitPack(board, findings = []) {
-  return join([
-    header(board),
-    componentsSection(board),
-    netsSection(board),
-    // What was read out of the documents attached to this board: the typed
-    // parameters first, then the passages retrieval picked. Both empty for a
-    // board nobody has attached anything to, which is the normal state.
-    factsBlock(board),
-    passagesBlock(board),
-    findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
-  ]);
-}
-
-function physicalPack(board, findings = []) {
-  return join([
-    header(board),
-    copperSection(board),
-    decouplingSection(board),
-    [
-      "READING THIS",
-      "Every number above is a measurement, not a verdict. A distance is only " +
-        "a defect once you can say why it matters for that particular pin on " +
-        "this particular rail.",
-    ],
-    findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
-  ]);
-}
-
-/** Every pack for this board, keyed by the reviewer that receives it. */
-function buildPacks(board, deterministic = []) {
-  const geometry = deterministic.filter((f) => GEOMETRY_RULES.has(f.rule));
-  const circuit = deterministic.filter((f) => !GEOMETRY_RULES.has(f.rule));
-  return {
-    circuit: circuitPack(board, circuit),
-    physical: physicalPack(board, geometry),
-  };
+/**
+ * What the reviewer reads: the board, then whatever its documents state.
+ *
+ * Nothing here describes what is wrong with the board. The deterministic
+ * findings are deliberately absent - naming them told the reviewer which
+ * categories to skip and cost more recall than the duplicate findings it saved,
+ * and on a seeded board it is the answer.
+ */
+function reviewerPack(board) {
+  return join([[distill(board)], factsBlock(board), passagesBlock(board)]);
 }
 
 // ===== site/kicad.js ==================================================
@@ -4799,55 +4783,70 @@ function drillsOf(pads) {
 
 // ===== site/graph.js ==================================================
 
-// The review graph, in the browser. The mirror of graph/build.py.
+// V8 in the browser. The mirror of graph/v7.py.
 //
-//   ingest        deterministic: distil, run the rule checks. No model asked.
+//   analyse       deterministic: distil the board, run the rule checks.
+//     |           No model is asked anything.
+//   review        one call, the whole distilled board, findings out
 //     |
-//   datasheet     what each pin is for, against what it is wired to
-//     |
-//   connections   the wiring between parts, and off the board
-//     |
-//   layout        placement and copper
-//     |
-//   adjudicate    merge the three, then let the board refute what it can
-//     |
-//   gate          stop, or go round again
+//   second look   one call: the board again, plus the first pass's own list,
+//     |           asked what that list is missing
+//   validate      deterministic: is the subject on this board, does the board
+//     |           refute it, is it a repeat of one already kept
+//   aggregate     deterministic: merge with what the rules measured, rank, score
 //
-// Sequential, because the nodes are cheap to reason about in order and the
-// interesting part is the loop.
+// WHY THIS AND NOT THE SPECIALISTS
 //
-// **The gate never asks the model whether it is finished.** If it did, the
-// answer would always be yes, and a board with a rule still firing would be
-// reported as reviewed. It stops on measurements: nothing for the rules to
-// find, or nothing they found still unaccounted for, or the pass budget spent.
+// The page used to run the shape the harness ran before V7: an ingest, a
+// circuit reviewer, a physical reviewer, an adjudicator and a gate that could
+// send the reviewers round again. Five sweeps said that arrangement was worse
+// than one reviewer holding the whole board. Splitting a board between
+// reviewers loses recall, because a reviewer holding half of one speculates
+// about the other half.
 //
-// One honest difference from the harness. The Groq client keeps the model's own
-// `reasoning` alongside its answer; the `sample` capability does not expose
-// that, so what this can show is the answer as it streams, what each node
-// proposed, and every decision the graph made — but not the private thinking.
+// There is no LLM critic either, and its absence is a measurement rather than
+// an omission. Written strictly it rejected every finding it was given; written
+// leniently it rejected almost none and still cost two defects across five
+// trials. What it was meant to do is done by `validate`, which is string
+// comparison against the board rather than a second opinion about it.
+//
+// THE LEAK, WHICH IS THE POINT OF THE SHAPE
+//
+// The reviewer is given the distilled board and nothing appended. The second
+// look is given the board and the first pass's own findings - never the rule
+// findings, never a defect list. A second pass told where the deterministic
+// layer already looked is a second pass being handed the answer.
 
 
 
 
 
-const MAX_PASSES = 2;
-const REVIEWERS = ["circuit", "physical"];
+/** One pass. The loop went with the gate that drove it. */
+const MAX_PASSES = 1;
 
-/** Which pack each reviewer reads. Disjoint, on purpose. */
-const PACK_FOR = { circuit: "circuit", physical: "physical" };
+/** The nodes, in the order they run, and what each is for. */
+const NODES = ["analyse", "review", "second_look", "validate", "aggregate"];
+
+/** Which nodes ask a model something. The rest are arithmetic. */
+const ASKS_MODEL = new Set(["review", "second_look"]);
 
 const ROLES = {
-  ingest:
-    "Distil the board, run the rule checks, and build the evidence pack each " +
-    "reviewer reads. No model is asked anything.",
-  circuit:
-    "Parts, nets and what each pin is for. Holds no geometry.",
-  physical:
-    "Copper, placement and distances. Holds no pin semantics.",
-  adjudicate: "Merge the reviews, then let the board refute what it can.",
-  gate: "Stop, or go round again — decided on measurements, never on the model's say-so.",
+  analyse:
+    "Distil the board and run the deterministic checks. No model is asked " +
+    "anything, and whatever the rules find is already a finding.",
+  review:
+    "One reviewer, the whole board. The same prompt the flat-prompt baseline " +
+    "is given, so the difference between them is everything around this call.",
+  second_look:
+    "The same reviewer, shown its own list and asked what it missed. Two draws " +
+    "of one reviewer covered more than either alone - that is why this exists.",
+  validate:
+    "Refuse a finding whose part or net is not on this board, that repeats one " +
+    "already kept, or that the copper itself contradicts. No model involved.",
+  aggregate:
+    "Merge what the reviewer said with what the rules measured, rank, score. " +
+    "A measured finding wins a tie: a number beats a sentence about the number.",
 };
-const MEASURED = new Set(["ingest", "gate"]);
 
 /** Coerce whatever came back into the finding shape, dropping junk. */
 function normalise(items, source) {
@@ -4877,10 +4876,8 @@ const NODE_REF = /^([A-Za-z]{1,3}\d+)\.[A-Za-z0-9_]+/;
 /**
  * `S1.4` and `S1.6(VBST)` mean pin 4 and pin 6 of S1. The subject is S1.
  *
- * The same habit `tidy` exists for. Left literal, a subject of `S1.4` is a part
- * that is not on the board, and the critic throws the finding out for a
- * formatting convention — which is exactly what it did to the real defect on
- * a correctly identified defect the first time this field was wired up.
+ * Left literal, a subject of `S1.4` is a part that is not on the board, and the
+ * validator throws the finding out for a formatting convention.
  */
 function normaliseSubject(value) {
   const text = String(value ?? "").trim();
@@ -4897,8 +4894,8 @@ function normaliseSubject(value) {
  *
  * Reviewers write `D2.2` when they mean pin 2 of D2, and put whole node strings
  * in the nets list. Taken literally both look like something that does not
- * exist — which is exactly what the refutation check is for, so without this it
- * throws out correct findings for a formatting habit.
+ * exist, which is what the refutation check is for - so without this it throws
+ * out correct findings for a formatting habit.
  */
 function tidy(rawRefs, rawNets) {
   const refs = [];
@@ -4913,7 +4910,7 @@ function tidy(rawRefs, rawNets) {
   for (const raw of rawRefs || []) addRef(raw);
   for (const raw of rawNets || []) {
     const value = String(raw).trim().replace(/,$/, "");
-    // A net name can contain brackets — `unconnected-(J12-Pad3)` is one — so
+    // A net name can contain brackets - `unconnected-(J12-Pad3)` is one - so
     // nothing is stripped here beyond whitespace.
     if (NODE_REF.test(value) || DESIGNATOR.test(value)) {
       addRef(value);
@@ -4934,95 +4931,60 @@ function key(item) {
 
 const overlaps = (a, b) => [...a].some((v) => b.has(v));
 
-/** The typed identity: the same kind of defect about the same thing. */
-function claimKey(item) {
+/**
+ * Is this finding one already kept, in other words?
+ *
+ * V8 unions two passes, and the second is asked not to repeat the first. Asked
+ * is not the same as does: with the same board in front of it, the same
+ * observation comes back worded differently often enough that the union has to
+ * settle it rather than the instruction. Two findings are the same when they
+ * make the same typed claim about the same subject, or when their titles are
+ * the same words - which is the case the model produces when it restates
+ * itself verbatim.
+ */
+function repeats(item, kept) {
   const claim = String(item.claim || "").trim().toLowerCase();
   const subject = String(item.subject || "").trim().toUpperCase().replace(/^\//, "");
-  if (!claim || !subject || claim === "other") return "";
-  return `c:${claim}|${subject}`;
-}
-
-/**
- * Same defect, same subject: one finding. Keep the most severe wording.
- *
- * Two reviewers finding one defect used to collide only if their ref and net
- * lists happened to intersect, so one problem in two wordings survived as two.
- */
-function dedupe(items) {
-  const rank = { critical: 0, major: 1, minor: 2 };
-  const best = new Map();
-  for (const item of items) {
-    const k =
-      claimKey(item) || [...key(item)].sort().join("|") || `t:${item.title.toLowerCase()}`;
-    const current = best.get(k);
-    if (!current || (rank[item.severity] ?? 3) < (rank[current.severity] ?? 3)) {
-      best.set(k, item);
+  const title = squeezeTitle(item.title);
+  for (const other of kept) {
+    if (squeezeTitle(other.title) === title) return `already reported: "${other.title}"`;
+    if (!claim || !subject || claim === "other") continue;
+    const theirs = String(other.subject || "").trim().toUpperCase().replace(/^\//, "");
+    if (claim === String(other.claim || "").trim().toLowerCase() && subject === theirs) {
+      return `the same claim about ${subject} was already reported`;
     }
   }
-  return [...best.values()];
+  return "";
 }
 
-function numbered(items) {
+const squeezeTitle = (text) =>
+  String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** The first pass's findings, as the second look is shown them. */
+function alreadyReported(items) {
+  if (!items.length) return "Nothing was reported.";
   return items
     .map(
-      (item, i) =>
-        `${i}. [${item.source}/${item.severity}] ${item.title}` +
-        ` (refs ${item.refs.join(", ") || "-"}; nets ${item.nets.join(", ") || "-"})\n   ${item.why}`
+      (item) =>
+        `- ${item.title} (refs ${item.refs.join(", ") || "-"};` +
+        ` nets ${item.nets.join(", ") || "-"})`
     )
     .join("\n");
-}
-
-/** Rule findings no confirmed finding overlaps, by ref or net. */
-function unaccounted(rules, confirmed) {
-  const covered = new Set();
-  for (const item of confirmed) for (const k of key(item)) covered.add(k);
-  return rules.filter((rule) => !overlaps(key(rule), covered));
-}
-
-function gateDecision(rules, confirmed, passes) {
-  if (!rules.length) {
-    return {
-      decision: "stop:nothing-to-chase",
-      why: "The rule checks found nothing, so there is nothing for another pass to chase.",
-    };
-  }
-  const left = unaccounted(rules, confirmed);
-  if (!left.length) {
-    return {
-      decision: "stop:rules-accounted-for",
-      why: "Every rule that fired has been matched by a confirmed finding, on refs or nets.",
-    };
-  }
-  if (passes >= MAX_PASSES) {
-    return {
-      decision: "stop:passes-spent",
-      why:
-        `${MAX_PASSES} passes are the budget and they are spent. Still unaccounted for: ` +
-        `${left.map((r) => r.rule).join(", ")}. Reported as a miss, not as a clean board.`,
-      left,
-    };
-  }
-  return {
-    decision: "again",
-    why:
-      `The rules found ${left.map((r) => r.rule).join(", ")}, and no confirmed finding ` +
-      "overlaps it. Round again — the model is not asked whether it is finished.",
-    left,
-  };
 }
 
 /**
  * Run the graph.
  *
- * `onStep(step)` is called as each one starts and again when it finishes, so
- * the page can show the pipeline moving. `ask(prompt, {onText, signal})` is the
- * one thing this needs from outside — normally `sample.json`.
+ * `onStep(step, steps)` is called as each node starts and again when it
+ * finishes, so the page can draw the traversal rather than a spinner.
+ * `ask(prompt, {onText, signal})` is the one thing this needs from outside.
  */
 async function runGraph(board, ask, { onStep, signal } = {}) {
-  const distilled = distill(board);
+  // The board, plus whatever any attached datasheet was read to say. The
+  // harness runs offline and its pack is the board alone; the page can do
+  // better, and that is the point of attaching a document to a part.
+  const distilled = reviewerPack(board);
   const rules = runChecks(board);
-  // The boundary: each reviewer sees only its own pack.
-  const packs = buildPacks(board, rules);
   const facts = boardFacts(board);
   const steps = [];
 
@@ -5035,96 +4997,97 @@ async function runGraph(board, ask, { onStep, signal } = {}) {
     Object.assign(step, patch, { running: false });
     onStep?.(step, steps);
   };
+  const stop = () => {
+    if (signal?.aborted) throw Object.assign(new Error("cancelled"), { code: "cancelled" });
+  };
 
   emit({
-    node: "ingest",
-    pass: 0,
+    node: "analyse",
     measured: true,
     running: false,
     summary:
       `Distilled the board to about ${approxTokens(distilled)} tokens. ` +
       (rules.length
-        ? `${rules.length} rule check${rules.length === 1 ? "" : "s"} fired: ${rules
-            .map((r) => r.rule)
-            .join(", ")}.`
-        : "No rule check fired."),
+        ? `${rules.length} deterministic check${rules.length === 1 ? "" : "s"} fired.`
+        : "No deterministic check fired, which is not the same as the board being correct."),
     rules,
   });
 
-  let proposed = [];
-  let confirmed = [];
-  let dropped = [];
-  let passes = 0;
+  // --- review -------------------------------------------------------------
+  stop();
+  const first = emit({ node: "review", measured: false, running: true, stream: "" });
+  const firstAnswer = await ask(buildPrompt(distilled), {
+    system: SYSTEM_PROMPT,
+    signal,
+    onText: ({ text }) => {
+      first.stream = text.slice(-600);
+      onStep?.(first, steps);
+    },
+  });
+  const proposed = normalise(firstAnswer?.findings, "review");
+  update(first, { found: proposed, stream: "" });
 
-  for (;;) {
-    passes += 1;
-    for (const node of REVIEWERS) {
-      if (signal?.aborted) throw Object.assign(new Error("cancelled"), { code: "cancelled" });
-      const step = emit({ node, pass: passes, measured: false, running: true, stream: "" });
-      const answer = await ask(nodePrompt(node, packs[PACK_FOR[node]]), {
-        system: SYSTEM_PROMPT,
-        signal,
-        onText: ({ text }) => {
-          step.stream = text.slice(-600);
-          onStep?.(step, steps);
-        },
-      });
-      const found = normalise(answer?.findings, node);
-      proposed = proposed.concat(found);
-      update(step, { found, stream: "" });
-    }
+  // --- second look --------------------------------------------------------
+  stop();
+  const again = emit({ node: "second_look", measured: false, running: true, stream: "" });
+  const moreAnswer = await ask(secondLookPrompt(distilled, alreadyReported(proposed)), {
+    system: SYSTEM_PROMPT,
+    signal,
+    onText: ({ text }) => {
+      again.stream = text.slice(-600);
+      onStep?.(again, steps);
+    },
+  });
+  const more = normalise(moreAnswer?.findings, "second-look");
+  update(again, { found: more, stream: "" });
 
-    // Merge: a model judges the wording, because that is a language question.
-    const merged = dedupe(proposed);
-    const adjudicating = emit({
-      node: "adjudicate",
-      pass: passes,
-      measured: false,
-      running: true,
-      stream: "",
-    });
-    let kept = merged;
-    if (merged.length > 1) {
-      const answer = await ask(adjudicatePrompt(numbered(merged), distilled), {
-        system: SYSTEM_PROMPT,
-        signal,
-        onText: ({ text }) => {
-          adjudicating.stream = text.slice(-600);
-          onStep?.(adjudicating, steps);
-        },
-      });
-      const picks = Array.isArray(answer?.keep)
-        ? [...new Set(answer.keep.map(Number))].filter((i) => i >= 0 && i < merged.length).sort()
-        : [];
-      if (picks.length) kept = picks.map((i) => merged[i]);
-    }
-
-    // Then the board refutes what it can, with no model consulted.
-    confirmed = [];
-    dropped = [];
-    for (const item of kept) {
-      const why = verify(item, facts, distilled);
-      if (why) dropped.push({ ...item, dropped: why });
-      else confirmed.push(item);
-    }
-    update(adjudicating, { confirmed, dropped, merged: merged.length, stream: "" });
-
-    const gate = gateDecision(rules, confirmed, passes);
-    emit({
-      node: "gate",
-      pass: passes,
-      measured: true,
-      running: false,
-      ...gate,
-      rules: rules.map((r) => r.rule),
-      unaccounted: (gate.left || []).map((r) => r.rule),
-      proposed: proposed.length,
-      reported: confirmed.length,
-    });
-    if (gate.decision !== "again") {
-      return { steps, rules, findings: confirmed, dropped, proposed, passes, stopped: gate.decision };
-    }
+  // --- validate -----------------------------------------------------------
+  const all = proposed.concat(more);
+  const confirmed = [];
+  const dropped = [];
+  for (const item of all) {
+    const why = repeats(item, confirmed) || verify(item, facts, distilled);
+    if (why) dropped.push({ ...item, dropped: why });
+    else confirmed.push(item);
   }
+  emit({
+    node: "validate",
+    measured: true,
+    running: false,
+    confirmed,
+    dropped,
+    merged: all.length,
+  });
+
+  // --- aggregate ----------------------------------------------------------
+  // Measured findings go in first, so where a rule and the reviewer describe
+  // one defect the merge keeps the measured one.
+  const covered = new Set();
+  for (const rule of rules) for (const k of key(rule)) covered.add(k);
+  const survivors = confirmed.filter((item) => !overlaps(key(item), covered));
+  const findings = rules.concat(survivors);
+
+  emit({
+    node: "aggregate",
+    measured: true,
+    running: false,
+    reported: findings.length,
+    fromRules: rules.length,
+    fromReviewer: survivors.length,
+    summary:
+      `${findings.length} reported: ${rules.length} measured, ` +
+      `${survivors.length} from the reviewer.`,
+  });
+
+  return {
+    steps,
+    rules,
+    findings,
+    dropped,
+    proposed: all,
+    passes: 1,
+    stopped: "stop:one-pass",
+  };
 }
 
 // ===== site/review.js =================================================
@@ -5217,43 +5180,25 @@ const SINGLE_PROMPT = [
   "",
 ].join("\n");
 
-const CIRCUIT_PROMPT = [
-  "You are reviewing the circuit: what the parts are, what their",
-  "pins are for, and whether the wiring achieves what the design is trying to do.",
+const SECOND_LOOK = [
+  "You have already reviewed this board once. Below is the",
+  "board again, and the list of problems that were reported.",
   "",
-  "Read the design for intent first, then ask whether it is built that way. What is",
-  "worth reporting is usually an interaction between parts rather than a property",
-  "of one, so consider the power architecture as a whole, what each pin is for",
-  "against the net it sits on, what holds a node at a defined level before any",
-  "firmware runs, what a part needs alongside it to work at all, what a connector's",
-  "pin order implies about whatever plugs into it, and whether a part's value or",
-  "type suits the job it has been given.",
+  "Report what that list is missing.",
   "",
-  "Your evidence is the COMPONENTS and NETS sections and the RESEARCHED FACTS. A",
-  "researched fact is established; anything you know about a part that is not",
-  "listed there comes from your own training, and a finding resting on it must say",
-  "so in `assumption`.",
+  "A reviewer working through a board once tends to stop when it has something to",
+  "say about each area it looked at, and to look at the areas that suggested",
+  "themselves first. So go after what a first pass skips: a value that is right for",
+  "some other position in the circuit, a part connected the way its neighbour",
+  "should be, a stage that works but is fed from the wrong place, anything whose",
+  "consequence only appears when two parts are considered together.",
   "",
-  "You have no geometry: no copper, no placement, no distances, no layer",
-  "assignments. Another reviewer holds those and reports on them. Do not infer them",
-  "and do not comment on them.",
+  "Do not repeat anything already reported, and do not restate one of those",
+  "findings in different words. If the list is complete, report nothing - an empty",
+  "list is a real answer and a padded one costs the reader more than it gives.",
   "",
-  "Every finding must carry three extra fields, and a finding without them is",
-  "discarded unread:",
-  "",
-  "- `claim`: a short lowercase tag for the kind of defect, in your own words.",
-  "  Two findings about the same kind of problem should carry the same tag.",
-  "- `subject`: the one ref or net the finding is actually about. Not a list. If",
-  "  you cannot name a single subject, you are describing more than one finding.",
-  "- `evidence`: one line copied exactly from the board data above \u2014 the line that",
-  "  makes the claim true. Copy it character for character. Do not paraphrase it,",
-  "  and do not write a line that is not there.",
-  "",
-  "Name only what the finding needs. Listing extra refs and nets does not make a",
-  "finding stronger; it makes it unfalsifiable, and unfalsifiable findings are",
-  "thrown out.",
-  "",
-  "inventing evidence.",
+  "Do not report style, silkscreen or aesthetics, or anything you would have to",
+  "guess at.",
   "",
   "",
   "The board data carries no current, load, power, temperature or timing figure.",
@@ -5265,9 +5210,6 @@ const CIRCUIT_PROMPT = [
   "the design. Reply with JSON only, in exactly this shape:",
   "",
   "{\"findings\": [{",
-  "  \"claim\": \"a short lowercase tag naming the kind of defect, in your own words\",",
-  "  \"subject\": \"<the one ref or net this finding is about>\",",
-  "  \"evidence\": \"a line copied exactly from the board data above\",",
   "  \"severity\": \"critical\" | \"major\" | \"minor\",",
   "  \"refs\": [\"<ref>\", \"...\"],",
   "  \"nets\": [\"<net>\", \"...\"],",
@@ -5281,107 +5223,27 @@ const CIRCUIT_PROMPT = [
   "",
 ].join("\n");
 
-const PHYSICAL_PROMPT = [
-  "You are reviewing the physical board: where things sit and",
-  "how the copper joins them.",
-  "",
-  "Every number you have been given is a measurement, not a verdict. A distance is",
-  "only a defect once you can say why it matters for that pin on that net, and a",
-  "narrow track is only a defect if something about this design makes it one. Your",
-  "job is what the measurements mean together: the size of the loop a return",
-  "current is forced to take, whether the reference under a signal is continuous,",
-  "whether a capacitor that is on the correct net is near enough and on the right",
-  "layer to serve the pin it was put there for, what a pour's shape does to current",
-  "that has to cross it, which parts should be close and which should not, and what",
-  "a manufacturer or a test fixture would struggle with.",
-  "",
-  "Your evidence is the COPPER and DECOUPLING sections. You do not have pin",
-  "functions, part values or part descriptions: another reviewer holds those and",
-  "reports on netlist correctness and component selection. Do not infer them and do",
-  "not comment on them.",
-  "",
-  "Every finding must carry three extra fields, and a finding without them is",
-  "discarded unread:",
-  "",
-  "- `claim`: a short lowercase tag for the kind of defect, in your own words.",
-  "  Two findings about the same kind of problem should carry the same tag.",
-  "- `subject`: the one ref or net the finding is actually about. Not a list. If",
-  "  you cannot name a single subject, you are describing more than one finding.",
-  "- `evidence`: one line copied exactly from the board data above \u2014 the line that",
-  "  makes the claim true. Copy it character for character. Do not paraphrase it,",
-  "  and do not write a line that is not there.",
-  "",
-  "Name only what the finding needs. Listing extra refs and nets does not make a",
-  "finding stronger; it makes it unfalsifiable, and unfalsifiable findings are",
-  "thrown out.",
-  "",
-  "inventing evidence.",
-  "",
-  "",
-  "The board data carries no current, load, power, temperature or timing figure.",
-  "There is no supply current for any rail, no duty cycle and no ambient. A finding",
-  "that depends on one of those depends on a number you would have to supply",
-  "yourself, and supplying it is inventing evidence.",
-  "",
-  "Use the exact ref and net strings from the board so findings can be matched to",
-  "the design. Reply with JSON only, in exactly this shape:",
-  "",
-  "{\"findings\": [{",
-  "  \"claim\": \"a short lowercase tag naming the kind of defect, in your own words\",",
-  "  \"subject\": \"<the one ref or net this finding is about>\",",
-  "  \"evidence\": \"a line copied exactly from the board data above\",",
-  "  \"severity\": \"critical\" | \"major\" | \"minor\",",
-  "  \"refs\": [\"<ref>\", \"...\"],",
-  "  \"nets\": [\"<net>\", \"...\"],",
-  "  \"problem\": \"one line naming the defect\",",
-  "  \"why\": \"one sentence on the consequence\",",
-  "  \"fix\": \"one sentence naming the change that would correct it\"",
-  "}]}",
-  "",
-  "Here is the board.",
-  "",
-  "",
-].join("\n");
-
-const ADJUDICATE_JOB = [
-  "You are merging three reviews of one board into one list.",
-  "",
-  "Below are findings from three reviewers, each numbered. Some describe the same",
-  "defect in different words. Return the numbers to keep: one per real defect,",
-  "choosing the clearest wording, and dropping anything that is a restatement,",
-  "a suggestion rather than a defect, or a claim the board data does not support.",
-  "",
-  "Reply with JSON only:",
-  "",
-  "{\"keep\": [0, 3, 7], \"why\": \"one short sentence\"}",
-  "",
-  "Findings:",
-  "",
-  "{findings}",
-  "",
-  "Here is the board they reviewed.",
-  "",
-  "{distilled}",
-].join("\n");
-
-const NODE_PROMPTS = {
-  circuit: CIRCUIT_PROMPT,
-  physical: PHYSICAL_PROMPT,
-};
-
-/** The one flat prompt, for a single-call review. */
+/**
+ * The one reviewer, given the whole distilled board.
+ *
+ * Keeps the name the parity tests know it by. What they assert through it is
+ * the invariant that matters: the page sends the same prompt the flat-prompt
+ * detector sends, so the README's comparison is a statement about this page.
+ */
 function buildPrompt(distilled) {
   return SINGLE_PROMPT + distilled;
 }
 
-/** One reviewer's job, plus the whole board. */
-function nodePrompt(node, distilled) {
-  return NODE_PROMPTS[node] + distilled;
-}
-
-/** The merge step, which takes the findings as well as the board. */
-function adjudicatePrompt(findingsText, distilled) {
-  return ADJUDICATE_JOB.replace("{findings}", findingsText).replace("{distilled}", distilled);
+/**
+ * The second look: the board again, plus the first pass's own findings.
+ *
+ * What it is shown is the reviewer's own output and nothing else - never the
+ * rule findings, never a defect list. A second pass told where the
+ * deterministic layer already looked is a second pass being handed the answer.
+ */
+function secondLookPrompt(distilled, already) {
+  const gap = String.fromCharCode(10);
+  return SECOND_LOOK + distilled + gap + gap + "ALREADY REPORTED" + gap + already;
 }
 
 
@@ -6435,12 +6297,59 @@ function focusFinding(index) {
   renderReview();
 }
 
+/**
+ * The graph itself, drawn, with the node it is on lit.
+ *
+ * This was a list of steps, and a list is not a graph: it showed what had
+ * happened without showing that anything moved from one place to another, so
+ * the page looked like one prompt with a progress log attached. The point of
+ * the architecture is that a board goes through five nodes, two of which ask a
+ * model and three of which are arithmetic, and that is now the first thing
+ * visible rather than something to infer from headings.
+ *
+ * Drawn from `NODES`, so it cannot describe a graph the page does not run.
+ */
+function railHtml(steps) {
+  const byNode = new Map(steps.map((s) => [s.node, s]));
+  const done = new Set(steps.filter((s) => !s.running).map((s) => s.node));
+  const running = steps.find((s) => s.running)?.node;
+  return `<ol class="gr-rail">${NODES.map((node, i) => {
+    const step = byNode.get(node);
+    const state = running === node ? "on" : done.has(node) ? "done" : "waiting";
+    const kind = ASKS_MODEL.has(node) ? "model" : "measured";
+    return `<li class="gr-node ${state} ${kind}">
+      ${i ? '<span class="gr-edge" aria-hidden="true"></span>' : ""}
+      <span class="gr-dot"></span>
+      <span class="gr-name">${escapeHtml(node.replace(/_/g, " "))}</span>
+      <span class="gr-kind">${kind === "model" ? "asks the model" : "arithmetic"}</span>
+      <span class="gr-count">${step ? nodeTally(step) : ""}</span>
+    </li>`;
+  }).join("")}</ol>`;
+}
+
+/** The one number each node is worth reporting on the rail. */
+function nodeTally(step) {
+  if (step.running) return "running";
+  if (step.node === "analyse") return `${(step.rules || []).length} measured`;
+  if (step.node === "review" || step.node === "second_look") {
+    const n = (step.found || []).length;
+    return `${n} found`;
+  }
+  if (step.node === "validate") {
+    const kept = (step.confirmed || []).length;
+    const cut = (step.dropped || []).length;
+    return cut ? `${kept} kept, ${cut} refused` : `${kept} kept`;
+  }
+  if (step.node === "aggregate") return `${step.reported ?? 0} reported`;
+  return "";
+}
+
 /** The graph, as a list of steps with what each one did. */
 function pipelineHtml(steps) {
   if (!steps.length) return `<p class="ro-empty muted">Starting.</p>`;
   return steps
     .map((step) => {
-      const measured = MEASURED.has(step.node) || step.measured;
+      const measured = !ASKS_MODEL.has(step.node);
       const body = step.running
         ? `<pre class="ro-stream">${escapeHtml(step.stream || "")}</pre>`
         : stepSummary(step);
@@ -6461,17 +6370,16 @@ function pipelineHtml(steps) {
 }
 
 function stepSummary(step) {
-  if (step.node === "ingest") {
+  if (step.node === "analyse") {
     return `<span class="ro-said">${escapeHtml(step.summary || "")}</span>` +
       (step.rules || [])
         .map((r) => html`<span class="ro-rule">${r.title}</span>`)
         .join("");
   }
-  if (step.node === "gate") {
-    return `<span class="ro-said"><code>${escapeHtml(step.decision)}</code></span>
-      <span class="ro-role">${escapeHtml(step.why || "")}</span>`;
+  if (step.node === "aggregate") {
+    return `<span class="ro-said">${escapeHtml(step.summary || "")}</span>`;
   }
-  if (step.node === "adjudicate") {
+  if (step.node === "validate") {
     const dropped = (step.dropped || [])
       .map((d) => html`<span class="ro-rule dropped">${d.title} — ${d.dropped}</span>`)
       .join("");
@@ -6510,9 +6418,10 @@ function renderOverlay() {
   if (state.reviewing) {
     overlay.innerHTML = `
       <div class="ro-head"><h3>Reviewing</h3></div>
-      <div class="ro-list">${pipelineHtml(state.steps)}</div>
-      <div class="ro-foot">Three reviewers, then a merge the board can overrule.
-        The gate decides whether that was enough.</div>`;
+      <div class="ro-list">${railHtml(state.steps)}${pipelineHtml(state.steps)}</div>
+      <div class="ro-foot">One reviewer with the whole board, asked twice.
+        Everything after it is arithmetic: the board refuses what it can
+        disprove, then the rules are merged in.</div>`;
     return;
   }
 
@@ -6575,10 +6484,14 @@ function renderOverlay() {
         </button>`
       )
       .join("")}</div>
+    <div class="ro-graph-done">
+      <h4>How it got there</h4>
+      ${railHtml(verdict.steps || [])}
+    </div>
     <details class="ro-graph">
-      <summary>How it got there — ${verdict.passes} pass${
-        verdict.passes === 1 ? "" : "es"
-      }, ${verdict.proposed} proposed, ${findings.length} reported</summary>
+      <summary>What each node said — ${verdict.proposed} proposed, ${
+        findings.length
+      } reported</summary>
       ${pipelineHtml(verdict.steps || [])}
     </details>
     <div class="ro-foot">Click a finding to put it on the board.</div>`;

@@ -17,7 +17,7 @@ import {
   renderFootprint,
 } from "./render.js";
 import { islandCounts } from "./copper.js";
-import { MEASURED, ROLES } from "./graph.js";
+import { ASKS_MODEL, NODES, ROLES } from "./graph.js";
 import { summarise } from "./kicad.js";
 import { baseType, isGround, isRail } from "./checks.js";
 import { coverage, needsDatasheet } from "./datasheets.js";
@@ -827,12 +827,59 @@ function focusFinding(index) {
   renderReview();
 }
 
+/**
+ * The graph itself, drawn, with the node it is on lit.
+ *
+ * This was a list of steps, and a list is not a graph: it showed what had
+ * happened without showing that anything moved from one place to another, so
+ * the page looked like one prompt with a progress log attached. The point of
+ * the architecture is that a board goes through five nodes, two of which ask a
+ * model and three of which are arithmetic, and that is now the first thing
+ * visible rather than something to infer from headings.
+ *
+ * Drawn from `NODES`, so it cannot describe a graph the page does not run.
+ */
+function railHtml(steps) {
+  const byNode = new Map(steps.map((s) => [s.node, s]));
+  const done = new Set(steps.filter((s) => !s.running).map((s) => s.node));
+  const running = steps.find((s) => s.running)?.node;
+  return `<ol class="gr-rail">${NODES.map((node, i) => {
+    const step = byNode.get(node);
+    const state = running === node ? "on" : done.has(node) ? "done" : "waiting";
+    const kind = ASKS_MODEL.has(node) ? "model" : "measured";
+    return `<li class="gr-node ${state} ${kind}">
+      ${i ? '<span class="gr-edge" aria-hidden="true"></span>' : ""}
+      <span class="gr-dot"></span>
+      <span class="gr-name">${escapeHtml(node.replace(/_/g, " "))}</span>
+      <span class="gr-kind">${kind === "model" ? "asks the model" : "arithmetic"}</span>
+      <span class="gr-count">${step ? nodeTally(step) : ""}</span>
+    </li>`;
+  }).join("")}</ol>`;
+}
+
+/** The one number each node is worth reporting on the rail. */
+function nodeTally(step) {
+  if (step.running) return "running";
+  if (step.node === "analyse") return `${(step.rules || []).length} measured`;
+  if (step.node === "review" || step.node === "second_look") {
+    const n = (step.found || []).length;
+    return `${n} found`;
+  }
+  if (step.node === "validate") {
+    const kept = (step.confirmed || []).length;
+    const cut = (step.dropped || []).length;
+    return cut ? `${kept} kept, ${cut} refused` : `${kept} kept`;
+  }
+  if (step.node === "aggregate") return `${step.reported ?? 0} reported`;
+  return "";
+}
+
 /** The graph, as a list of steps with what each one did. */
 function pipelineHtml(steps) {
   if (!steps.length) return `<p class="ro-empty muted">Starting.</p>`;
   return steps
     .map((step) => {
-      const measured = MEASURED.has(step.node) || step.measured;
+      const measured = !ASKS_MODEL.has(step.node);
       const body = step.running
         ? `<pre class="ro-stream">${escapeHtml(step.stream || "")}</pre>`
         : stepSummary(step);
@@ -853,17 +900,16 @@ function pipelineHtml(steps) {
 }
 
 function stepSummary(step) {
-  if (step.node === "ingest") {
+  if (step.node === "analyse") {
     return `<span class="ro-said">${escapeHtml(step.summary || "")}</span>` +
       (step.rules || [])
         .map((r) => html`<span class="ro-rule">${r.title}</span>`)
         .join("");
   }
-  if (step.node === "gate") {
-    return `<span class="ro-said"><code>${escapeHtml(step.decision)}</code></span>
-      <span class="ro-role">${escapeHtml(step.why || "")}</span>`;
+  if (step.node === "aggregate") {
+    return `<span class="ro-said">${escapeHtml(step.summary || "")}</span>`;
   }
-  if (step.node === "adjudicate") {
+  if (step.node === "validate") {
     const dropped = (step.dropped || [])
       .map((d) => html`<span class="ro-rule dropped">${d.title} — ${d.dropped}</span>`)
       .join("");
@@ -902,9 +948,10 @@ function renderOverlay() {
   if (state.reviewing) {
     overlay.innerHTML = `
       <div class="ro-head"><h3>Reviewing</h3></div>
-      <div class="ro-list">${pipelineHtml(state.steps)}</div>
-      <div class="ro-foot">Three reviewers, then a merge the board can overrule.
-        The gate decides whether that was enough.</div>`;
+      <div class="ro-list">${railHtml(state.steps)}${pipelineHtml(state.steps)}</div>
+      <div class="ro-foot">One reviewer with the whole board, asked twice.
+        Everything after it is arithmetic: the board refuses what it can
+        disprove, then the rules are merged in.</div>`;
     return;
   }
 
@@ -967,10 +1014,14 @@ function renderOverlay() {
         </button>`
       )
       .join("")}</div>
+    <div class="ro-graph-done">
+      <h4>How it got there</h4>
+      ${railHtml(verdict.steps || [])}
+    </div>
     <details class="ro-graph">
-      <summary>How it got there — ${verdict.passes} pass${
-        verdict.passes === 1 ? "" : "es"
-      }, ${verdict.proposed} proposed, ${findings.length} reported</summary>
+      <summary>What each node said — ${verdict.proposed} proposed, ${
+        findings.length
+      } reported</summary>
       ${pipelineHtml(verdict.steps || [])}
     </details>
     <div class="ro-foot">Click a finding to put it on the board.</div>`;

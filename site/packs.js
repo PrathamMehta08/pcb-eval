@@ -1,107 +1,39 @@
 /**
- * Evidence packs, in the browser. The mirror of harness/packs.py.
+ * The one thing a model is shown about the board, in the browser.
  *
- * The same boundary the harness enforces: a reviewer is handed its pack and
- * nothing else, so what it can say is bounded by what it was shown. The circuit
- * reviewer has no copper to speculate about; the physical reviewer has no pin
- * semantics to duplicate.
+ * V8 has a single reviewer holding the whole board, so there is a single pack.
+ * It used to be two - a circuit pack with no geometry and a physical pack with
+ * no pin semantics - and the split was removed because five sweeps said it cost
+ * recall: a reviewer holding half a board speculates about the other half.
  *
- * One honest difference from the Python. The page cannot fetch a datasheet, and
- * must not depend on a vendor CDN to review a board someone just dropped on it,
- * so the documents are the ones somebody attached to a part. What reaches a
- * reviewer is the same either way: passages, verbatim, with the page they came
- * from. Everything else is built from the same sections in the same order.
+ * ONE DIFFERENCE FROM THE HARNESS, AND IT IS DELIBERATE
+ *
+ * The harness runs its sweeps offline, so its reviewer pack is the distilled
+ * board and nothing else. The page can have more: if someone has attached a
+ * datasheet to a part, what was read out of it goes in here. That is the whole
+ * point of attaching one, and it is why the page's review can be better than
+ * the sweep's on a board whose parts are documented.
+ *
+ * Both blocks are empty for a board nobody has attached anything to, which is
+ * the ordinary state, and then the pack is exactly the distilled board.
  */
 
+import { distill } from "./distill.js";
 import { factsBlock, passagesBlock } from "./docs.js";
-import {
-  componentsSection,
-  copperSection,
-  decouplingSection,
-  netsSection,
-} from "./distill.js";
 
-export const PACK_VERSION = "1";
-
-/** Rules whose findings belong to the physical reviewer rather than the circuit one. */
-const GEOMETRY_RULES = new Set([
-  "net-island",
-  "dfm-annular-ring",
-  "dfm-drill-size",
-  "dfm-track-width",
-]);
-
-function header(board) {
-  return [
-    `BOARD ${board.meta.name}`,
-    `${board.components.length} components, ${board.nets.length} nets, ` +
-      `${board.layout.footprints.length} footprints.`,
-  ];
-}
-
-/**
- * What was already measured, so a reviewer does not spend its call repeating it.
- *
- * Written as findings that have been reported, never as a list of the kinds of
- * defect that exist: a reviewer handed a taxonomy fills it in, which is measured
- * behaviour rather than a worry.
- */
-function findingsBlock(findings, title) {
-  if (!findings.length) {
-    return [
-      title,
-      "Nothing. No deterministic check failed in this area, which is not the " +
-        "same as the area being correct.",
-    ];
-  }
-  return [
-    title,
-    ...findings.map((f) => {
-      const refs = (f.refs || []).join(", ") || "-";
-      const nets = (f.nets || []).join(", ") || "-";
-      return `- ${f.title} (refs ${refs}; nets ${nets})`;
-    }),
-  ];
-}
+export const PACK_VERSION = "2";
 
 const join = (blocks) =>
   blocks.filter((b) => b && b.length).map((b) => b.join("\n")).join("\n\n");
 
-export function circuitPack(board, findings = []) {
-  return join([
-    header(board),
-    componentsSection(board),
-    netsSection(board),
-    // What was read out of the documents attached to this board: the typed
-    // parameters first, then the passages retrieval picked. Both empty for a
-    // board nobody has attached anything to, which is the normal state.
-    factsBlock(board),
-    passagesBlock(board),
-    findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
-  ]);
-}
-
-export function physicalPack(board, findings = []) {
-  return join([
-    header(board),
-    copperSection(board),
-    decouplingSection(board),
-    [
-      "READING THIS",
-      "Every number above is a measurement, not a verdict. A distance is only " +
-        "a defect once you can say why it matters for that particular pin on " +
-        "this particular rail.",
-    ],
-    findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
-  ]);
-}
-
-/** Every pack for this board, keyed by the reviewer that receives it. */
-export function buildPacks(board, deterministic = []) {
-  const geometry = deterministic.filter((f) => GEOMETRY_RULES.has(f.rule));
-  const circuit = deterministic.filter((f) => !GEOMETRY_RULES.has(f.rule));
-  return {
-    circuit: circuitPack(board, circuit),
-    physical: physicalPack(board, geometry),
-  };
+/**
+ * What the reviewer reads: the board, then whatever its documents state.
+ *
+ * Nothing here describes what is wrong with the board. The deterministic
+ * findings are deliberately absent - naming them told the reviewer which
+ * categories to skip and cost more recall than the duplicate findings it saved,
+ * and on a seeded board it is the answer.
+ */
+export function reviewerPack(board) {
+  return join([[distill(board)], factsBlock(board), passagesBlock(board)]);
 }
