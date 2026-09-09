@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import operator
 import re
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
 _DESIGNATOR = re.compile(r"^[A-Za-z]{1,3}\d+$")
 #: A node, not a net: `C4.2`, `U2.1(VBAT,pwr-in)`, `S1.5(EN,in)`.
@@ -27,15 +28,23 @@ class ReviewState(TypedDict, total=False):
     #: Findings a datasheet settles, from harness/datasheet_checks.py. Also
     #: measured, and also reported rather than chased.
     datasheet: list[dict]
-    #: Everything every LLM node has proposed, across every pass.
+    #: What the reviewers proposed, appended to as each one finishes.
+    #:
+    #: Annotated because the reviewers run in parallel and LangGraph refuses two
+    #: concurrent writes to a plain channel. It is a separate channel from
+    #: `findings` on purpose: `findings` is what adjudication *replaces* with
+    #: its deduped list, and a reducer there would append the deduped copy to
+    #: the originals instead of standing in for them.
+    proposed: Annotated[list[dict], operator.add]
+    #: The deduped proposals. Written once per pass, by adjudication.
     findings: list[dict]
     #: What survived adjudication: deduped, and with contradictions removed.
     confirmed: list[dict]
     #: What adjudication threw out, each with the measurement that refuted it.
     dropped: list[dict]
     passes: int
-    #: One row per model call, for the cost log.
-    calls: list[dict]
+    #: One row per model call, for the cost log. Appended, for the same reason.
+    calls: Annotated[list[dict], operator.add]
     #: Why the gate stopped, so a result can be read six months later.
     stopped: str
     #: One row per time the gate ran: the decision, and what it was based on.

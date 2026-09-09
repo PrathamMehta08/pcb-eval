@@ -1,12 +1,10 @@
 """The review graph: ingest, three reviewers, adjudicate, gate.
 
-    ingest        deterministic: distil, rule checks, manufacturability checks
+    ingest        deterministic: distil, rule checks, manufacturability checks,
+                  datasheet checks, and the evidence packs the reviewers read
       |
-    datasheet     pin function against what the pin is wired to
-      |
-    connections   connector pinouts, floating inputs, power and ground
-      |
-    layout        placement and routing: width against current, ground return
+    circuit  ─┐   parts, nets, pin meaning, researched facts
+    physical ─┘   copper, placement, distances          (parallel, disjoint packs)
       |
     adjudicate    dedupe on typed claims, then the critic
       |
@@ -61,7 +59,6 @@ def ingest(state: ReviewState) -> dict:
         "datasheet": datasheet,
         "findings": [],
         "confirmed": [],
-        "calls": [],
         "gates": [],
         "passes": 0,
     }
@@ -86,7 +83,10 @@ def gate(state: ReviewState) -> str:
 
 
 def route(state: ReviewState) -> str:
-    return "datasheet" if gate(state) == "again" else END
+    """Back to the reviewers, or done. The gate decides on measurements."""
+    from graph.prompts import REVIEWERS
+
+    return next(iter(REVIEWERS)) if gate(state) == "again" else END
 
 
 def stamp(state: ReviewState) -> dict:
@@ -141,19 +141,21 @@ def build_graph(client):
     nodes = reviewers(client)
     graph = StateGraph(ReviewState)
     graph.add_node("ingest", ingest)
-    graph.add_node("datasheet", nodes["datasheet"])
-    graph.add_node("connections", nodes["connections"])
-    graph.add_node("layout", nodes["layout"])
+    for name, node in nodes.items():
+        graph.add_node(name, node)
     graph.add_node("adjudicate", make_adjudicate(client))
     graph.add_node("stamp", stamp)
 
     graph.set_entry_point("ingest")
-    graph.add_edge("ingest", "datasheet")
-    graph.add_edge("datasheet", "connections")
-    graph.add_edge("connections", "layout")
-    graph.add_edge("layout", "adjudicate")
+    # The reviewers fan out from ingest and back into adjudicate. They share no
+    # state and hold disjoint packs, so there is nothing to order them by.
+    for name in nodes:
+        graph.add_edge("ingest", name)
+        graph.add_edge(name, "adjudicate")
     graph.add_edge("adjudicate", "stamp")
-    graph.add_conditional_edges("stamp", route, {"datasheet": "datasheet", END: END})
+    graph.add_conditional_edges(
+        "stamp", route, {**{n: n for n in nodes}, END: END}
+    )
     return graph.compile()
 
 
@@ -172,15 +174,17 @@ if __name__ == "__main__":
     from console import utf8
     from harness.llm import Client
     from harness.ops import apply_edits
-    from harness.presets import BY_ID, edits_for
+    from harness.generators import defects_for
 
     utf8()
     board = json.loads((root / "boards" / "stm32-good.json").read_text(encoding="utf-8"))
-    preset_id = sys.argv[1] if len(sys.argv) > 1 else None
-    if preset_id:
-        preset = BY_ID[preset_id]
-        apply_edits(board, edits_for(preset, board))
-        print(f"board: {preset_id} — {preset['title']}")
+    wanted = sys.argv[1] if len(sys.argv) > 1 else None
+    if wanted:
+        defect = next(
+            d for d in defects_for(board, "stm32-good") if d["generator"] == wanted
+        )
+        apply_edits(board, defect["edits"])
+        print(f"board: {wanted} — {defect['title']}")
     else:
         print("board: clean")
 

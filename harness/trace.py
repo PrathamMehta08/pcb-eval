@@ -31,7 +31,7 @@ from harness.distill import approx_tokens, distill  # noqa: E402
 from harness.grade import grade, refuted  # noqa: E402
 from harness.llm import PRICE_IN, PRICE_OUT, Client  # noqa: E402
 from harness.ops import apply_edits, board_hash  # noqa: E402
-from harness.presets import PRESETS, edits_for  # noqa: E402
+from harness.generators import defects_for  # noqa: E402
 
 OUT = ROOT / "results" / "trace.json"
 
@@ -147,9 +147,9 @@ def trace_board(name: str, title: str, board: dict, client: Client) -> dict:
 def corpus(only: str = "") -> list[tuple[str, str, dict]]:
     good = json.loads((ROOT / "boards" / "stm32-good.json").read_text(encoding="utf-8"))
     out = [("clean", "The board as manufactured", good)]
-    for preset in PRESETS:
+    for preset in defects_for(board, "stm32-good"):
         work = json.loads(json.dumps(good))
-        apply_edits(work, edits_for(preset, work))
+        apply_edits(work, preset["edits"])
         out.append((preset["id"], preset["title"], work))
     if only:
         out = [row for row in out if row[0].startswith(only)]
@@ -177,7 +177,7 @@ def main() -> int:
             f"{row['stopped']:<26} {row['seconds']}s · ${row['dollars']}"
         )
 
-    defects = {p["id"]: p for p in PRESETS}
+    defects = {p["id"]: p for p in defects_for(board, "stm32-good")}
     for row in boards:
         preset = defects.get(row["board"])
         row["defect"] = (

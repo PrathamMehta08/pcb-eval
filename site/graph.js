@@ -27,6 +27,7 @@
 
 import { boardFacts, runChecks, verify } from "./checks.js";
 import { approxTokens, distill } from "./distill.js";
+import { buildPacks } from "./packs.js";
 import {
   adjudicatePrompt,
   nodePrompt,
@@ -34,14 +35,20 @@ import {
 } from "./review.js";
 
 export const MAX_PASSES = 2;
-export const REVIEWERS = ["datasheet", "connections", "layout"];
+export const REVIEWERS = ["circuit", "physical"];
+
+/** Which pack each reviewer reads. Disjoint, on purpose. */
+export const PACK_FOR = { circuit: "circuit", physical: "physical" };
 
 export const ROLES = {
-  ingest: "Distil the board and run the rule checks. No model is asked anything.",
-  datasheet: "What each pin is for, against what it is wired to.",
-  connections: "The wiring between parts, and off the board.",
-  layout: "Placement and copper.",
-  adjudicate: "Merge the three reviews, then let the board refute what it can.",
+  ingest:
+    "Distil the board, run the rule checks, and build the evidence pack each " +
+    "reviewer reads. No model is asked anything.",
+  circuit:
+    "Parts, nets and what each pin is for. Holds no geometry.",
+  physical:
+    "Copper, placement and distances. Holds no pin semantics.",
+  adjudicate: "Merge the reviews, then let the board refute what it can.",
   gate: "Stop, or go round again — decided on measurements, never on the model's say-so.",
 };
 export const MEASURED = new Set(["ingest", "gate"]);
@@ -218,6 +225,8 @@ function gateDecision(rules, confirmed, passes) {
 export async function runGraph(board, ask, { onStep, signal } = {}) {
   const distilled = distill(board);
   const rules = runChecks(board);
+  // The boundary: each reviewer sees only its own pack.
+  const packs = buildPacks(board, rules);
   const facts = boardFacts(board);
   const steps = [];
 
@@ -256,7 +265,7 @@ export async function runGraph(board, ask, { onStep, signal } = {}) {
     for (const node of REVIEWERS) {
       if (signal?.aborted) throw Object.assign(new Error("cancelled"), { code: "cancelled" });
       const step = emit({ node, pass: passes, measured: false, running: true, stream: "" });
-      const answer = await ask(nodePrompt(node, distilled), {
+      const answer = await ask(nodePrompt(node, packs[PACK_FOR[node]]), {
         system: SYSTEM_PROMPT,
         signal,
         onText: ({ text }) => {

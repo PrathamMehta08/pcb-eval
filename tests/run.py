@@ -297,11 +297,6 @@ def check_distill(c: Check) -> None:
     from harness.run import corpus
 
     boards = [(case["id"], case["board"]) for case in corpus()]
-    clean = load_board()
-    for preset in []:
-        work = json.loads(json.dumps(clean))
-        apply_edits(work, edits_for(preset, work))
-        boards.append((preset["id"], work))
 
     # Every board in the corpus, not one board with the default arguments: the
     # earlier version of this measured a string nothing ever sent, and six of
@@ -313,6 +308,7 @@ def check_distill(c: Check) -> None:
         worst = max(worst, tokens)
         c.that(tokens < 3000, f"{name} distils to {tokens} tokens, want under 3000")
 
+    clean = load_board()
     text = distill(clean)
     for comp in clean["components"]:
         if not c.that(has_token(text, comp["ref"]), f"{comp['ref']} present in the distilled board"):
@@ -586,18 +582,16 @@ def check_graph(c: Check) -> None:
     # distilled board itself, so this asserts the prompts stay empty of it.
     from graph.prompts import (
         BOARD_SLOT,
-        connections_prompt,
-        datasheet_prompt,
-        layout_prompt,
+        circuit_prompt,
+        physical_prompt,
         single_prompt_template,
     )
 
     board = load_board()
     heads = {
         "single": single_prompt_template().split(BOARD_SLOT)[0],
-        "datasheet": datasheet_prompt(BOARD_SLOT).split(BOARD_SLOT)[0],
-        "connections": connections_prompt(BOARD_SLOT).split(BOARD_SLOT)[0],
-        "layout": layout_prompt(BOARD_SLOT).split(BOARD_SLOT)[0],
+        "circuit": circuit_prompt(BOARD_SLOT).split(BOARD_SLOT)[0],
+        "physical": physical_prompt(BOARD_SLOT).split(BOARD_SLOT)[0],
     }
     # Values, refs and net names from this board. Short tokens are skipped:
     # "IN" and "SW" are real net names here and ordinary English elsewhere.
@@ -658,7 +652,7 @@ def check_graph(c: Check) -> None:
         ),
         (
             "a part claimed missing that is present",
-            {"claim": "missing_component", "subject": "U2", "refs": ["U2"], "title": "U2 absent", "evidence": real_line},
+            {"claim": "missing_component", "subject": "U2", "refs": ["U2"], "title": "U2 is absent from the board", "evidence": real_line},
             True,
         ),
         (
@@ -693,6 +687,7 @@ def check_graph(c: Check) -> None:
     c.equals(len(run_dfm(clean)), 0, "no DFM finding on the board as manufactured")
 
     from graph.build import MAX_PASSES, run_graph
+    from graph.prompts import REVIEWERS
     from harness.ops import apply_edits
     from harness.generators import defects_for
 
@@ -705,7 +700,7 @@ def check_graph(c: Check) -> None:
     c.equals(state["passes"], 1, "and does it in one pass")
     c.equals(
         [label.split("/")[0] for label in client.labels],
-        ["datasheet", "connections", "layout"],
+        sorted(REVIEWERS),
         "every reviewer node ran",
     )
 
@@ -731,7 +726,7 @@ def check_graph(c: Check) -> None:
     # A rule fires and nothing the model says accounts for it: loop, then give up
     # rather than declare the board fine. The gate must never take the model's
     # word for being finished.
-    client = StubClient({"datasheet": {"findings": [
+    client = StubClient({"circuit": {"findings": [
         {"title": "unrelated", "refs": ["R1"], "nets": [], "severity": "minor", "why": ""}
     ]}})
     state = run_graph(json.loads(json.dumps(broken)), client)
@@ -739,7 +734,7 @@ def check_graph(c: Check) -> None:
     c.equals(state["passes"], MAX_PASSES, f"and it stops after {MAX_PASSES} passes")
 
     # A finding that overlaps the rule's own refs and nets ends it after one.
-    client = StubClient({"layout": {"findings": [
+    client = StubClient({"physical": {"findings": [
         {
             "title": f"{net} is in pieces",
             "refs": [],
@@ -754,7 +749,7 @@ def check_graph(c: Check) -> None:
     c.equals(state["passes"], 1, "in one pass")
 
     # And the board throws out what it can refute, with no model consulted.
-    client = StubClient({"datasheet": {"findings": [
+    client = StubClient({"circuit": {"findings": [
         {"title": "U9 is wrong", "refs": ["U9"], "nets": [], "severity": "major", "why": ""},
         {"title": "GND is stranded", "refs": [], "nets": ["GND"], "severity": "critical", "why": ""},
         {
@@ -927,7 +922,7 @@ def check_evidence_boundary(c: Check) -> None:
     stays one.
     """
     from graph.build import ingest
-    from graph.nodes.review import PACK_FOR
+    from graph.prompts import REVIEWERS
     from harness.generators import GENERATORS
     from harness.packs import PACK_VERSION, build_packs
     from harness.run import corpus
@@ -967,10 +962,12 @@ def check_evidence_boundary(c: Check) -> None:
         )
 
     # Every reviewer maps to exactly one pack, and only to packs that exist.
+    mapping = {name: pack for name, (_, pack) in REVIEWERS.items()}
     c.that(
-        set(PACK_FOR.values()) <= {"circuit", "physical"},
-        f"every reviewer maps to a real pack: {PACK_FOR}",
+        set(mapping.values()) <= {"circuit", "physical"},
+        f"every reviewer maps to a real pack: {mapping}",
     )
+    c.equals(len(set(mapping.values())), len(mapping), "no two reviewers share a pack")
 
     # The board itself never reaches a model. `make_node` reads state["packs"];
     # if it ever reads the board or the whole distilled text again, this fails.

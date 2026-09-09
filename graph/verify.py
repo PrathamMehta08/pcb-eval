@@ -55,17 +55,35 @@ from harness.checks import _reaches_rail, is_ground, is_rail, islands
 CHECKABLE = {
     "split": ("split", "island", "isolat", "not connected", "unconnected", "disconnect"),
     "value": ("value", "unbuildable", "unorderable", "non-numeric"),
-    "missing": ("missing", "absent", "not populated", "no component"),
+    # Deliberately narrow. "missing" alone matched a free-text tag like
+    # `missing_output_connection` and refuted it with "S1 is on this board" -
+    # a finding about an absent *connection* thrown out because the *part*
+    # exists. The check only applies when the claim is that the part itself is
+    # not there.
+    "missing": (
+        "is missing",
+        "is absent",
+        "not populated",
+        "not fitted",
+        "no such component",
+        "component missing",
+        "part missing",
+    ),
     "floating": ("float", "no pull", "undriven", "high impedance", "no driver"),
 }
 
 
 def _kinds(item: dict) -> set:
     """Which checks this finding's own words invite."""
-    text = " ".join(
-        str(item.get(k) or "") for k in ("claim", "title", "why")
-    ).lower()
-    return {name for name, words in CHECKABLE.items() if any(w in text for w in words)}
+    text = " ".join(str(item.get(k) or "") for k in ("claim", "title", "why")).lower()
+    # An underscored tag is one word to a model and several to a reader.
+    text = text.replace("_", " ")
+    kinds = {name for name, words in CHECKABLE.items() if any(w in text for w in words)}
+    # A claim about a connection is never a claim that the part is absent, and
+    # the two were being conflated whenever a tag happened to contain "missing".
+    if "connect" in text or "net" in text:
+        kinds.discard("missing")
+    return kinds
 
 
 def facts(board: dict) -> dict:

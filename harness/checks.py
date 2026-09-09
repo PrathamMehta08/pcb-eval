@@ -702,7 +702,7 @@ if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from console import utf8
     from harness.ops import apply_edits
-    from harness.presets import PRESETS, edits_for
+    from harness.generators import defects_for
 
     utf8()
     root = Path(__file__).resolve().parent.parent
@@ -712,11 +712,11 @@ if __name__ == "__main__":
     for f in run_checks(good) or [None]:
         print("  ", f["title"] if f else "no findings")
 
-    for preset in PRESETS:
+    for preset in defects_for(good, "stm32-good"):
         work = json.loads(json.dumps(good))
-        apply_edits(work, edits_for(preset, work))
+        apply_edits(work, preset["edits"])
         found = run_checks(work)
-        hit = "OK " if preset["rule"] in {f["rule"] for f in found} else "MISS"
+        hit = "HIT " if found else "-   "
         print(f"\n{hit} {preset['id']} (wants {preset['rule']})")
         for f in found:
             print(f"     [{f['rule']}] {f['title']}")

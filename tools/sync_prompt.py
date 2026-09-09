@@ -27,9 +27,8 @@ from graph.prompts import (  # noqa: E402
     ADJUDICATE_JOB,
     BOARD_SLOT,
     SYSTEM,
-    connections_prompt,
-    datasheet_prompt,
-    layout_prompt,
+    circuit_prompt,
+    physical_prompt,
     single_prompt_template,
 )
 
@@ -46,9 +45,8 @@ HEADER = """// The prompts, byte for byte the ones the harness sends. They come 
 
 TAIL = """
 export const NODE_PROMPTS = {
-  datasheet: DATASHEET_PROMPT,
-  connections: CONNECTIONS_PROMPT,
-  layout: LAYOUT_PROMPT,
+  circuit: CIRCUIT_PROMPT,
+  physical: PHYSICAL_PROMPT,
 };
 
 /** The one flat prompt, for a single-call review. */
@@ -93,9 +91,8 @@ def block() -> str:
         "\n",
     ]
     for name, builder in (
-        ("DATASHEET_PROMPT", datasheet_prompt),
-        ("CONNECTIONS_PROMPT", connections_prompt),
-        ("LAYOUT_PROMPT", layout_prompt),
+        ("CIRCUIT_PROMPT", circuit_prompt),
+        ("PHYSICAL_PROMPT", physical_prompt),
     ):
         parts.append(_js_array(name, _head_of(builder(BOARD_SLOT))))
         parts.append("\n")

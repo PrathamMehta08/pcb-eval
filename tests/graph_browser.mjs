@@ -38,9 +38,8 @@ function stub(byNode = {}) {
   return ask;
 }
 const JOB_MARK = {
-  datasheet: "Your area is what each pin is for",
-  connections: "Your area is the wiring between parts",
-  layout: "Your area is placement and copper",
+  circuit: "You are reviewing the circuit",
+  physical: "You are reviewing the physical board",
 };
 
 // A clean board gives the rules nothing to chase: one pass, then stop.
@@ -70,14 +69,14 @@ applyEdits(broken, [
 // rather than call the board clean.
 {
   const ask = stub({
-    datasheet: {
+    circuit: {
       findings: [{ problem: "something unrelated", refs: ["U2"], severity: "minor", why: "", fix: "" }],
     },
   });
   const out = await runGraph(clone(broken), ask);
   check(out.stopped === "stop:passes-spent", `unaccounted rule stopped ${out.stopped}`);
   check(out.passes === MAX_PASSES, `it used ${out.passes} of ${MAX_PASSES} passes`);
-  check(ask.asked.filter((n) => n === "datasheet").length === 2, "the datasheet node ran twice");
+  check(ask.asked.filter((n) => n === "circuit").length === 2, "the circuit node ran twice");
   const gates = out.steps.filter((s) => s.node === "gate");
   check(gates.length === 2, `two gate decisions, got ${gates.length}`);
   check(gates[0].decision === "again", `the first gate said ${gates[0].decision}`);
@@ -90,7 +89,7 @@ applyEdits(broken, [
 // A finding that overlaps the rule ends it after one pass.
 {
   const ask = stub({
-    datasheet: {
+    circuit: {
       findings: [{ problem: "R1 has no value", refs: ["R1"], severity: "major", why: "", fix: "Give it one." }],
     },
   });
@@ -102,7 +101,7 @@ applyEdits(broken, [
 // And the board throws out what it can refute, with no model consulted.
 {
   const ask = stub({
-    datasheet: {
+    circuit: {
       findings: [
         { problem: "U9 is wrong", refs: ["U9"], severity: "major", why: "", fix: "" },
         { problem: "GND is stranded", nets: ["GND"], severity: "critical", why: "", fix: "" },
@@ -126,7 +125,7 @@ applyEdits(broken, [
 // A reviewer writing D2.2 means pin 2 of D2, not a part called D2.2.
 {
   const ask = stub({
-    layout: {
+    physical: {
       findings: [
         {
           problem: "the +5V rail is thin",
@@ -158,9 +157,9 @@ applyEdits(broken, [
   await runGraph(clone(board), ask, {
     onStep: (step) => seen.push(`${step.node}${step.running ? ":start" : ":done"}`),
   });
-  check(seen.includes("datasheet:start"), "a node is reported when it starts");
-  check(seen.includes("datasheet:done"), "and again when it finishes");
-  check(seen.indexOf("datasheet:start") < seen.indexOf("datasheet:done"), "in that order");
+  check(seen.includes("circuit:start"), "a node is reported when it starts");
+  check(seen.includes("circuit:done"), "and again when it finishes");
+  check(seen.indexOf("circuit:start") < seen.indexOf("circuit:done"), "in that order");
 }
 
 for (const failure of failures) console.error("  x " + failure);

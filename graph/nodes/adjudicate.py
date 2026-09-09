@@ -111,14 +111,14 @@ def _numbered(items: list[dict]) -> str:
 
 def make_adjudicate(client):
     def adjudicate(state: ReviewState) -> dict:
-        findings = dedupe(state.get("findings", []))
+        findings = dedupe(state.get("proposed", []))
         # The critic's facts, not the grader's: `verify` measures things
         # `board_facts` does not carry, and `board_facts` stays frozen because
         # it is what `harness/grade.py` scores every detector with.
         from graph.verify import facts as critic_facts
 
         facts = critic_facts(state["board"])
-        calls = list(state.get("calls", []))
+        calls = []
 
         # A model merges wordings; that is a language judgement, not a measurement.
         kept = findings

@@ -1,41 +1,44 @@
-"""The three reviewing nodes. One job each, the whole board each time.
+"""The reviewing nodes. One pack each, and nothing else.
+
+Two rather than three, and two rather than seven. A specialist earns its call by
+holding evidence no other specialist holds, and there are exactly two disjoint
+bodies of evidence on a board extracted from KiCad: what the netlist says the
+circuit is, and what the copper says the board is. Splitting further would mean
+handing two agents the same evidence and hoping they disagree usefully, which is
+how the previous three reviewers produced one defect in three wordings.
 
 The client is bound into each node's closure rather than carried in the state:
 it holds a socket, a semaphore and a rolling token budget, none of which belong
-in something a checkpointer might try to serialise.
-
-Both this client and the page's `sample` are memory-less between calls, so every
-node sends the distilled board whole. That is the cost of decomposition, and
-whether it buys anything is the question the eval answers.
+in something a checkpointer might serialise.
 """
 
 from __future__ import annotations
 
-from graph.prompts import SYSTEM, connections_prompt, datasheet_prompt, layout_prompt
+from graph.prompts import REVIEWERS, SYSTEM
 from graph.state import ReviewState, normalise
 
 
-#: Which pack each reviewer is given. The circuit reviewers see parts, nets and
-#: pin meaning; the layout reviewer sees copper and placement. Neither sees the
-#: other's, which is what stops one speculating about measurements it does not
-#: hold and the other repeating a finding that is not its job.
-PACK_FOR = {"datasheet": "circuit", "connections": "circuit", "layout": "physical"}
+def make_node(name: str, client):
+    """One reviewer, reading only its own pack.
 
+    Reading `state["packs"][pack]` rather than the board is the whole point of
+    the evidence boundary: what this model can say is bounded by what was put in
+    front of it, and that is asserted in `tests.run 15`.
+    """
+    build_prompt, pack_name = REVIEWERS[name]
 
-def make_node(name: str, build_prompt, client):
     def node(state: ReviewState) -> dict:
-        pack = state["packs"][PACK_FOR[name]]
+        pack = state["packs"][pack_name]
         parsed, info = client.json(
             build_prompt(pack),
             label=f"{name}/pass{state.get('passes', 0) + 1}",
             system=SYSTEM,
         )
         found = normalise(parsed.get("findings"), name)
+        # Only this node's own output. The channels accumulate.
         return {
-            "findings": list(state.get("findings", [])) + found,
-            "calls": list(state.get("calls", [])) + [
-                {**info, "node": name, "found": len(found)}
-            ],
+            "proposed": found,
+            "calls": [{**info, "node": name, "found": len(found)}],
         }
 
     node.__name__ = name
@@ -43,9 +46,5 @@ def make_node(name: str, build_prompt, client):
 
 
 def reviewers(client) -> dict:
-    """The three nodes, bound to one client."""
-    return {
-        "datasheet": make_node("datasheet", datasheet_prompt, client),
-        "connections": make_node("connections", connections_prompt, client),
-        "layout": make_node("layout", layout_prompt, client),
-    }
+    """Every always-on reviewer, bound to one client."""
+    return {name: make_node(name, client) for name in REVIEWERS}

@@ -133,36 +133,43 @@ def _node(job: str, distilled: str) -> str:
     return _build(job.strip() + "\n" + CLAIM_RULES, distilled, GRAPH_SCHEMA)
 
 
-DATASHEET_JOB = """Your area is what each pin is for, against what it is wired to.
+CIRCUIT_JOB = """You are reviewing the circuit: what the parts are, what their
+pins are for, and whether the wiring achieves what the design is trying to do.
 
-The NETS section gives every pin the name its symbol library uses for it and the
-pin's electrical type, alongside the net the designer put it on. The COMPONENTS
-section gives each part its value, package and the library's own description of
-what it is.
+Read the design for intent first, then ask whether it is built that way. What is
+worth reporting is usually an interaction between parts rather than a property
+of one, so consider the power architecture as a whole, what each pin is for
+against the net it sits on, what holds a node at a defined level before any
+firmware runs, what a part needs alongside it to work at all, what a connector's
+pin order implies about whatever plugs into it, and whether a part's value or
+type suits the job it has been given.
 
-Report anything in that which is wrong. Report only defects in your area: leave
-copper, placement and trace geometry to another reviewer."""
+Your evidence is the COMPONENTS and NETS sections and the RESEARCHED FACTS. A
+researched fact is established; anything you know about a part that is not
+listed there comes from your own training, and a finding resting on it must say
+so in `assumption`.
 
-CONNECTIONS_JOB = """Your area is the wiring between parts, and off the board.
+You have no geometry: no copper, no placement, no distances, no layer
+assignments. Another reviewer holds those and reports on them. Do not infer them
+and do not comment on them."""
 
-The NETS section lists every net with the pins on it. Connectors are parts like
-any other; what plugs into one is not written down anywhere, so the designer's
-own net names are the only statement of intent you have.
+PHYSICAL_JOB = """You are reviewing the physical board: where things sit and
+how the copper joins them.
 
-Report anything in that wiring which is wrong. Report only defects in your area:
-leave copper, placement and trace geometry to another reviewer."""
+Every number you have been given is a measurement, not a verdict. A distance is
+only a defect once you can say why it matters for that pin on that net, and a
+narrow track is only a defect if something about this design makes it one. Your
+job is what the measurements mean together: the size of the loop a return
+current is forced to take, whether the reference under a signal is continuous,
+whether a capacitor that is on the correct net is near enough and on the right
+layer to serve the pin it was put there for, what a pour's shape does to current
+that has to cross it, which parts should be close and which should not, and what
+a manufacturer or a test fixture would struggle with.
 
-LAYOUT_JOB = """Your area is placement and copper.
-
-The COPPER section states, per net, how many pads it has, how many separate
-copper islands those pads sit on, how much track it carries, its narrowest
-track, how many vias, and which layers carry a pour. The DECOUPLING section
-gives the distance in millimetres from every supply pin to the nearest capacitor
-on its own net.
-
-Report anything in that geometry which is wrong. Report only defects in your
-area: leave pin functions, part values and netlist connectivity to another
-reviewer."""
+Your evidence is the COPPER and DECOUPLING sections. You do not have pin
+functions, part values or part descriptions: another reviewer holds those and
+reports on netlist correctness and component selection. Do not infer them and do
+not comment on them."""
 
 ADJUDICATE_JOB = """You are merging three reviews of one board into one list.
 
@@ -200,16 +207,21 @@ Do not report style, silkscreen or aesthetics, or anything you would have to
 guess at."""
 
 
-def datasheet_prompt(distilled: str) -> str:
-    return _node(DATASHEET_JOB, distilled)
+def circuit_prompt(pack: str) -> str:
+    return _node(CIRCUIT_JOB, pack)
 
 
-def connections_prompt(distilled: str) -> str:
-    return _node(CONNECTIONS_JOB, distilled)
+def physical_prompt(pack: str) -> str:
+    return _node(PHYSICAL_JOB, pack)
 
 
-def layout_prompt(distilled: str) -> str:
-    return _node(LAYOUT_JOB, distilled)
+#: The reviewers, and the pack each one is handed. Two, not three, and not
+#: seven: a specialist earns its call by holding evidence no other specialist
+#: holds, and there are two disjoint bodies of evidence here.
+REVIEWERS = {
+    "circuit": (circuit_prompt, "circuit"),
+    "physical": (physical_prompt, "physical"),
+}
 
 
 def single_prompt(distilled: str) -> str:
@@ -245,9 +257,8 @@ def prompt_hash() -> str:
             GRAPH_SCHEMA,
             CLAIM_RULES,
             _TAIL,
-            DATASHEET_JOB,
-            CONNECTIONS_JOB,
-            LAYOUT_JOB,
+            CIRCUIT_JOB,
+            PHYSICAL_JOB,
             ADJUDICATE_JOB,
             SINGLE_PROMPT_JOB,
         ]

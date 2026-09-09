@@ -55,6 +55,7 @@ MODULES = [
     "checks.js",
     "ops.js",
     "distill.js",
+    "packs.js",
     "kicad.js",
     "upload.js",
     "render.js",

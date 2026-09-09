@@ -53,14 +53,15 @@ let generation = 0;
 /** A fresh module instance — the equivalent of reloading the page. */
 const load = () => import(`${reviewUrl}?v=${++generation}`);
 
-// One review is four model calls — or eight when the gate loops — so what the
-// limits are about is reviews, not calls. `asked` counts calls; `reviews`
-// counts the graph runs they belong to, keyed off the first node's prompt.
+// One review is three model calls — two reviewers and a merge, or five when
+// the gate loops — so what the limits are about is reviews, not calls.
+// `asked` counts calls; `reviews` counts the graph runs they belong to,
+// keyed off the circuit reviewer's prompt.
 function stubSample(findings = []) {
   const stub = { asked: 0, reviews: 0, lastPrompt: "" };
   stub.json = async (prompt) => {
     stub.asked += 1;
-    if (prompt.includes("Your area is what each pin is for")) stub.reviews += 1;
+    if (prompt.includes("You are reviewing the circuit")) stub.reviews += 1;
     stub.lastPrompt = prompt;
     return { findings };
   };

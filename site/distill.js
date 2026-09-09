@@ -82,7 +82,7 @@ const byRefThenPin = (a, b) => cmp(a.ref, b.ref) || cmp(a.pin, b.pin);
 const byDesignator = (a, b) =>
   cmp(a.ref[0], b.ref[0]) || a.ref.length - b.ref.length || cmp(a.ref, b.ref);
 
-function componentsSection(board) {
+export function componentsSection(board) {
   const lines = ["COMPONENTS  ref(s), value, package, description"];
   // Keyed on value plus package and insertion-ordered, like the Python's
   // list. The key is never split back apart: a value may contain a space.
@@ -107,7 +107,7 @@ function componentsSection(board) {
   return lines;
 }
 
-function netsSection(board) {
+export function netsSection(board) {
   const lines = [
     "NETS  name: ref.pin(pin name, type). Type is omitted where it is " +
       "passive or bidirectional.",
@@ -133,7 +133,7 @@ function netsSection(board) {
 
 const trackLength = (t) => Math.hypot(t.x2 - t.x1, t.y2 - t.y1);
 
-function copperSection(board) {
+export function copperSection(board) {
   const layout = board.layout;
   const groups = islands(board);
 
@@ -183,7 +183,7 @@ function copperSection(board) {
   return lines;
 }
 
-function decouplingSection(board) {
+export function decouplingSection(board) {
   // How far each supply pin is from the nearest capacitor on its own net. See
   // harness/distill.py for why this replaced a placement section keyed on what
   // had just been edited.
