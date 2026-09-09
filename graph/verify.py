@@ -43,7 +43,10 @@ architectures on a ruler neither of them can touch.
 
 from __future__ import annotations
 
+import re
+
 from graph.nodes.adjudicate import contradiction
+from graph.state import key
 from harness.checks import _reaches_rail, is_ground, is_rail, islands
 
 #: A claim is free text now, so the critic cannot dispatch on a closed set of
@@ -134,11 +137,74 @@ def _known(subject: str, f: dict) -> bool:
     return bool(s) and (s in f["refs"] or s in f["nets"])
 
 
-def verify(item: dict, f: dict, distilled: str) -> str:
+#: Units that only appear in a quantity nothing on this board measures. A
+#: current, a temperature, an impedance or a time is not in the extraction, so a
+#: finding that states one has supplied it from somewhere - and a number nobody
+#: can check reads exactly like a number somebody measured.
+_INVENTED = re.compile(
+    r"""\b\d+(?:\.\d+)?\s*
+        (?: m?A\b | amp | ampere            # current
+          | [\u00b0]?\s*C\b | celsius        # temperature
+          | ohm | \u03a9                      # impedance
+          | [num]?s\b | [kMG]?Hz\b           # time and frequency
+          | m?W\b | watt                    # power
+        )""",
+    re.I | re.X,
+)
+
+#: Phrases that make a number a quotation rather than a claim. A finding may say
+#: the datasheet gives a range, or that a supplied input was used, without that
+#: counting as inventing the figure.
+_SOURCED = re.compile(r"datasheet|supplied|given|stated|assumption|per the", re.I)
+
+
+def invented_quantity(item: dict, pack: str) -> str:
+    """A number the finding states that appears nowhere it could have come from.
+
+    The board carries no current, no temperature, no impedance and no timing. A
+    reviewer that names one has either read it from a supplied input - in which
+    case it is in the pack - or produced it, and the second is indistinguishable
+    from the first in a report unless something checks.
+    """
+    text = f"{item.get('title', '')} {item.get('why', '')}"
+    for match in _INVENTED.finditer(text):
+        quantity = match.group(0)
+        if " ".join(quantity.split()).lower() in " ".join(pack.split()).lower():
+            continue  # it is in the evidence it was given
+        window = text[max(0, match.start() - 90) : match.end() + 40]
+        if _SOURCED.search(window):
+            continue  # attributed to a datasheet or a supplied input
+        return f"it states {quantity.strip()!r}, which appears nowhere in its evidence"
+    return ""
+
+
+def duplicates(item: dict, others: list[dict]) -> str:
+    """Already reported, by a measurement or by an earlier finding.
+
+    A deterministic finding outranks an LLM one about the same thing: the
+    measurement is the reason to believe it, and the prose adds nothing a
+    reader needs twice.
+    """
+    mine = key(item)
+    if not mine:
+        return ""
+    for other in others:
+        if other is item or not (key(other) & mine):
+            continue
+        same_claim = (other.get("claim") or "").lower() == (item.get("claim") or "").lower()
+        if other.get("origin") == "deterministic":
+            return f"a deterministic check already reports this: {other['title'][:60]}"
+        if same_claim and other.get("id"):
+            return f"the same claim about the same subject as {other['id']}"
+    return ""
+
+
+def verify(item: dict, f: dict, distilled: str, others: list[dict] | None = None) -> str:
     """Why this finding fails, or "" if nothing measurable contradicts it.
 
-    Four gates, cheapest first. The first two are about the finding being
-    well-formed at all; the last two are about the board disagreeing with it.
+    Five gates, cheapest first. The first two are about the finding being
+    well-formed at all, the next two about the board disagreeing with it, and
+    the last about it having been said already.
     """
     # 1. A subject that is not on this board. The single strongest signal there
     #    is: the finding is about a different design.
@@ -161,7 +227,18 @@ def verify(item: dict, f: dict, distilled: str) -> str:
         if reason:
             return reason
 
-    # 4. The frozen existence and phrasing checks, so an untyped or "other"
+    # 4. A quantity the board does not carry and the pack did not supply.
+    reason = invented_quantity(item, distilled)
+    if reason:
+        return reason
+
+    # 5. Already said, by a measurement or by an earlier finding.
+    if others:
+        reason = duplicates(item, others)
+        if reason:
+            return reason
+
+    # 6. The frozen existence and phrasing checks, so an untyped or "other"
     #    finding is still held to the old floor rather than getting a free pass.
     return contradiction(item, f)
 

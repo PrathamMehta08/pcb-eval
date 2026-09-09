@@ -1184,6 +1184,129 @@ def check_cross_domain(c: Check) -> None:
     c.that(not out.get("cross_domain"), "and no findings")
 
 
+# -------------------------------------------------------------------------- 17
+
+
+@step(17, "the critic runs in two stages, and the second one cannot add findings")
+def check_critic(c: Check) -> None:
+    """Arithmetic first, judgement second, and neither doing the other's job."""
+    import json as _json
+
+    from graph.nodes.critic import apply_verdicts
+    from graph.verify import duplicates, facts, invented_quantity, verify
+    from harness.packs import build_packs
+    from harness.research import brief
+
+    board = load_board()
+    f = facts(board)
+    pack = build_packs(board, brief(board, offline=True), [])["circuit"]
+
+    # --- stage one: exact, free, and first ---------------------------------
+    stage_one = [
+        (
+            "a subject that is not on this board",
+            {"claim": "x", "subject": "U9", "refs": ["U9"], "title": "U9 is wrong", "why": ""},
+            "not on this board",
+        ),
+        (
+            "evidence that is not a line it was given",
+            {
+                "claim": "x",
+                "subject": "S1",
+                "refs": ["S1"],
+                "title": "t",
+                "why": "",
+                "evidence": "S1 measured 3.7 V under load on the bench",
+            },
+            "not a line",
+        ),
+        (
+            "a quantity nothing supplied",
+            {"claim": "x", "subject": "S1", "refs": ["S1"], "title": "the rail carries 7.5 A", "why": ""},
+            "appears nowhere",
+        ),
+    ]
+    for label, item, expect in stage_one:
+        why = verify(item, f, pack)
+        c.that(expect in why, f"stage one rejects {label}: {why!r}")
+
+    # A quantity that IS in the pack is a quotation, not an invention.
+    c.that(
+        not invented_quantity({"title": "the part is rated 3 A", "why": ""}, pack),
+        "a quantity present in the evidence is allowed",
+    )
+    # And one attributed to a datasheet is not an invention either.
+    c.that(
+        not invented_quantity(
+            {"title": "above the 17 V the datasheet gives", "why": ""}, ""
+        ),
+        "a quantity attributed to a datasheet is allowed",
+    )
+
+    # Duplicates: a measurement outranks prose about the same subject.
+    measured = {
+        "origin": "deterministic",
+        "refs": ["U2"],
+        "nets": [],
+        "title": "U2 ground pin lifted",
+        "claim": "ground",
+    }
+    llm = {"claim": "ground", "subject": "U2", "refs": ["U2"], "nets": [], "title": "same thing"}
+    c.that(
+        "deterministic check already reports" in duplicates(llm, [measured]),
+        "a finding duplicating a measurement is rejected",
+    )
+    other = {"id": "F001", "origin": "llm", "claim": "floating", "refs": ["U2"], "nets": []}
+    c.that(not duplicates(llm, [other]), "a different claim about the same part is allowed")
+
+    # --- stage two: judgement, and nothing else ----------------------------
+    findings = [
+        {"id": "F001", "source": "circuit", "severity": "critical", "title": "one", "why": ""},
+        {"id": "F002", "source": "physical", "severity": "major", "title": "two", "why": ""},
+        {"id": "F003", "source": "circuit", "severity": "major", "title": "three", "why": ""},
+    ]
+    kept, rejected = apply_verdicts(
+        findings,
+        [
+            {"id": "F001", "verdict": "correct", "severity": "minor", "reason": "overstated"},
+            {"id": "F002", "verdict": "reject", "reason": "the evidence does not support it"},
+            {"id": "F003", "verdict": "downgrade", "reason": "not actionable"},
+            # The one thing this node may not do.
+            {"id": "F999", "verdict": "accept", "reason": "a finding it invented"},
+        ],
+    )
+    ids = {item["id"] for item in kept}
+    c.equals(ids, {"F001", "F003"}, "a rejected finding is removed and an invented id ignored")
+    c.equals(len(rejected), 1, "the rejection is kept with its reason")
+    c.that(rejected and rejected[0][1], f"and the reason survives: {rejected[0][1]!r}")
+
+    by_id = {item["id"]: item for item in kept}
+    c.equals(by_id["F001"]["severity"], "minor", "a corrected severity is applied")
+    c.equals(by_id["F003"]["severity"], "informational", "a downgrade becomes informational")
+
+    # Silence is not a rejection: an unmentioned finding keeps what it had.
+    kept, rejected = apply_verdicts(findings, [])
+    c.equals(len(kept), 3, "findings the critic did not mention survive unchanged")
+    c.equals(kept[0]["severity"], "critical", "and keep their own severity")
+
+    # A malformed verdict is ignored rather than obeyed.
+    kept, _ = apply_verdicts(findings, [{"id": "F001", "verdict": "obliterate"}])
+    c.equals(len(kept), 3, "an unrecognised verdict changes nothing")
+
+    # The node makes no call when nothing survived stage one.
+    from graph.nodes.critic import make_critic
+
+    class Refuses:
+        def json(self, *a, **k):
+            raise AssertionError("the critic was called with nothing to verify")
+
+    out = make_critic(Refuses())({"confirmed": [], "cross_domain": []})
+    c.that(
+        "skipped" in out.get("coverage", {}).get("critic", ""),
+        "with nothing to verify the critic does not run",
+    )
+
+
 # ---------------------------------------------------------------------------
 
 

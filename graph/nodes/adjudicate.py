@@ -109,6 +109,14 @@ def _numbered(items: list[dict]) -> str:
     )
 
 
+def _pack_for(source: str | None) -> str:
+    """Which pack a finding's reviewer was given."""
+    from graph.prompts import ALL_REVIEWERS
+
+    entry = ALL_REVIEWERS.get(source or "")
+    return entry[1] if entry else "circuit"
+
+
 def make_adjudicate(client):
     def adjudicate(state: ReviewState) -> dict:
         findings = dedupe(state.get("proposed", []))
@@ -139,13 +147,20 @@ def make_adjudicate(client):
         # here because graph.verify imports `contradiction` from this module.
         from graph.verify import verify
 
+        # The pack, not the whole distilled board: a finding's evidence has to
+        # come from what its own reviewer was shown, and checking against more
+        # than that would let a claim borrow support it never saw.
+        packs = state.get("packs") or {}
+        seen: list[dict] = list(state.get("measured", []))
         confirmed, dropped = [], []
         for item in kept:
-            reason = verify(item, facts, state["distilled"])
+            pack = packs.get(_pack_for(item.get("source")), state["distilled"])
+            reason = verify(item, facts, pack, seen)
             if reason:
                 dropped.append({**item, "dropped": reason})
             else:
                 confirmed.append(item)
+                seen.append(item)
 
         # Measured findings join the report already verified: there is nothing
         # for a model to merge and nothing for the critic to doubt. They are

@@ -285,6 +285,54 @@ OUTPUT
   "fix": "one sentence naming the change that would correct it"
 }]}"""
 
+CRITIC_JOB = """You are verifying findings, not producing them.
+
+Every finding below has already passed a deterministic gate: its subject exists
+on this board, its evidence is a real line from the data it was given, it states
+no quantity that was not supplied to it, and no measurement contradicts it.
+Those checks are exact and already done. What is left is judgement.
+
+For each finding, decide four things.
+
+SUPPORTED. Does the quoted evidence actually establish the problem, or merely
+relate to it? A finding whose line is real but does not support the claim drawn
+from it is not supported. This is the commonest failure and the one to be
+strictest about.
+
+SOUND. Is the engineering reasoning correct? A supported finding can still be
+wrong: the evidence is real and the inference from it is not. Say which step
+fails.
+
+SEVERITY. Reviewers inflate. `critical` means the board cannot work or damages
+something. If a finding is real but overstated, keep it and correct the
+severity rather than rejecting it.
+
+ACTIONABLE. Could an engineer act on this without further investigation? A
+finding naming no specific change is an observation rather than a defect and
+should be downgraded, not rejected.
+
+You may not add findings. You may not merge them. If you notice a defect nobody
+reported, that is not your job here and you must ignore it - a verdict for an id
+that was not given to you is discarded unread.
+
+Return exactly one verdict per finding:
+
+{"verdicts": [{
+  "id": "the finding's id, exactly as given",
+  "verdict": "accept" | "correct" | "downgrade" | "reject",
+  "severity": "critical" | "major" | "minor" | "informational",
+  "confidence": "high" | "medium" | "low",
+  "reason": "one sentence; required for anything other than accept"
+}]}
+
+accept     supported, sound, correctly rated.
+correct    real, but the severity or confidence needs changing.
+downgrade  true but not actionable; becomes informational.
+reject     unsupported by its evidence, or the reasoning does not hold.
+
+Reject freely. A rejected finding costs nothing. A false one accepted costs an
+engineer an hour and costs this report its credibility on everything else."""
+
 ADJUDICATE_JOB = """You are merging three reviews of one board into one list.
 
 Below are findings from three reviewers, each numbered. Some describe the same
@@ -380,6 +428,11 @@ def single_prompt_template() -> str:
     return _build(SINGLE_PROMPT_JOB, BOARD_SLOT)
 
 
+def critic_prompt(findings_text: str) -> str:
+    """Verdicts on findings that already survived the deterministic gate."""
+    return CRITIC_JOB + "\n\n" + findings_text
+
+
 def cross_domain_prompt(findings_text: str) -> str:
     """The merge stage's sibling: findings in, interactions out, no board."""
     return CROSS_DOMAIN_JOB + "\n\n" + findings_text
@@ -408,6 +461,7 @@ def prompt_hash() -> str:
             SIGNAL_INTEGRITY_JOB,
             POWER_INTEGRITY_JOB,
             CROSS_DOMAIN_JOB,
+            CRITIC_JOB,
             ADJUDICATE_JOB,
             SINGLE_PROMPT_JOB,
         ]

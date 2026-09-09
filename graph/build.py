@@ -11,6 +11,10 @@
     cross-domain  what is only true of two reviewers' findings together.
                   Skipped when fewer than two of them found anything.
       |
+    critic        judgement on what arithmetic could not settle: is the evidence
+                  actually supporting, is the reasoning sound, is the severity
+                  earned. It may not add findings.
+      |
     critic        deterministic, inside adjudicate: per claim kind, the board
                   answers. No model reviews another model's work.
       |
@@ -31,6 +35,7 @@ from __future__ import annotations
 from langgraph.graph import END, StateGraph
 
 from graph.nodes.adjudicate import make_adjudicate
+from graph.nodes.critic import make_critic
 from graph.nodes.cross_domain import make_cross_domain
 from graph.nodes.review import reviewers
 from graph.prompts import REVIEWERS
@@ -158,6 +163,7 @@ def build_graph(client, enabled_agents=None):
         graph.add_node(name, node)
     graph.add_node("adjudicate", make_adjudicate(client))
     graph.add_node("cross_domain", make_cross_domain(client))
+    graph.add_node("critic", make_critic(client))
     graph.add_node("stamp", stamp)
 
     graph.set_entry_point("ingest")
@@ -167,7 +173,8 @@ def build_graph(client, enabled_agents=None):
         graph.add_edge("ingest", name)
         graph.add_edge(name, "adjudicate")
     graph.add_edge("adjudicate", "cross_domain")
-    graph.add_edge("cross_domain", "stamp")
+    graph.add_edge("cross_domain", "critic")
+    graph.add_edge("critic", "stamp")
     graph.add_conditional_edges(
         "stamp", route, {**{n: n for n in nodes}, END: END}
     )

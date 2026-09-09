@@ -105,6 +105,13 @@ def make_cross_domain(client):
             item["sources"] = (original or {}).get("sources") or []
 
         kept, rejected = enforce(raw, by_id)
+        # Ids of their own, continuing the sequence. Without one a cross-domain
+        # finding is silently dropped by the critic, which filters on id - two
+        # of them vanished that way before this line existed.
+        start = len(by_id)
+        for n, item in enumerate(kept, start=start + 1):
+            item.setdefault("id", f"F{n:03d}")
+
         return {
             "cross_domain": kept,
             "rejected": [
