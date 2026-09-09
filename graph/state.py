@@ -55,6 +55,8 @@ class ReviewState(TypedDict, total=False):
     cross_domain: list[dict]
     #: What survived both critics, with any severity the second one corrected.
     verified: list[dict]
+    #: The finished report: findings merged and ranked, the score, and coverage.
+    report: dict
     #: Everything any stage refused, with the reason. Kept rather than discarded
     #: because a list of rejections is the only way to tell a strict critic from
     #: a broken one.

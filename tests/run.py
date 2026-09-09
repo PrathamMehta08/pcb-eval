@@ -1307,6 +1307,106 @@ def check_critic(c: Check) -> None:
     )
 
 
+# -------------------------------------------------------------------------- 18
+
+
+@step(18, "aggregation and scoring are arithmetic, and coverage is printed")
+def check_report(c: Check) -> None:
+    """The last place a number could be invented, so it is the last one checked."""
+    from harness.report import build, classify, merge, render, score
+
+    det = lambda sev: {"rule": "net-island", "origin": "deterministic", "severity": sev,
+                       "refs": ["U2"], "nets": [], "title": f"measured {sev}"}
+    llm = lambda sev, **kw: {"source": "circuit", "severity": sev, "confidence": "high",
+                             "refs": ["U2"], "nets": [], "title": f"argued {sev}", **kw}
+
+    # --- classes -----------------------------------------------------------
+    c.equals(classify(det("critical")), "confirmed_violation", "a measurement is confirmed")
+    c.equals(classify(llm("major")), "probable_issue", "an accepted model finding is probable")
+    c.equals(
+        classify(llm("major", confidence="low")), "engineering_concern",
+        "low confidence makes it a concern",
+    )
+    c.equals(
+        classify(llm("major", assumption="assumes 1 A")), "engineering_concern",
+        "resting on an assumption makes it a concern",
+    )
+    c.equals(
+        classify(llm("informational")), "informational", "an observation is informational"
+    )
+
+    # --- weights -----------------------------------------------------------
+    c.equals(score([det("critical")])["score"], 90, "a confirmed critical costs 10")
+    c.equals(score([det("medium")])["score"], 98, "a confirmed medium costs 2")
+    c.equals(score([det("low")])["score"], 99, "a confirmed low costs 1")
+
+    # A concern and an observation are reported and cost nothing.
+    zero = score([llm("critical", confidence="low"), llm("critical", severity="informational")])
+    c.equals(zero["score"], 100, "concerns and observations do not move the score")
+
+    # --- the cap -----------------------------------------------------------
+    # Halved, then capped at the confirmed total, so prose can at most double
+    # the damage evidence already did.
+    capped = score([det("low"), llm("critical"), llm("critical")])
+    c.equals(capped["probable"], 10.0, "two critical probables are worth 10 before the cap")
+    c.equals(capped["probable_capped_to"], 1.0, "and are capped at the 1 confirmed")
+    c.equals(capped["score"], 98, "so the score moves by 2, not 11")
+
+    # The edge this rule has, asserted so it is deliberate rather than noticed
+    # later: with nothing confirmed, the model half cannot move the number.
+    unbacked = score([llm("critical"), llm("critical"), llm("critical")])
+    c.equals(
+        unbacked["score"], 100,
+        "with no confirmed violation, probable issues are capped to zero",
+    )
+    c.note("a board no rule fires on scores 100 however much the reviewers say")
+
+    # --- merging -----------------------------------------------------------
+    same = merge([
+        {"claim": "net_split", "subject": "GND", "source": "physical", "title": "prose",
+         "refs": ["U2"], "nets": []},
+        {"claim": "net_split", "subject": "GND", "rule": "net-island", "title": "measured",
+         "refs": ["U2"], "nets": [], "origin": "deterministic"},
+    ])
+    c.equals(len(same), 1, "one finding per (subject, claim)")
+    if same:
+        c.equals(same[0]["title"], "measured", "and the measurement's wording wins")
+        c.equals(len(same[0]["found_by"]), 2, "while recording everything that found it")
+
+    apart = merge([
+        {"claim": "net_split", "subject": "GND", "source": "physical", "title": "a", "refs": [], "nets": []},
+        {"claim": "pin_floating", "subject": "GND", "source": "circuit", "title": "b", "refs": [], "nets": []},
+    ])
+    c.equals(len(apart), 2, "different claims about one subject stay separate")
+
+    # --- coverage in the output -------------------------------------------
+    report = build(
+        [det("low")],
+        {"thermal": "skipped: no load current", "junction_temp": "skipped: no ambient",
+         "net_islands": "ran"},
+    )
+    c.equals(
+        sorted(report["unassessed"]), ["junction_temp", "thermal"],
+        "only skipped checks are listed as unassessed",
+    )
+    text = render(report)
+    c.that("NOT ASSESSED" in text, "the report says what it did not check")
+    c.that("no load current" in text, "and why")
+    c.that(
+        "not the same as passing" in text,
+        "and says plainly that unassessed is not passing",
+    )
+
+    # A skipped check must never improve the score: the same findings score the
+    # same whether or not other domains were assessed.
+    with_gaps = build([det("low")], {"thermal": "skipped: no load current"})
+    without = build([det("low")], {"thermal": "ran"})
+    c.equals(
+        with_gaps["score"]["score"], without["score"]["score"],
+        "a skipped domain does not change the score",
+    )
+
+
 # ---------------------------------------------------------------------------
 
 
