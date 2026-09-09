@@ -1609,8 +1609,16 @@ def check_v7(c: Check) -> None:
 
     stub = Stub()
     state = run_v7(load_board(), stub)
-    c.equals(stub.labels, ["v7:review", "v7:critic"], "one reviewer and one critic, once each")
-    c.equals(len(state["calls"]), 2, "two model calls for a board")
+    c.equals(stub.labels, ["v7:review"], "V7 asks one reviewer, once")
+    c.equals(len(state["calls"]), 1, "one model call for a board")
+
+    # And V8 is that plus a second look, which is shown the first pass's own
+    # findings and nothing else.
+    second = Stub()
+    run_v7(load_board(), second, second_look=True)
+    c.equals(
+        second.labels, ["v7:review", "v8:second-look"], "V8 adds one call and no more"
+    )
 
     # The deterministic gate is not optional and not a model.
     c.equals(
@@ -1621,13 +1629,14 @@ def check_v7(c: Check) -> None:
         f"and the refusal says which part: {state['rejected'][0]['dropped']}",
     )
 
-    # The critic is shown findings and nothing else. A critic holding the board
-    # could look up whether a finding is true, which is the validator's job and
-    # is done deterministically; a critic holding the defect list would be the
-    # leak this whole step exists to rule out.
-    critic_prompt_text = stub.prompts["v7:critic"]
-    for absent in ("BOARD stm32-good", "COMPONENTS", "NETS", "DECOUPLING"):
-        c.that(absent not in critic_prompt_text, f"the critic is not shown {absent!r}")
+    # The second look is shown the board and its own first answer. What it must
+    # never be shown is anything the first pass did not itself say - the rule
+    # findings would tell it where the deterministic layer already looked, and
+    # that is the leak this step exists to rule out.
+    look = second.prompts["v8:second-look"]
+    c.that("ALREADY REPORTED" in look, "the second look is given the first pass's list")
+    for absent in ("HANDLED BY MEASUREMENT", "net-island", "power-pin-miswired"):
+        c.that(absent not in look, f"and is not shown {absent!r}")
 
     # And nothing anywhere names a planted defect.
     for case in corpus():

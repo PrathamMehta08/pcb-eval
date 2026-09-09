@@ -53,15 +53,15 @@ do all three jobs; the other splits them across a LangGraph pipeline of three
 specialists, a merge, and a deterministic critic. The whole sweep runs five
 times, because a single run of this cannot be told apart from noise.
 
-`openai/gpt-oss-120b` - 5 trials - 439 calls - prompts `51fa87930f52` -
+`openai/gpt-oss-120b` - 5 trials - 300 calls - prompts `29d9b80529de` -
 schema `96e5a7694704` - corpus `56602c9aa9ca` - pipeline
 `d7d5464cc261` - full record in
 [`results/latest.json`](results/latest.json)
 
 Three detectors. **one prompt** is a single call with the whole board. **V7** is
-that same call, byte for byte, with a deterministic layer before it and two
-gates after. **V8** is V7 plus one more call that asks the reviewer what its own
-first pass missed.
+that same call, byte for byte, with a deterministic layer before it and a
+deterministic gate after. **V8** is V7 plus one more call that asks the reviewer
+what its own first pass missed. Neither has an LLM critic - see below.
 
 | per trial, median (min-max) | one prompt | V7 | V8 |
 |---|---|---|---|
@@ -69,7 +69,7 @@ first pass missed.
 | findings on the clean board | **4 (3-5)** | 5 (3-6) | 8 (6-9) |
 | unmatched findings on the seeded boards | **26 (22-36)** | 30 (17-46) | 52 (44-75) |
 | **findings the copper refutes - reported** | 6 total | **0** | **0** |
-| model calls per board | 1 | 2 | 3 |
+| model calls per board | 1 | 1 | 2 |
 
 Over five trials, recall on the seeded defects:
 
@@ -99,6 +99,39 @@ a separate frozen function - so this is not the ruler being moved.
 What V8 costs is noise: eight findings on a clean board against four. It finds
 half again as many real defects and roughly doubles what it says about a board
 that is fine.
+
+### The LLM critic was measured three ways and deleted
+
+V7 was specified with one, and it does not have one. This is the clearest
+result of the night after V8 itself.
+
+Wired as written it rejected **409 of 409 findings across five trials** - the
+entire reviewer output. It was told to be strictest about whether quoted
+evidence supports a claim, and the baseline's schema carries no quoted evidence,
+so every finding reached it reading `evidence: (none quoted)`. Recall fell to
+exactly the four defects the deterministic rules catch, which is the shape this
+failure always takes.
+
+Rewritten to judge what is actually there, and told the asymmetry - a defect
+rejected is gone and ships with the board, a doubtful finding kept costs a
+person a minute - it went the other way and rejected six of two hundred and
+twenty-nine. Over five trials it cost two rule-silent defects, 33 against 35,
+and saved one finding on a clean board.
+
+So it went, and V8 got cheaper as well as better: 150 calls where it used 225.
+The job it was meant to do is already done by `validate`, which is arithmetic
+and string comparison rather than a second opinion, and which is why V7 and V8
+report zero findings the board contradicts while the baseline reports six.
+
+The rule it failed is this project's own: **if what would refute a node's output
+is a measurement, build the measurement; if the answer is another model, the
+node is probably unnecessary.**
+
+Worth recording that removing it broke the report, silently and in the shape
+this failure always takes. `aggregate` read `verified`, which only the critic
+filled; with the critic gone nothing wrote it and the report became the rule
+findings alone. Recall read 4 of 13 - the rule-covered four - which looks like a
+result and is a wiring bug.
 
 ### One sample of a reviewer is not the reviewer
 
@@ -229,7 +262,7 @@ which is the argument this project keeps arriving at from different directions.
 
 ### What it cost
 
-Five trials from cold: 439 model calls, 952k tokens in, 804k out, **$0.6249**,
+Five trials from cold: 300 model calls, 834k tokens in, 677k out, **$0.531**,
 23 minutes at two concurrent requests. Every sweep carries the prompt, schema,
 corpus and pipeline hashes, because a score that outlives the system it measured
 is worse than no score - and `pipeline_hash` exists because adding an evaluator

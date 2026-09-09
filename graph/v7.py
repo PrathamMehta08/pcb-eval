@@ -8,11 +8,32 @@
                evidence in the pack, is this a duplicate, was this quantity
                invented, does the board itself contradict it
       |
-    critic     one call, judgement only. It may reject, downgrade or correct.
-               It may not add.
-      |
     aggregate  merge the reviewer's surviving findings with what was measured,
                rank, score. No model involved.
+
+THERE IS NO LLM CRITIC, AND THAT IS A RESULT
+
+There was one, and it was measured three ways. Wired as written it rejected 409
+of 409 findings across five trials, because it was told to be strictest about
+whether quoted evidence supports a claim and this schema carries no quoted
+evidence - every finding reached it reading "evidence: (none quoted)". Recall
+fell to exactly the defects the deterministic rules catch.
+
+Rewritten to judge what is actually there, and told the asymmetry - a defect
+rejected is gone, a doubtful finding kept costs a minute of reading - it went
+the other way and rejected almost nothing: six of two hundred and twenty-nine
+for V7. Over five trials it cost two rule-silent defects, 33 against 35, and
+saved one finding on a clean board.
+
+So it is gone, on this project's own rule: a component earns its place by
+improving recall, and this one spent a call per board to reduce it. The thing it
+was meant to do is already done by `validate`, which is arithmetic and string
+comparison rather than a second opinion - and which is why both V7 and V8 report
+zero findings the board contradicts while the baseline reports six.
+
+The guiding principle it was tested against, and failed: if what would refute a
+node's output is a measurement, build the measurement; if the answer is another
+model, the node is probably unnecessary.
 
 WHY THIS SHAPE
 
@@ -295,7 +316,12 @@ def aggregate(state: PCBState) -> dict:
     measured one - a number beats a sentence about the number.
     """
     measured = list(state.get("deterministic") or []) + list(state.get("measured") or [])
-    verified = list(state.get("verified") or [])
+    # `validated` is what the deterministic gate kept. It was `verified` while a
+    # critic sat after that gate and rewrote the list; removing the critic left
+    # nothing writing `verified`, so the report silently became the rule
+    # findings alone and recall read 4 of 13 - exactly the defects the rules
+    # catch, which is the shape this failure always takes.
+    verified = list(state.get("verified") or state.get("validated") or [])
 
     covered: set = set()
     for item in measured:
@@ -316,7 +342,6 @@ def build_graph(client, second_look: bool = False):
     graph.add_node("analyse", analyse)
     graph.add_node("review", make_review(client))
     graph.add_node("validate", validate)
-    graph.add_node("critic", make_critic(client))
     graph.add_node("aggregate", aggregate)
 
     graph.set_entry_point("analyse")
@@ -327,8 +352,7 @@ def build_graph(client, second_look: bool = False):
         graph.add_edge("second_look", "validate")
     else:
         graph.add_edge("review", "validate")
-    graph.add_edge("validate", "critic")
-    graph.add_edge("critic", "aggregate")
+    graph.add_edge("validate", "aggregate")
     graph.add_edge("aggregate", END)
     return graph.compile()
 
@@ -341,7 +365,5 @@ def run_v7(board: dict, client, inputs: dict | None = None, second_look: bool = 
     state["findings"] = state.get("reviewer_findings") or []
     state["dropped"] = state.get("rejected") or []
     state["packs"] = {"reviewer": state.get("pack", "")}
-    state["enabled_agents"] = (
-        ["reviewer", "second_look", "critic"] if second_look else ["reviewer", "critic"]
-    )
+    state["enabled_agents"] = ["reviewer", "second_look"] if second_look else ["reviewer"]
     return state
