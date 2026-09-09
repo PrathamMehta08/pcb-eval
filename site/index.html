@@ -399,13 +399,13 @@ main { display: flex; flex: 1; min-height: 0; }
 }
 .pins .fn {
   font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim);
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  width: 58px; flex: none; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;
 }
 .role {
-  display: block; font-style: normal; font-family: var(--mono);
-  font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--ink-dim);
+  font-style: normal; font-family: var(--mono); font-size: 8.5px;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim);
+  width: 38px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .role-power_in, .role-power_out { color: var(--warn); }
 .role-output, .role-open_collector, .role-tri_state { color: var(--mint); }
@@ -475,6 +475,27 @@ kbd {
   color: var(--ink-dim); font-variant-numeric: tabular-nums;
 }
 
+.dm-facts { list-style: none; margin: 14px 0 0; padding: 0; }
+.dm-facts li {
+  display: grid; grid-template-columns: 1fr auto; gap: 1px 10px;
+  padding: 8px 0; border-top: 1px solid var(--line-soft);
+}
+.dm-label { font-size: 12px; color: var(--ink-mid); }
+.dm-value {
+  grid-row: 1; grid-column: 2; font-family: var(--mono); font-size: 12px;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.dm-page {
+  grid-column: 2; font-family: var(--mono); font-size: 9.5px;
+  color: var(--ink-dim); text-align: right;
+}
+.dm-quote {
+  grid-column: 1 / -1; font-size: 11px; color: var(--ink-dim);
+  line-height: 1.5; margin-top: 3px;
+}
+.dm-facts li.unsure .dm-value { color: var(--warn); }
+.dm-none { margin: 14px 0 0; font-size: 12px; color: var(--ink-dim); }
+
 .dm-hit {
   display: block; margin: 0 0 8px; padding: 9px 11px;
   border-radius: var(--radius); background: var(--raised);
@@ -497,21 +518,15 @@ kbd {
 /* ------------------------------------------------------- datasheet badges ---
    Only on parts a review would research. A tick over every resistor would be
    forty ticks saying nothing. */
-/* One weight of line for the whole sheet, and a dot for its state. The board
-   under it is drawn in hairlines, so a badge with three stroke weights and a
-   filled alert disc reads as something pasted on from another program. */
+/* One filled shape with a dark rim, so it holds its edge over copper of any
+   colour. The board is drawn in hairlines; anything with an outline, a fill and
+   an inner detail reads as pasted in from another program. */
 .ds-badge { cursor: pointer; pointer-events: auto; }
-.ds-sheet, .ds-fold, .ds-rule {
-  fill: none; stroke: #78848d; stroke-width: .085;
-  stroke-linejoin: round; stroke-linecap: round;
-}
-.ds-sheet { fill: rgba(9, 12, 16, .82); }
-.ds-mark { stroke: none; }
+.ds-mark { stroke: rgba(6, 9, 11, .9); stroke-width: .13; stroke-linejoin: round; }
+.ds-hit { fill: transparent; stroke: none; }
 .ds-have .ds-mark { fill: var(--mint); }
 .ds-missing .ds-mark { fill: var(--warn); }
-.ds-badge:hover .ds-sheet,
-.ds-badge:hover .ds-fold,
-.ds-badge:hover .ds-rule { stroke: var(--ink); }
+.ds-badge:hover .ds-mark { stroke: var(--ink); }
 .hide-datasheets .datasheet-marks { display: none; }
 
 /* ------------------------------------------------------ datasheet, inspector */
@@ -529,7 +544,7 @@ kbd {
 
 /* ------------------------------------------------------------------ rail --- */
 .rail {
-  width: clamp(330px, 21vw, 400px); flex: none; overflow-y: auto;
+  width: clamp(424px, 28vw, 510px); flex: none; overflow-y: auto;
   background: var(--panel);
   border-left: 1px solid var(--line);
 }
@@ -596,21 +611,22 @@ input, select {
   border: 1px solid var(--line); border-radius: var(--radius);
 }
 
-/* Two lines per pin. As three table columns the net was 180px of a 374px rail,
-   so every name longer than "unconnected-(U2-P" was cut off - which is most of
-   them, and the clipped part is the part that distinguishes one from another. */
+/* One line per pin, in a rail wide enough for one. Three table columns in a
+   374px rail gave the net 180px, so every name past "unconnected-(U2-P" was
+   cut - and the clipped half is the half that tells one from another. The
+   answer was a wider rail, not a second line. */
 .pins { list-style: none; margin: 0; padding: 0; }
 .pins li {
-  display: flex; flex-direction: column; gap: 1px;
-  padding: 4px 0; border-bottom: 1px solid var(--line-soft);
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 0; border-bottom: 1px solid var(--line-soft);
 }
 .pins li:last-child { border-bottom: 0; }
-.pin-id { display: flex; align-items: baseline; gap: 8px; }
-.pin-id b {
+.pins li > b {
   font-family: var(--mono); font-size: 11px; font-weight: 500;
-  color: var(--ink-mid); min-width: 20px;
+  color: var(--ink-mid); min-width: 18px; text-align: right; flex: none;
 }
-.pins .net-pick { width: 100%; }
+.pins .net-pick { flex: 1; min-width: 0; }
+.pins .role { flex: none; }
 
 .swap {
   font-family: var(--mono); font-size: 12px; line-height: 1; cursor: pointer;

@@ -26,6 +26,7 @@
  */
 
 import { pinsByRef } from "./checks.js";
+import { extractFacts } from "./extract.js";
 import { chunk, index, queryFor, search } from "./rag.js";
 
 const DB = "pcb-eval";
@@ -106,6 +107,10 @@ export async function attach(boardName, ref, { name, pages }) {
     ref,
     name: String(name || "document"),
     pages: (pages || []).map((p) => String(p || "")),
+    // Read once, here, and stored with the document. The patterns run over
+    // sixty pages; doing that on every render to show a five-line summary
+    // would be paying a page-load's work for a glance.
+    facts: extractFacts(pages || []),
     addedAt: Date.now(),
   };
   docsFor(boardName).set(ref, record);
@@ -209,6 +214,27 @@ function loadPdfJs() {
  * Absent for a board nobody has attached anything to, which is the ordinary
  * state and not a defect.
  */
+export function factsBlock(board) {
+  const docs = docsFor(board.meta.name);
+  const lines = ["EXTRACTED PARAMETERS  read from the attached documents, with the page"];
+  for (const ref of [...docs.keys()].sort()) {
+    for (const [key, fact] of Object.entries(docs.get(ref).facts || {})) {
+      if (fact.confidence === "low") continue;
+      lines.push(`${ref} ${key}: ${fact.shown} (p${fact.page}) "${fact.quote}"`);
+    }
+  }
+  return lines.length > 1 ? lines : [];
+}
+
+/**
+ * Parameters read out of one part's document, for the reader rather than the
+ * reviewer. Low-confidence readings are kept here and marked, because someone
+ * checking the extraction needs to see the ones it is unsure about most of all.
+ */
+export function factsOf(boardName, ref) {
+  return docFor(boardName, ref)?.facts || {};
+}
+
 export function passagesBlock(board) {
   const docs = docsFor(board.meta.name);
   if (!docs.size) return [];

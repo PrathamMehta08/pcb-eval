@@ -36,14 +36,25 @@ const NEVER_RESEARCHED = /^(R|C|L|FB|TP|H|Y)\d/;
 /**
  * Which parts are worth a datasheet, and why. First rule that matches wins.
  *
- * The reason is a predicate, not a noun: it is read back to a person as
- * "researched because it <why>", and a phrase that does not finish that
- * sentence is a phrase nobody wrote for a reader.
- *
  * The same triage the harness runs, so the badges on the board agree with what
- * a scored review would actually research. A two-pin passive never qualifies
- * however it matched: what is worth knowing about it is its value, and the
- * netlist already carries that.
+ * a scored review would actually research.
+ *
+ * Every clause answers one question: does the netlist already say what this
+ * part does? For a resistor it does, and the value is the whole story. For a
+ * part number it does not, and the document is the only place the answer lives.
+ * So each clause names a property meaning "not deducible from the netlist" - the
+ * designator the schematic gave it, a pin that supplies or drives rather than
+ * merely conducts, a description of an active device, or a part sitting across
+ * more than one supply rail.
+ *
+ * There used to be a fifth clause, six or more pins, and it was a number
+ * somebody picked. It caught exactly one part, a bare 1x06 header, which is the
+ * case where a datasheet buys least: there is no document for a row of holes,
+ * and what matters about a connector is the pinout of whatever mates with it.
+ *
+ * The reason is a predicate, not a noun: it is read back as "researched because
+ * it <why>", and a phrase that does not finish that sentence is a phrase nobody
+ * wrote for a reader.
  */
 export function needsDatasheet(board) {
   const pins = pinsByRef(board);
@@ -54,13 +65,15 @@ export function needsDatasheet(board) {
       mine.map((p) => p.net).filter((n) => /^\/?(VBUS|VCC|VDD|VEE|VIN|VOUT|[+-]?\d+V\d*|[+-]\d+(\.\d+)?V)[A-Z0-9]*$/i.test(n))
     );
     let why = null;
-    if (mine.length >= 6) why = `has ${mine.length} pins`;
-    else if (/^(U|S|IC|Q)\d/.test(comp.ref))
-      why = `carries a ${comp.ref[0]} designator`;
-    else if (mine.some((p) => POWER_TYPES.has(baseType(p.type)))) why = "carries a power or driver pin";
-    else if (SIGNIFICANT.test(`${comp.description || ""} ${comp.value || ""}`))
-      why = "reads as an active part";
-    else if (rails.size > 1) why = `sits on ${rails.size} supply rails`;
+    if (/^(U|S|IC|Q)\d/.test(comp.ref)) {
+      why = `carries a ${comp.ref[0]} designator, which marks an integrated circuit`;
+    } else if (mine.some((p) => POWER_TYPES.has(baseType(p.node.type)))) {
+      why = "has a pin that supplies or drives, so it holds circuitry of its own";
+    } else if (SIGNIFICANT.test(`${comp.description || ""} ${comp.value || ""}`)) {
+      why = "is described as an active device";
+    } else if (rails.size > 1) {
+      why = `bridges ${rails.size} supply rails`;
+    }
     if (!why) continue;
     if (NEVER_RESEARCHED.test(comp.ref) && mine.length <= 2) continue;
     out.set(comp.ref, why);

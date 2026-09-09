@@ -168,7 +168,7 @@ def _confidence(line: str, match: re.Match, wrapped: bool) -> str:
     where one was wanted is `low`, and `junction_temp` refuses to compute from
     a low-confidence thermal figure.
     """
-    numbers = re.findall(r"\d+\.\d+|\d{2,}", line)
+    numbers = re.findall(r"\d+\.\d+|\b\d{2,}\b", line)
     if len(numbers) >= 3:
         return "low"
     return "medium" if wrapped else "high"
@@ -291,11 +291,21 @@ def _pins_of(board: dict) -> dict[str, list[dict]]:
 def triage(board: dict) -> list[dict]:
     """Which parts are worth a datasheet, and why. First rule that matches wins.
 
-    Fetching is cheap but not free, and a datasheet for a 10k resistor buys
-    nothing: the fact worth knowing about a passive is its value, which the
-    netlist already carries. So research is spent on parts whose behaviour is
-    not deducible from the schematic - active silicon, anything that sources or
-    switches, anything bridging power domains.
+    The question each clause answers is the same one: does the netlist already
+    say what this part does? For a resistor it does - the value is the whole
+    story. For a part number it does not, and the document is the only place the
+    answer lives.
+
+    So every clause names a property that means "not deducible from the
+    netlist": the designator the schematic gave it, a pin that supplies or
+    drives rather than merely conducts, a description of an active device, or a
+    part sitting across more than one supply rail.
+
+    There used to be a fifth clause, `six or more pins`, and it was a number
+    somebody picked. It existed to catch one part - a bare 1x06 header - and a
+    bare header is exactly the case where fetching a datasheet buys nothing:
+    there is no document for a row of holes. What matters about a connector is
+    the pinout of whatever mates with it, and that belongs to the other device.
 
     A passive is researched only when a researched part's own rules name it, and
     that happens through the converter rather than through the capacitor: the
@@ -312,16 +322,14 @@ def triage(board: dict) -> list[dict]:
             p["net"] for p in mine if is_rail(p["net"]) and not is_ground(p["net"])
         }
         why = None
-        if len(mine) >= 6:
-            why = f"{len(mine)} pins"
-        elif re.match(r"^(U|S|IC|Q)\d", ref):
-            why = f"designator {ref[0]}"
+        if re.match(r"^(U|S|IC|Q)\d", ref):
+            why = f"carries a {ref[0]} designator, which marks an integrated circuit"
         elif any(base_type(p.get("type", "")) in POWER_TYPES for p in mine):
-            why = "carries a power or driver pin"
+            why = "has a pin that supplies or drives, so it holds circuitry of its own"
         elif SIGNIFICANT.search(f"{comp.get('description', '')} {comp.get('value', '')}"):
-            why = "description names an active part"
+            why = "is described as an active device"
         elif len(rails) > 1:
-            why = f"sits on {len(rails)} distinct rails"
+            why = f"bridges {len(rails)} supply rails"
         if why is None:
             continue
         if ref.startswith(PASSIVE_PREFIX) and len(mine) <= 2:

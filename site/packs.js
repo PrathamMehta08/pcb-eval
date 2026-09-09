@@ -13,7 +13,7 @@
  * from. Everything else is built from the same sections in the same order.
  */
 
-import { passagesBlock } from "./docs.js";
+import { factsBlock, passagesBlock } from "./docs.js";
 import {
   componentsSection,
   copperSection,
@@ -72,8 +72,10 @@ export function circuitPack(board, findings = []) {
     header(board),
     componentsSection(board),
     netsSection(board),
-    // What retrieval found in the documents attached to this board. Empty for
-    // a board nobody has attached anything to, which is the normal state.
+    // What was read out of the documents attached to this board: the typed
+    // parameters first, then the passages retrieval picked. Both empty for a
+    // board nobody has attached anything to, which is the normal state.
+    factsBlock(board),
     passagesBlock(board),
     findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
   ]);

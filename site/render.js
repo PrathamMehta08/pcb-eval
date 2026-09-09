@@ -653,30 +653,29 @@ export function markDatasheets(svg, board, coverage) {
     group.dataset.ref = fp.ref;
     group.dataset.status = state.status;
 
-    // One icon, two states. A sheet of paper is what the badge is about, so
-    // the sheet is the same either way and a mark in its corner says which -
-    // rather than two unrelated shapes the eye has to tell apart before it can
-    // read them. The corner is where a status mark belongs on a document.
+    // One shape, and nothing drawn around it.
+    //
+    // This started as a document: a sheet, a folded corner, three ruled lines,
+    // a status mark in its corner. Every one of those is a detail that has to
+    // be resolved before the badge can be read, and at eighteen pixels over
+    // copper none of them resolve. The question being asked is a yes or a no,
+    // so the badge is a yes or a no - a dot when there is documentation, a
+    // triangle when there is not. Two silhouettes, told apart at a glance and
+    // without relying on colour, which is what the drawing has to survive on
+    // when it sits over a red track.
+    //
+    // The shapes are picked against what is already on the board. Vias and
+    // round pads are circles, so the dot is smaller than any of them; nothing
+    // on a board is a triangle.
     group.appendChild(
-      el("path", {
-        class: "ds-sheet",
-        d: "M -0.86 -1.15 L 0.24 -1.15 L 0.86 -0.53 L 0.86 1.15 L -0.86 1.15 Z",
-      })
+      state.status === "have"
+        ? el("circle", { class: "ds-mark", cx: 0, cy: 0, r: 0.5 })
+        : el("path", { class: "ds-mark", d: "M 0 -0.7 L 0.7 0.5 L -0.7 0.5 Z" })
     );
-    group.appendChild(el("path", { class: "ds-fold", d: "M 0.24 -1.15 L 0.24 -0.53 L 0.86 -0.53" }));
-    for (const [y, right] of [[-0.06, 0.42], [0.34, 0.42], [0.74, 0.08]]) {
-      group.appendChild(el("path", { class: "ds-rule", d: `M -0.46 ${y} L ${right} ${y}` }));
-    }
 
-    // A dot, not an alert. An exclamation inside a filled circle is the
-    // desktop-warning idiom of twenty years ago, and it says "something has
-    // gone wrong" about a part that is merely undocumented. At this size the
-    // glyph inside was three pixels of shape nobody could resolve anyway, so
-    // it was costing legibility to say something untrue. Colour alone carries
-    // it, and the title carries the words.
-    group.appendChild(
-      el("circle", { class: "ds-mark", cx: 0.86, cy: -1.15, r: 0.29 })
-    );
+    // An invisible disc behind it, because the shape itself is about a
+    // millimetre across and the badge is meant to be clicked.
+    group.appendChild(el("circle", { class: "ds-hit", cx: 0, cy: 0, r: 1.1 }));
 
     const title = el("title");
     title.textContent =

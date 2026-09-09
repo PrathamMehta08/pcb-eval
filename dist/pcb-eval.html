@@ -412,13 +412,13 @@ main { display: flex; flex: 1; min-height: 0; }
 }
 .pins .fn {
   font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim);
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  width: 58px; flex: none; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;
 }
 .role {
-  display: block; font-style: normal; font-family: var(--mono);
-  font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--ink-dim);
+  font-style: normal; font-family: var(--mono); font-size: 8.5px;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim);
+  width: 38px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .role-power_in, .role-power_out { color: var(--warn); }
 .role-output, .role-open_collector, .role-tri_state { color: var(--mint); }
@@ -488,6 +488,27 @@ kbd {
   color: var(--ink-dim); font-variant-numeric: tabular-nums;
 }
 
+.dm-facts { list-style: none; margin: 14px 0 0; padding: 0; }
+.dm-facts li {
+  display: grid; grid-template-columns: 1fr auto; gap: 1px 10px;
+  padding: 8px 0; border-top: 1px solid var(--line-soft);
+}
+.dm-label { font-size: 12px; color: var(--ink-mid); }
+.dm-value {
+  grid-row: 1; grid-column: 2; font-family: var(--mono); font-size: 12px;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.dm-page {
+  grid-column: 2; font-family: var(--mono); font-size: 9.5px;
+  color: var(--ink-dim); text-align: right;
+}
+.dm-quote {
+  grid-column: 1 / -1; font-size: 11px; color: var(--ink-dim);
+  line-height: 1.5; margin-top: 3px;
+}
+.dm-facts li.unsure .dm-value { color: var(--warn); }
+.dm-none { margin: 14px 0 0; font-size: 12px; color: var(--ink-dim); }
+
 .dm-hit {
   display: block; margin: 0 0 8px; padding: 9px 11px;
   border-radius: var(--radius); background: var(--raised);
@@ -510,21 +531,15 @@ kbd {
 /* ------------------------------------------------------- datasheet badges ---
    Only on parts a review would research. A tick over every resistor would be
    forty ticks saying nothing. */
-/* One weight of line for the whole sheet, and a dot for its state. The board
-   under it is drawn in hairlines, so a badge with three stroke weights and a
-   filled alert disc reads as something pasted on from another program. */
+/* One filled shape with a dark rim, so it holds its edge over copper of any
+   colour. The board is drawn in hairlines; anything with an outline, a fill and
+   an inner detail reads as pasted in from another program. */
 .ds-badge { cursor: pointer; pointer-events: auto; }
-.ds-sheet, .ds-fold, .ds-rule {
-  fill: none; stroke: #78848d; stroke-width: .085;
-  stroke-linejoin: round; stroke-linecap: round;
-}
-.ds-sheet { fill: rgba(9, 12, 16, .82); }
-.ds-mark { stroke: none; }
+.ds-mark { stroke: rgba(6, 9, 11, .9); stroke-width: .13; stroke-linejoin: round; }
+.ds-hit { fill: transparent; stroke: none; }
 .ds-have .ds-mark { fill: var(--mint); }
 .ds-missing .ds-mark { fill: var(--warn); }
-.ds-badge:hover .ds-sheet,
-.ds-badge:hover .ds-fold,
-.ds-badge:hover .ds-rule { stroke: var(--ink); }
+.ds-badge:hover .ds-mark { stroke: var(--ink); }
 .hide-datasheets .datasheet-marks { display: none; }
 
 /* ------------------------------------------------------ datasheet, inspector */
@@ -542,7 +557,7 @@ kbd {
 
 /* ------------------------------------------------------------------ rail --- */
 .rail {
-  width: clamp(330px, 21vw, 400px); flex: none; overflow-y: auto;
+  width: clamp(424px, 28vw, 510px); flex: none; overflow-y: auto;
   background: var(--panel);
   border-left: 1px solid var(--line);
 }
@@ -609,21 +624,22 @@ input, select {
   border: 1px solid var(--line); border-radius: var(--radius);
 }
 
-/* Two lines per pin. As three table columns the net was 180px of a 374px rail,
-   so every name longer than "unconnected-(U2-P" was cut off - which is most of
-   them, and the clipped part is the part that distinguishes one from another. */
+/* One line per pin, in a rail wide enough for one. Three table columns in a
+   374px rail gave the net 180px, so every name past "unconnected-(U2-P" was
+   cut - and the clipped half is the half that tells one from another. The
+   answer was a wider rail, not a second line. */
 .pins { list-style: none; margin: 0; padding: 0; }
 .pins li {
-  display: flex; flex-direction: column; gap: 1px;
-  padding: 4px 0; border-bottom: 1px solid var(--line-soft);
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 0; border-bottom: 1px solid var(--line-soft);
 }
 .pins li:last-child { border-bottom: 0; }
-.pin-id { display: flex; align-items: baseline; gap: 8px; }
-.pin-id b {
+.pins li > b {
   font-family: var(--mono); font-size: 11px; font-weight: 500;
-  color: var(--ink-mid); min-width: 20px;
+  color: var(--ink-mid); min-width: 18px; text-align: right; flex: none;
 }
-.pins .net-pick { width: 100%; }
+.pins .net-pick { flex: 1; min-width: 0; }
+.pins .role { flex: none; }
 
 .swap {
   font-family: var(--mono); font-size: 12px; line-height: 1; cursor: pointer;
@@ -2185,8 +2201,10 @@ function circuitPack(board, findings = []) {
     header(board),
     componentsSection(board),
     netsSection(board),
-    // What retrieval found in the documents attached to this board. Empty for
-    // a board nobody has attached anything to, which is the normal state.
+    // What was read out of the documents attached to this board: the typed
+    // parameters first, then the passages retrieval picked. Both empty for a
+    // board nobody has attached anything to, which is the normal state.
+    factsBlock(board),
     passagesBlock(board),
     findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
   ]);
@@ -3212,6 +3230,162 @@ function queryFor(board, ref, pins = []) {
     .join(" ");
 }
 
+// ===== site/extract.js ================================================
+
+/**
+ * Reading parameters out of an attached document.
+ *
+ * The mirror of the EXTRACTORS table in harness/research.py. The harness pulls
+ * these out of a datasheet it fetched; the page pulls them out of a PDF
+ * somebody dropped on a part. Same patterns, same names, same `enables`, so a
+ * fact found here means to an evaluator what the same fact means there.
+ *
+ * WHAT A FACT CARRIES
+ *
+ * A value is not enough. Every fact records the page it was found on, the
+ * section heading above it, and the line it came out of, because a number
+ * without a quote is a number nobody can check - and this project throws out
+ * findings for exactly that. If the quote does not support the value, the fact
+ * is wrong in a way somebody can see.
+ *
+ * WHY THE MATCH HAPPENS INSIDE ONE LINE
+ *
+ * The first version of the harness's extractor searched the whole document
+ * flattened to a single string, which matched patterns across unrelated
+ * paragraphs and produced values whose quotes did not support them. A pattern
+ * matches within a line, or within a line joined to the next one when a table
+ * row has wrapped - and a wrapped match is marked, because that is where a row
+ * can pick up its neighbour's number.
+ */
+
+/** Datasheet notation for the same quantity, so one pattern can match either. */
+const NORMALISE = (text) => text.replace(/θ/g, "th").replace(/µ|μ/g, "u");
+
+/**
+ * What to look for. Each is a name, a pattern, how to read the match, and the
+ * deterministic evaluator the fact turns on - null when nothing consumes it yet
+ * and it is shown for the reader alone.
+ */
+const EXTRACTORS = [
+  {
+    name: "vin_range_v",
+    label: "Input voltage range",
+    pattern: /(?:supply )?input voltage range\D{0,20}?([\d.]+)\s*(?:to|-|–)?\s*([\d.]+)\s*V/i,
+    read: (m) => ({ min: Number(m[1]), max: Number(m[2]) }),
+    show: (v) => `${v.min} to ${v.max} V`,
+    enables: "rail_within_input_range",
+  },
+  {
+    name: "bootstrap_cap",
+    label: "Bootstrap capacitor",
+    // Either order. "Connect a 0.1 uF capacitor between VBST and SW" and
+    // "VBST: connect a 0.1 uF capacitor" are one sentence to a reader and
+    // were not to the first version of this, which wanted the pin name first
+    // and so missed the phrasing the datasheet actually uses.
+    pattern:
+      /(?:(VBST|BOOT)\b[^.]{0,80}?([\d.]+)\s*uF|([\d.]+)\s*uF[^.]{0,80}?\b(VBST|BOOT)\b)/i,
+    read: (m) => ({
+      value_uf: Number(m[2] ?? m[3]),
+      pin: (m[1] ?? m[4]).toUpperCase(),
+    }),
+    show: (v) => `${v.value_uf} uF at ${v.pin}`,
+    enables: "required_external_part",
+  },
+  {
+    name: "enable_needs_pullup",
+    label: "Enable pin",
+    pattern: /\bEN\b[^.]{0,60}?must be pulled up/i,
+    read: () => true,
+    show: () => "must be pulled up",
+    enables: null,
+  },
+  {
+    name: "output_current_a",
+    label: "Output current",
+    pattern: /\b([\d.]+)\s*A\s+(?:synchronous )?step-down/i,
+    read: (m) => Number(m[1]),
+    show: (v) => `${v} A`,
+    enables: null,
+  },
+  {
+    name: "thermal",
+    label: "Junction-to-ambient",
+    pattern: /(?:R\s*th\s*JA|RthJA|Theta\s*JA|junction-to-ambient[^\n]{0,40}?)\D{0,40}?([\d.]+)\s*(?:C|°C)\s*\/\s*W/i,
+    read: (m) => ({ theta_ja_c_per_w: Number(m[1]) }),
+    show: (v) => `${v.theta_ja_c_per_w} °C/W`,
+    enables: "junction_temp",
+  },
+  {
+    name: "max_junction_c",
+    label: "Maximum junction temperature",
+    pattern: /(?:maximum |max )?(?:chip[- ])?junction temperature\D{0,40}?([\d.]+)\s*(?:C|°C)\b/i,
+    read: (m) => Number(m[1]),
+    show: (v) => `${v} °C`,
+    enables: "junction_temp",
+  },
+];
+
+/** Lines that look like a section heading, so a fact can say where it sat. */
+const HEADING = /^[A-Z][A-Za-z ]{3,48}$/;
+
+/**
+ * How much the quote actually pins the number down.
+ *
+ * A thermal table puts one row across several package columns - "RthJA 88.6
+ * 66.7 95.2 123.1" - and a pattern that takes a number from such a row has
+ * picked a column, not read a value. The quote is real and the reading is a
+ * guess, which is the shape of error this project rejects everywhere else, so
+ * it is labelled rather than hidden.
+ */
+function confidence(line, wrapped) {
+  const numbers = line.match(/\d+\.\d+|\d{2,}/g) || [];
+  if (numbers.length >= 3) return "low";
+  return wrapped ? "medium" : "high";
+}
+
+/**
+ * Every parameter this document gives up, keyed by name.
+ *
+ * Pages arrive as one string each. A page is split on sentence and newline
+ * boundaries so a pattern matches inside a statement rather than across two,
+ * and each candidate is tried joined to the next as well, because a table row
+ * that wrapped is one row.
+ */
+function extractFacts(pages) {
+  const facts = {};
+  pages.forEach((raw, index) => {
+    const text = NORMALISE(String(raw || ""));
+    const lines = text.split(/(?<=\.)\s+|\n+/).map((l) => l.trim()).filter(Boolean);
+    let section = "";
+    lines.forEach((line, i) => {
+      if (HEADING.test(line)) section = line;
+      for (const rule of EXTRACTORS) {
+        if (facts[rule.name]) continue;
+        let match = rule.pattern.exec(line);
+        let quote = line;
+        let wrapped = false;
+        if (!match && lines[i + 1]) {
+          quote = `${line} ${lines[i + 1]}`;
+          match = rule.pattern.exec(quote);
+          wrapped = Boolean(match);
+        }
+        if (!match) continue;
+        facts[rule.name] = {
+          label: rule.label,
+          value: rule.read(match),
+          shown: rule.show(rule.read(match)),
+          page: index + 1,
+          section,
+          confidence: confidence(quote, wrapped),
+          enables: rule.enables,
+          quote: quote.split(/\s+/).join(" ").slice(0, 200),
+        };
+      }
+    });
+  });
+  return facts;
+}
+
 // ===== site/docs.js ===================================================
 
 /**
@@ -3240,6 +3414,7 @@ function queryFor(board, ref, pins = []) {
  * for the open board are read into memory once when the board loads and after
  * every attach. Everything downstream reads the cache.
  */
+
 
 
 
@@ -3321,6 +3496,10 @@ async function attach(boardName, ref, { name, pages }) {
     ref,
     name: String(name || "document"),
     pages: (pages || []).map((p) => String(p || "")),
+    // Read once, here, and stored with the document. The patterns run over
+    // sixty pages; doing that on every render to show a five-line summary
+    // would be paying a page-load's work for a glance.
+    facts: extractFacts(pages || []),
     addedAt: Date.now(),
   };
   docsFor(boardName).set(ref, record);
@@ -3424,6 +3603,27 @@ function loadPdfJs() {
  * Absent for a board nobody has attached anything to, which is the ordinary
  * state and not a defect.
  */
+function factsBlock(board) {
+  const docs = docsFor(board.meta.name);
+  const lines = ["EXTRACTED PARAMETERS  read from the attached documents, with the page"];
+  for (const ref of [...docs.keys()].sort()) {
+    for (const [key, fact] of Object.entries(docs.get(ref).facts || {})) {
+      if (fact.confidence === "low") continue;
+      lines.push(`${ref} ${key}: ${fact.shown} (p${fact.page}) "${fact.quote}"`);
+    }
+  }
+  return lines.length > 1 ? lines : [];
+}
+
+/**
+ * Parameters read out of one part's document, for the reader rather than the
+ * reviewer. Low-confidence readings are kept here and marked, because someone
+ * checking the extraction needs to see the ones it is unsure about most of all.
+ */
+function factsOf(boardName, ref) {
+  return docFor(boardName, ref)?.facts || {};
+}
+
 function passagesBlock(board) {
   const docs = docsFor(board.meta.name);
   if (!docs.size) return [];
@@ -3477,14 +3677,25 @@ const NEVER_RESEARCHED = /^(R|C|L|FB|TP|H|Y)\d/;
 /**
  * Which parts are worth a datasheet, and why. First rule that matches wins.
  *
- * The reason is a predicate, not a noun: it is read back to a person as
- * "researched because it <why>", and a phrase that does not finish that
- * sentence is a phrase nobody wrote for a reader.
- *
  * The same triage the harness runs, so the badges on the board agree with what
- * a scored review would actually research. A two-pin passive never qualifies
- * however it matched: what is worth knowing about it is its value, and the
- * netlist already carries that.
+ * a scored review would actually research.
+ *
+ * Every clause answers one question: does the netlist already say what this
+ * part does? For a resistor it does, and the value is the whole story. For a
+ * part number it does not, and the document is the only place the answer lives.
+ * So each clause names a property meaning "not deducible from the netlist" - the
+ * designator the schematic gave it, a pin that supplies or drives rather than
+ * merely conducts, a description of an active device, or a part sitting across
+ * more than one supply rail.
+ *
+ * There used to be a fifth clause, six or more pins, and it was a number
+ * somebody picked. It caught exactly one part, a bare 1x06 header, which is the
+ * case where a datasheet buys least: there is no document for a row of holes,
+ * and what matters about a connector is the pinout of whatever mates with it.
+ *
+ * The reason is a predicate, not a noun: it is read back as "researched because
+ * it <why>", and a phrase that does not finish that sentence is a phrase nobody
+ * wrote for a reader.
  */
 function needsDatasheet(board) {
   const pins = pinsByRef(board);
@@ -3495,13 +3706,15 @@ function needsDatasheet(board) {
       mine.map((p) => p.net).filter((n) => /^\/?(VBUS|VCC|VDD|VEE|VIN|VOUT|[+-]?\d+V\d*|[+-]\d+(\.\d+)?V)[A-Z0-9]*$/i.test(n))
     );
     let why = null;
-    if (mine.length >= 6) why = `has ${mine.length} pins`;
-    else if (/^(U|S|IC|Q)\d/.test(comp.ref))
-      why = `carries a ${comp.ref[0]} designator`;
-    else if (mine.some((p) => POWER_TYPES.has(baseType(p.type)))) why = "carries a power or driver pin";
-    else if (SIGNIFICANT.test(`${comp.description || ""} ${comp.value || ""}`))
-      why = "reads as an active part";
-    else if (rails.size > 1) why = `sits on ${rails.size} supply rails`;
+    if (/^(U|S|IC|Q)\d/.test(comp.ref)) {
+      why = `carries a ${comp.ref[0]} designator, which marks an integrated circuit`;
+    } else if (mine.some((p) => POWER_TYPES.has(baseType(p.node.type)))) {
+      why = "has a pin that supplies or drives, so it holds circuitry of its own";
+    } else if (SIGNIFICANT.test(`${comp.description || ""} ${comp.value || ""}`)) {
+      why = "is described as an active device";
+    } else if (rails.size > 1) {
+      why = `bridges ${rails.size} supply rails`;
+    }
     if (!why) continue;
     if (NEVER_RESEARCHED.test(comp.ref) && mine.length <= 2) continue;
     out.set(comp.ref, why);
@@ -4182,30 +4395,29 @@ function markDatasheets(svg, board, coverage) {
     group.dataset.ref = fp.ref;
     group.dataset.status = state.status;
 
-    // One icon, two states. A sheet of paper is what the badge is about, so
-    // the sheet is the same either way and a mark in its corner says which -
-    // rather than two unrelated shapes the eye has to tell apart before it can
-    // read them. The corner is where a status mark belongs on a document.
+    // One shape, and nothing drawn around it.
+    //
+    // This started as a document: a sheet, a folded corner, three ruled lines,
+    // a status mark in its corner. Every one of those is a detail that has to
+    // be resolved before the badge can be read, and at eighteen pixels over
+    // copper none of them resolve. The question being asked is a yes or a no,
+    // so the badge is a yes or a no - a dot when there is documentation, a
+    // triangle when there is not. Two silhouettes, told apart at a glance and
+    // without relying on colour, which is what the drawing has to survive on
+    // when it sits over a red track.
+    //
+    // The shapes are picked against what is already on the board. Vias and
+    // round pads are circles, so the dot is smaller than any of them; nothing
+    // on a board is a triangle.
     group.appendChild(
-      el("path", {
-        class: "ds-sheet",
-        d: "M -0.86 -1.15 L 0.24 -1.15 L 0.86 -0.53 L 0.86 1.15 L -0.86 1.15 Z",
-      })
+      state.status === "have"
+        ? el("circle", { class: "ds-mark", cx: 0, cy: 0, r: 0.5 })
+        : el("path", { class: "ds-mark", d: "M 0 -0.7 L 0.7 0.5 L -0.7 0.5 Z" })
     );
-    group.appendChild(el("path", { class: "ds-fold", d: "M 0.24 -1.15 L 0.24 -0.53 L 0.86 -0.53" }));
-    for (const [y, right] of [[-0.06, 0.42], [0.34, 0.42], [0.74, 0.08]]) {
-      group.appendChild(el("path", { class: "ds-rule", d: `M -0.46 ${y} L ${right} ${y}` }));
-    }
 
-    // A dot, not an alert. An exclamation inside a filled circle is the
-    // desktop-warning idiom of twenty years ago, and it says "something has
-    // gone wrong" about a part that is merely undocumented. At this size the
-    // glyph inside was three pixels of shape nobody could resolve anyway, so
-    // it was costing legibility to say something untrue. Colour alone carries
-    // it, and the title carries the words.
-    group.appendChild(
-      el("circle", { class: "ds-mark", cx: 0.86, cy: -1.15, r: 0.29 })
-    );
+    // An invisible disc behind it, because the shape itself is about a
+    // millimetre across and the badge is meant to be clicked.
+    group.appendChild(el("circle", { class: "ds-hit", cx: 0, cy: 0, r: 1.1 }));
 
     const title = el("title");
     title.textContent =
@@ -5659,13 +5871,9 @@ function renderPartInspector(panel, ref) {
           return `<li data-hay="${escapeHtml(
             `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
           )}">
-            <div class="pin-id">
-              <b>${escapeHtml(pin.pin)}</b>
-              <span class="fn">${escapeHtml(pin.function || "")}</span>
-              ${role ? `<em class="role role-${escapeHtml(role)}">${escapeHtml(role.replace(/_/g, " "))}</em>` : ""}
-              <button class="swap${armed ? " armed" : ""}" data-swap="${escapeHtml(pin.pin)}"
-                title="Swap this pin with another">&#8646;</button>
-            </div>
+            <b>${escapeHtml(pin.pin)}</b>
+            <span class="fn">${escapeHtml(pin.function || "")}</span>
+            ${role ? `<em class="role role-${escapeHtml(role)}">${escapeHtml(role.replace(/_/g, " "))}</em>` : ""}
             <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
               ${netNames
                 .map(
@@ -5674,6 +5882,8 @@ function renderPartInspector(panel, ref) {
                 )
                 .join("")}
             </select>
+            <button class="swap${armed ? " armed" : ""}" data-swap="${escapeHtml(pin.pin)}"
+              title="Swap this pin with another">&#8646;</button>
           </li>`;
         })
         .join("")}
@@ -6559,7 +6769,7 @@ function openDocs(ref) {
       ? html`<div class="dm-file"
           ><span class="dm-name">${doc.name}</span
           ><span class="dm-meta">${plural(doc.pages.length, "page")}</span
-          ><button class="btn danger" id="dm-remove">Remove</button></div>`
+          ><button class="btn danger" id="dm-remove">Remove</button></div>` + readOut(name, ref)
       : `<label class="dm-drop" id="dm-drop">
           <input type="file" id="dm-file" accept=".pdf,application/pdf">
           <b>Drop a PDF</b>
@@ -6588,6 +6798,40 @@ function openDocs(ref) {
         if (file) take(file);
       });
     }
+  }
+
+  /**
+   * What the patterns found in this part's document.
+   *
+   * A page number against every value, because a parameter with no page is a
+   * parameter nobody can check, and checking is the entire reason a document
+   * beats a number somebody typed. A reading the extractor is unsure of is
+   * shown and marked rather than hidden: a thermal table puts one row across
+   * four package columns, and a pattern that takes a number out of such a row
+   * has picked a column, not read a value. Those are the readings most worth
+   * a human glance, so they are the last ones to hide.
+   */
+  function readOut(boardName, part) {
+    const facts = factsOf(boardName, part);
+    const found = Object.entries(facts);
+    if (!found.length) {
+      return `<p class="dm-none">No known parameters in this document.
+        Its text is still searched when the board is reviewed.</p>`;
+    }
+    return (
+      '<ul class="dm-facts">' +
+      found
+        .map(
+          ([, f]) => html`<li class="${f.confidence === "low" ? "unsure" : ""}"
+            ><span class="dm-label">${f.label}</span
+            ><span class="dm-value">${f.shown}</span
+            ><span class="dm-page">p${f.page}${
+            f.confidence === "low" ? " · unsure" : ""
+          }</span><span class="dm-quote">${f.quote}</span></li>`
+        )
+        .join("") +
+      "</ul>"
+    );
   }
 
   /**

@@ -22,7 +22,7 @@ import { MEASURED, ROLES } from "./graph.js";
 import { summarise } from "./kicad.js";
 import { baseType, isGround, isRail } from "./checks.js";
 import { coverage, needsDatasheet } from "./datasheets.js";
-import { attach, detach, docFor, loadDocs, pagesOfPdf } from "./docs.js";
+import { attach, detach, docFor, factsOf, loadDocs, pagesOfPdf } from "./docs.js";
 import { attachUpload } from "./upload.js";
 import {
   budget,
@@ -458,13 +458,9 @@ function renderPartInspector(panel, ref) {
           return `<li data-hay="${escapeHtml(
             `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
           )}">
-            <div class="pin-id">
-              <b>${escapeHtml(pin.pin)}</b>
-              <span class="fn">${escapeHtml(pin.function || "")}</span>
-              ${role ? `<em class="role role-${escapeHtml(role)}">${escapeHtml(role.replace(/_/g, " "))}</em>` : ""}
-              <button class="swap${armed ? " armed" : ""}" data-swap="${escapeHtml(pin.pin)}"
-                title="Swap this pin with another">&#8646;</button>
-            </div>
+            <b>${escapeHtml(pin.pin)}</b>
+            <span class="fn">${escapeHtml(pin.function || "")}</span>
+            ${role ? `<em class="role role-${escapeHtml(role)}">${escapeHtml(role.replace(/_/g, " "))}</em>` : ""}
             <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
               ${netNames
                 .map(
@@ -473,6 +469,8 @@ function renderPartInspector(panel, ref) {
                 )
                 .join("")}
             </select>
+            <button class="swap${armed ? " armed" : ""}" data-swap="${escapeHtml(pin.pin)}"
+              title="Swap this pin with another">&#8646;</button>
           </li>`;
         })
         .join("")}
@@ -1358,7 +1356,7 @@ function openDocs(ref) {
       ? html`<div class="dm-file"
           ><span class="dm-name">${doc.name}</span
           ><span class="dm-meta">${plural(doc.pages.length, "page")}</span
-          ><button class="btn danger" id="dm-remove">Remove</button></div>`
+          ><button class="btn danger" id="dm-remove">Remove</button></div>` + readOut(name, ref)
       : `<label class="dm-drop" id="dm-drop">
           <input type="file" id="dm-file" accept=".pdf,application/pdf">
           <b>Drop a PDF</b>
@@ -1387,6 +1385,40 @@ function openDocs(ref) {
         if (file) take(file);
       });
     }
+  }
+
+  /**
+   * What the patterns found in this part's document.
+   *
+   * A page number against every value, because a parameter with no page is a
+   * parameter nobody can check, and checking is the entire reason a document
+   * beats a number somebody typed. A reading the extractor is unsure of is
+   * shown and marked rather than hidden: a thermal table puts one row across
+   * four package columns, and a pattern that takes a number out of such a row
+   * has picked a column, not read a value. Those are the readings most worth
+   * a human glance, so they are the last ones to hide.
+   */
+  function readOut(boardName, part) {
+    const facts = factsOf(boardName, part);
+    const found = Object.entries(facts);
+    if (!found.length) {
+      return `<p class="dm-none">No known parameters in this document.
+        Its text is still searched when the board is reviewed.</p>`;
+    }
+    return (
+      '<ul class="dm-facts">' +
+      found
+        .map(
+          ([, f]) => html`<li class="${f.confidence === "low" ? "unsure" : ""}"
+            ><span class="dm-label">${f.label}</span
+            ><span class="dm-value">${f.shown}</span
+            ><span class="dm-page">p${f.page}${
+            f.confidence === "low" ? " · unsure" : ""
+          }</span><span class="dm-quote">${f.quote}</span></li>`
+        )
+        .join("") +
+      "</ul>"
+    );
   }
 
   /**

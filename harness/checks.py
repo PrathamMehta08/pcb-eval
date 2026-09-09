@@ -38,12 +38,12 @@ RAIL_PATTERN = re.compile(
 )
 DRIVERS = {"output", "power_out", "open_collector", "tri_state"}
 #: The convention below belongs to servo leads, and this is how the board says so.
-SERVO_NET = re.compile(r"SERVO|PWM|ESC", re.I)
+SERVO_NET = re.compile(r"SERVO|\bPWM\b|ESC", re.I)
 #: Parts that switch real current, where an undefined input at power-up moves
 #: something. An MCU reset or boot pin is not one of these and has its own
 #: conventions — an internal pull-up, a mode switch — so it is out of scope.
 DRIVER_PART = re.compile(
-    r"darlington|transistor array|driver|h-?bridge|mosfet|gate|relay", re.I
+    r"darlington|transistor array|\bdriver\b|h-?bridge|mosfet|\bgate\b|relay", re.I
 )
 PASSIVE_PREFIXES = ("R", "C", "L")
 
