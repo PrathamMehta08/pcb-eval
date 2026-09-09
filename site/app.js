@@ -93,6 +93,25 @@ function drawView({ keepZoom = true } = {}) {
   stage.appendChild(svg);
 
   markDatasheets(svg, state.board, coverage(state.board));
+  // Clicking the badge is what someone does when they notice it, so it opens
+  // the dialog rather than doing nothing and leaving them to find the part in
+  // the rail. The part is selected too, so the rail agrees with the screen.
+  //
+  // The listener goes on the layer, not on the badges. `markDatasheets` empties
+  // and refills the layer on every repaint, so a badge holding its own listener
+  // loses it the moment anything changes - which included the repaint that runs
+  // as soon as the stored documents finish loading, so it was dead on arrival.
+  const marks = svg.querySelector(".datasheet-marks");
+  if (marks) {
+    marks.addEventListener("pointerdown", (e) => e.stopPropagation());
+    marks.addEventListener("pointerup", (e) => {
+      const badge = e.target.closest(".ds-badge");
+      if (!badge) return;
+      e.stopPropagation();
+      select({ kind: "part", ref: badge.dataset.ref });
+      openDocs(badge.dataset.ref);
+    });
+  }
   // The badges are drawn from what is in memory, so a board whose
   // documents are still being read shows them a moment later.
   loadDocs(state.board.meta.name).then(paintDatasheets);

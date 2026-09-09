@@ -653,33 +653,39 @@ export function markDatasheets(svg, board, coverage) {
     group.dataset.ref = fp.ref;
     group.dataset.status = state.status;
 
-    if (state.status === "have") {
-      group.appendChild(el("circle", { class: "ds-disc", cx: 0, cy: 0, r: 1.15 }));
-      group.appendChild(
-        el("path", { class: "ds-glyph", d: "M -0.5 0.05 L -0.12 0.45 L 0.55 -0.4" })
-      );
-    } else {
-      // A sheet with its corner turned, not a hazard triangle. Nothing is
-      // wrong with this part; there is simply nothing on file about it, and a
-      // warning sign says something much stronger than that.
-      group.appendChild(
-        el("path", {
-          class: "ds-disc",
-          d: "M -0.72 -1 L 0.28 -1 L 0.72 -0.56 L 0.72 1 L -0.72 1 Z",
-        })
-      );
-      group.appendChild(
-        el("path", { class: "ds-fold", d: "M 0.28 -1 L 0.28 -0.56 L 0.72 -0.56" })
-      );
-      group.appendChild(el("path", { class: "ds-glyph", d: "M -0.36 -0.2 L 0.36 -0.2" }));
-      group.appendChild(el("path", { class: "ds-glyph", d: "M -0.36 0.2 L 0.36 0.2" }));
-      group.appendChild(el("path", { class: "ds-glyph", d: "M -0.36 0.6 L 0.06 0.6" }));
+    // One icon, two states. A sheet of paper is what the badge is about, so
+    // the sheet is the same either way and a mark in its corner says which -
+    // rather than two unrelated shapes the eye has to tell apart before it can
+    // read them. The corner is where a status mark belongs on a document.
+    group.appendChild(
+      el("path", {
+        class: "ds-sheet",
+        d: "M -0.86 -1.15 L 0.24 -1.15 L 0.86 -0.53 L 0.86 1.15 L -0.86 1.15 Z",
+      })
+    );
+    group.appendChild(el("path", { class: "ds-fold", d: "M 0.24 -1.15 L 0.24 -0.53 L 0.86 -0.53" }));
+    for (const [y, right] of [[-0.06, 0.42], [0.34, 0.42], [0.74, 0.08]]) {
+      group.appendChild(el("path", { class: "ds-rule", d: `M -0.46 ${y} L ${right} ${y}` }));
     }
+
+    // Small, and sitting just off the corner rather than on top of it: the
+    // folded corner is what makes the shape read as paper, and a mark large
+    // enough to cover it takes that away and leaves a coloured dot on a box.
+    const mark = el("g", { class: "ds-mark", transform: "translate(0.94 -1.24)" });
+    mark.appendChild(el("circle", { class: "ds-mark-disc", cx: 0, cy: 0, r: 0.4 }));
+    if (state.status === "have") {
+      mark.appendChild(el("path", { class: "ds-mark-glyph", d: "M -0.18 0.01 L -0.05 0.15 L 0.19 -0.14" }));
+    } else {
+      mark.appendChild(el("path", { class: "ds-mark-glyph", d: "M 0 -0.2 L 0 0.03" }));
+      mark.appendChild(el("circle", { class: "ds-mark-dot", cx: 0, cy: 0.19, r: 0.06 }));
+    }
+    group.appendChild(mark);
+
     const title = el("title");
     title.textContent =
       state.status === "have"
-        ? `${fp.ref}: documentation on file`
-        : `${fp.ref}: no documentation. Researched because it ${state.why}.`;
+        ? `${fp.ref}: documentation on file. Click to open it.`
+        : `${fp.ref}: no documentation. Researched because it ${state.why}. Click to attach.`;
     group.appendChild(title);
     layer.appendChild(group);
   }
