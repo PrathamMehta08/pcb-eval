@@ -8,13 +8,11 @@
  *
  * One honest difference from the Python. The page cannot fetch a datasheet, and
  * must not depend on a vendor CDN to review a board someone just dropped on it,
- * so its facts are the ones a person typed in rather than ones read out of a
- * document - and the block says so, because a reviewer leaning on one should be
- * able to tell where it came from. Everything else is built from the same
- * sections in the same order.
+ * so the documents are the ones somebody attached to a part. What reaches a
+ * reviewer is the same either way: passages, verbatim, with the page they came
+ * from. Everything else is built from the same sections in the same order.
  */
 
-import { researchBlock } from "./datasheets.js";
 import { passagesBlock } from "./docs.js";
 import {
   componentsSection,
@@ -74,10 +72,8 @@ export function circuitPack(board, findings = []) {
     header(board),
     componentsSection(board),
     netsSection(board),
-    // Whatever anyone typed in about a part's datasheet, and whatever
-    // retrieval found in the documents they attached. Both empty for a board
-    // nobody has told the page anything about, which is the normal state.
-    researchBlock(board),
+    // What retrieval found in the documents attached to this board. Empty for
+    // a board nobody has attached anything to, which is the normal state.
     passagesBlock(board),
     findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
   ]);

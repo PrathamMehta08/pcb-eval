@@ -21,16 +21,8 @@ import { islandCounts } from "./copper.js";
 import { MEASURED, ROLES } from "./graph.js";
 import { summarise } from "./kicad.js";
 import { baseType, isGround, isRail } from "./checks.js";
-import { coverage, factsOf, needsDatasheet, setFacts } from "./datasheets.js";
-import {
-  attach,
-  chunkCount,
-  detach,
-  docFor,
-  loadDocs,
-  pagesOfPdf,
-  passagesFor,
-} from "./docs.js";
+import { coverage, needsDatasheet } from "./datasheets.js";
+import { attach, detach, docFor, loadDocs, pagesOfPdf } from "./docs.js";
 import { attachUpload } from "./upload.js";
 import {
   budget,
@@ -1296,20 +1288,13 @@ function renderDatasheetPanel(panel, ref) {
   if (!state_) return;
 
   const doc = state_.doc;
-  const facts = factsOf(state.board.meta.name, ref);
   const wrap = document.createElement("div");
   wrap.className = `ds-panel ${state_.status}`;
-  const said = doc
-    ? html`<b>${doc.name}</b> · ${plural(doc.pages.length, "page")}
-        · ${plural(chunkCount(state.board.meta.name, ref), "passage")}`
-    : facts
-      ? "Typed facts only. No document to quote from."
-      : html`No documentation. Researched because it ${state_.why}.`;
   wrap.innerHTML = `
     <h4>Documentation</h4>
-    <p class="ds-why">${said}</p>
+    ${doc ? html`<p class="ds-why">${doc.name} · ${plural(doc.pages.length, "page")}</p>` : ""}
     <div class="row"><button class="btn" id="ds-open">${
-      doc || facts ? "Manage" : "Attach documentation"
+      doc ? "Replace" : "Attach a PDF"
     }</button></div>`;
   panel.appendChild(wrap);
   wrap.querySelector("#ds-open").addEventListener("click", () => openDocs(ref));
@@ -1324,30 +1309,19 @@ function paintDatasheets() {
 /** "1 page", "3 pages". Written once because it appears in three places. */
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-const FACT_FIELDS = [
-  ["vin_range_v", "Input range", "4.5 to 17 V"],
-  ["external_part", "Needs part", "0.1uF between VBST and SW"],
-  ["theta_ja", "Theta JA", "92.6 C/W"],
-  ["max_junction_c", "Max Tj", "125 C"],
-  ["note", "Other", "anything else the document states"],
-];
-
 /**
- * The documentation dialog for one part.
+ * The documentation dialog for one part. Attach a PDF, or take one away.
  *
- * Two ways in, because they answer different questions. A document is the
- * better one: retrieval quotes it, so a finding that leans on it can be checked
- * against a page number. Typed fields are the quicker one, and they are what
- * the deterministic evaluators actually read - an input range feeds the rail
- * comparison, a thermal resistance feeds the junction temperature.
- *
- * The retrieved passages are shown because otherwise nobody can tell whether
- * the retrieval is any good. What appears here is exactly what a reviewer would
- * be handed about this part, ranked as it would rank it.
+ * It used to take typed parameters and pasted text as well, and to print the
+ * passages retrieval would return. The passages were the interesting half of
+ * that and still the wrong thing to put here - they are the retrieval's own
+ * debug output, and a BM25 score tells nobody anything they can act on. What
+ * they did earn was a fix: a table of contents was scoring third on an MCU,
+ * because it names every section in the document and so matches any query built
+ * out of section names. Contents pages are no longer indexed at all.
  */
 function openDocs(ref) {
-  const board = state.board;
-  const name = board.meta.name;
+  const name = state.board.meta.name;
   const host = document.createElement("div");
   host.className = "modal-back";
   host.innerHTML = `<div class="modal" role="dialog" aria-modal="true"
@@ -1380,74 +1354,19 @@ function openDocs(ref) {
 
   function paint() {
     const doc = docFor(name, ref);
-    const facts = factsOf(name, ref) || {};
-    const why = needsDatasheet(board).get(ref);
-    const pins = pinsOf(ref);
-    const hits = doc ? passagesFor(board, ref, pins, 3) : [];
-
-    body.innerHTML = `
-      ${why ? html`<p class="dm-why">Researched because it ${why}.</p>` : ""}
-
-      <h4>Attached document</h4>
-      ${
-        doc
-          ? html`<div class="dm-file"
-              ><span class="dm-name">${doc.name}</span
-              ><span class="dm-meta">${plural(doc.pages.length, "page")} ·
-                ${plural(chunkCount(name, ref), "passage")}</span
-              ><button class="btn danger" id="dm-remove">Remove</button></div>`
-          : `<label class="dm-drop" id="dm-drop">
-              <input type="file" id="dm-file" accept=".pdf,.txt,.md,.text">
-              <b>Drop a PDF or text file</b>
-              <span>or click to choose. It is read in your browser and never uploaded.</span>
-            </label>
-            <p class="dm-or">or paste the text</p>
-            <textarea id="dm-paste" rows="4"
-              placeholder="Paste the part of the document that matters — a parameter table, an application note."></textarea>
-            <div class="row"><button class="btn" id="dm-attach">Attach text</button></div>`
-      }
-      ${
-        doc
-          ? `<h4>What the reviewer would be shown</h4>
-             <p class="dm-note">The top passages for this part, ranked by BM25.
-               The query is built from the part and its nets — never from what
-               the checks found, or retrieval would hand over the answer.</p>
-             ${
-               hits.length
-                 ? hits
-                     .map(
-                       (h) => html`<div class="dm-hit"
-                         ><span class="dm-cite">p${h.page}${
-                         h.section ? ` · ${h.section}` : ""
-                       } · ${h.score}</span><span class="dm-text">${h.text.slice(0, 320)}…</span
-                       ></div>`
-                     )
-                     .join("")
-                 : `<p class="dm-note">Nothing in this document matched. That is
-                     a real answer: the reviewer is shown no passage rather than
-                     the least irrelevant one.</p>`
-             }`
-          : ""
-      }
-
-      <h4>Typed facts</h4>
-      <p class="dm-note">These reach the deterministic checks, not just the
-        review. Blank means the check that needs it is skipped — never
-        estimated.</p>
-      ${FACT_FIELDS.map(
-        ([key, label, hint]) => html`<label class="ds-field"
-          ><span>${label}</span
-          ><input data-ds="${key}" value="${facts[key] || ""}" placeholder="${hint}"
-        /></label>`
-      ).join("")}
-      <div class="row">
-        <button class="btn primary-ghost" id="dm-save">Save facts</button>
-        ${Object.keys(facts).length ? '<button class="btn" id="dm-clear">Clear</button>' : ""}
-      </div>`;
+    body.innerHTML = doc
+      ? html`<div class="dm-file"
+          ><span class="dm-name">${doc.name}</span
+          ><span class="dm-meta">${plural(doc.pages.length, "page")}</span
+          ><button class="btn danger" id="dm-remove">Remove</button></div>`
+      : `<label class="dm-drop" id="dm-drop">
+          <input type="file" id="dm-file" accept=".pdf,application/pdf">
+          <b>Drop a PDF</b>
+          <span>or click to choose</span>
+        </label>`;
 
     body.querySelector("#dm-remove")?.addEventListener("click", async () => {
       await detach(name, ref);
-      flash(`Document removed from ${ref}`);
       paint();
     });
     body.querySelector("#dm-file")?.addEventListener("change", (e) => {
@@ -1468,42 +1387,26 @@ function openDocs(ref) {
         if (file) take(file);
       });
     }
-    body.querySelector("#dm-attach")?.addEventListener("click", async () => {
-      const text = body.querySelector("#dm-paste").value.trim();
-      if (!text) return flash("Nothing to attach.");
-      await attach(name, ref, { name: "pasted text", pages: [text] });
-      flash(`Text attached to ${ref}`);
-      paint();
-    });
-    body.querySelector("#dm-save")?.addEventListener("click", () => {
-      const values = Object.fromEntries(
-        [...body.querySelectorAll("[data-ds]")].map((i) => [i.dataset.ds, i.value])
-      );
-      setFacts(name, ref, values);
-      flash(`Facts saved for ${ref}`);
-      paint();
-    });
-    body.querySelector("#dm-clear")?.addEventListener("click", () => {
-      setFacts(name, ref, {});
-      paint();
-    });
   }
 
-  /** Read a dropped file. A PDF needs the parser; anything else is text. */
+  /**
+   * Read the PDF and close.
+   *
+   * Nothing is said on success. The dialog closing and the badge changing are
+   * the confirmation, and a message on top of those is a third way of saying
+   * what has already been said twice. A failure still speaks, because nothing
+   * else on screen would explain it.
+   */
   async function take(file) {
-    const isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
-    flash(`Reading ${file.name}…`);
     try {
-      const pages = isPdf ? await pagesOfPdf(file) : [await file.text()];
-      const words = pages.join(" ").split(/\s+/).filter(Boolean).length;
-      if (!words) {
-        return flash("No text came out of that. A scanned PDF has none — paste it instead.");
+      const pages = await pagesOfPdf(file);
+      if (!pages.join(" ").trim()) {
+        return flash("No text in that PDF. A scanned one has none to read.");
       }
       await attach(name, ref, { name: file.name, pages });
-      flash(`${file.name} attached to ${ref} — ${words} words`);
-      paint();
+      close();
     } catch (err) {
-      flash(`${err.message}. Paste the text instead.`);
+      flash(err.message);
     }
   }
 }

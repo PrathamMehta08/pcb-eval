@@ -122,10 +122,35 @@ function heading(words) {
  * `pages` is one string per page, which is what a PDF extractor gives and what
  * pasted text degenerates to - a single page.
  */
+/**
+ * Pages that match every query and answer none of them.
+ *
+ * A table of contents names every section in the document, so it scores against
+ * any query built out of section names - which is what a standing question like
+ * "absolute maximum ratings" is. One came back as the third best passage about
+ * an MCU: a row of dot leaders and page numbers. No amount of term weighting
+ * fixes it, because the terms really are in there.
+ *
+ * The test is the dot leader and nothing else. The obvious alternative - that a
+ * contents page is short on letters and long on punctuation - also describes a
+ * parameter table, and a parameter table is the single most valuable page in a
+ * datasheet. Better to keep a contents page nobody formatted with dots than to
+ * silently drop the absolute maximum ratings.
+ *
+ * The dots may be spaced. A PDF extractor pulls a leader out as ". . . . . ."
+ * as often as "......", depending on how the run was laid out, and the first
+ * version of this only matched the second - which is not the one that was in
+ * the document that prompted it.
+ */
+function isNavigation(text) {
+  return /(\.\s*){4,}/.test(text);
+}
+
 export function chunk(pages, { part = "", source = "" } = {}) {
   const out = [];
   const step = Math.max(1, CHUNK_WORDS - OVERLAP_WORDS);
   pages.forEach((text, i) => {
+    if (isNavigation(text)) return;
     const words = String(text || "").split(/\s+/).filter(Boolean);
     if (!words.length) return;
     for (let at = 0; at < words.length; at += step) {

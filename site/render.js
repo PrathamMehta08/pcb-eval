@@ -668,18 +668,15 @@ export function markDatasheets(svg, board, coverage) {
       group.appendChild(el("path", { class: "ds-rule", d: `M -0.46 ${y} L ${right} ${y}` }));
     }
 
-    // Small, and sitting just off the corner rather than on top of it: the
-    // folded corner is what makes the shape read as paper, and a mark large
-    // enough to cover it takes that away and leaves a coloured dot on a box.
-    const mark = el("g", { class: "ds-mark", transform: "translate(0.94 -1.24)" });
-    mark.appendChild(el("circle", { class: "ds-mark-disc", cx: 0, cy: 0, r: 0.4 }));
-    if (state.status === "have") {
-      mark.appendChild(el("path", { class: "ds-mark-glyph", d: "M -0.18 0.01 L -0.05 0.15 L 0.19 -0.14" }));
-    } else {
-      mark.appendChild(el("path", { class: "ds-mark-glyph", d: "M 0 -0.2 L 0 0.03" }));
-      mark.appendChild(el("circle", { class: "ds-mark-dot", cx: 0, cy: 0.19, r: 0.06 }));
-    }
-    group.appendChild(mark);
+    // A dot, not an alert. An exclamation inside a filled circle is the
+    // desktop-warning idiom of twenty years ago, and it says "something has
+    // gone wrong" about a part that is merely undocumented. At this size the
+    // glyph inside was three pixels of shape nobody could resolve anyway, so
+    // it was costing legibility to say something untrue. Colour alone carries
+    // it, and the title carries the words.
+    group.appendChild(
+      el("circle", { class: "ds-mark", cx: 0.86, cy: -1.15, r: 0.29 })
+    );
 
     const title = el("title");
     title.textContent =

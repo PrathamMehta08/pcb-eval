@@ -17,8 +17,6 @@
  * one kind of evidence a reviewer cannot tell apart from a measured one.
  */
 
-import { factsFor } from "./datasheets.js";
-
 const KEY = "pcb-eval.assumptions.v1";
 
 /** What each gated domain cannot run without. Mirrors REQUIREMENTS in the Python. */
@@ -71,13 +69,15 @@ export function setInputs(boardName, inputs) {
  * Which gated domains may run, and why each of the rest may not.
  *
  * Every domain is returned: "" when it is enabled, the reason when it is not,
- * so one answer both gates the graph and prints as coverage. Thermal takes a
- * third requirement from somewhere else - a junction-to-ambient resistance,
- * which is a datasheet number rather than a board number. A thermal reviewer
- * holding two of the three has nothing to compute a margin from; it would be
- * reasoning about heat in general instead of about this board.
+ * so one answer both gates the graph and prints as coverage.
+ *
+ * The Python adds a fourth requirement to thermal - a junction-to-ambient
+ * resistance, which is a datasheet number rather than a board one. The page has
+ * no way to obtain one yet: it reads PDFs but does not extract parameters from
+ * them, and the field that took one by hand is gone. The requirement comes back
+ * here when extraction lands.
  */
-export function enabled(inputs, facts) {
+export function enabled(inputs) {
   const out = {};
   for (const [domain, needs] of Object.entries(REQUIREMENTS)) {
     const missing = needs.filter((name) => !(inputs || {})[name]);
@@ -85,16 +85,10 @@ export function enabled(inputs, facts) {
       ? "no " + missing.map((n) => n.replace(/_/g, " ")).join(" and no ")
       : "";
   }
-  if (!out.thermal) {
-    const usable = Object.values(facts || {}).some((rec) => rec && rec.theta_ja);
-    if (!usable) {
-      out.thermal = "no junction-to-ambient resistance among the supplied facts";
-    }
-  }
   return out;
 }
 
 /** The gates for a board, from everything the page has been told about it. */
 export function gatesFor(board) {
-  return enabled(inputsFor(board.meta.name), factsFor(board.meta.name));
+  return enabled(inputsFor(board.meta.name));
 }

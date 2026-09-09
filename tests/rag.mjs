@@ -74,6 +74,22 @@ check(
   "no chunk spans two pages, or a quote could be cited to neither"
 );
 
+// A contents page matches any query built out of section names, because it
+// names every section. One was ranking third on a real datasheet.
+const withToc = rag.chunk([
+  "Contents 5.2 Absolute maximum ratings . . . . . . . . . . . . . . . . 37 " +
+    "5.3 Operating conditions . . . . . . . . . . . . . . . . . . . 38",
+  ...PAGES,
+]);
+check(
+  withToc.length === PAGES.length,
+  `the contents page is not indexed, got ${withToc.length} chunks for ${PAGES.length} real pages`
+);
+// But the test is dot leaders alone: a parameter table is also short on letters
+// and long on punctuation, and it is the page most worth keeping.
+const table = rag.chunk(["VIN -0.3 20 V VBST 6 V TJ -40 150 C RthetaJA 92.6 degC/W 0.1 uF"]);
+check(table.length === 1, "a dense parameter table is still indexed");
+
 const idx = rag.index(chunks);
 
 // Ranking. The bootstrap paragraph beats the table that says VBST once.

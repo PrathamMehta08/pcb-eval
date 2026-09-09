@@ -497,23 +497,21 @@ kbd {
 /* ------------------------------------------------------- datasheet badges ---
    Only on parts a review would research. A tick over every resistor would be
    forty ticks saying nothing. */
-/* The sheet is drawn in the board's own materials - the panel's ground, the
-   silkscreen's ink - so it sits on the copper like something printed there
-   rather than like an alert pasted over it. Only the corner mark carries
-   colour, because only the corner mark carries a state. */
+/* One weight of line for the whole sheet, and a dot for its state. The board
+   under it is drawn in hairlines, so a badge with three stroke weights and a
+   filled alert disc reads as something pasted on from another program. */
 .ds-badge { cursor: pointer; pointer-events: auto; }
-.ds-sheet { fill: rgba(11, 15, 20, .93); stroke: #7d8a94; stroke-width: .085;
-  stroke-linejoin: round; }
-.ds-fold { fill: none; stroke: #7d8a94; stroke-width: .085; stroke-linejoin: round; }
-.ds-rule { fill: none; stroke: #6a757e; stroke-width: .1; stroke-linecap: round; }
-.ds-mark-disc { stroke: rgba(11, 15, 20, .85); stroke-width: .12; }
-.ds-mark-glyph { fill: none; stroke: #0b0f14; stroke-width: .14; stroke-linecap: round;
-  stroke-linejoin: round; }
-.ds-mark-dot { fill: #0b0f14; }
-.ds-have .ds-mark-disc { fill: var(--mint); }
-.ds-missing .ds-mark-disc { fill: var(--warn); }
-.ds-badge:hover .ds-sheet { stroke: var(--ink); }
-.ds-badge:hover .ds-rule { stroke: var(--ink-mid); }
+.ds-sheet, .ds-fold, .ds-rule {
+  fill: none; stroke: #78848d; stroke-width: .085;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+.ds-sheet { fill: rgba(9, 12, 16, .82); }
+.ds-mark { stroke: none; }
+.ds-have .ds-mark { fill: var(--mint); }
+.ds-missing .ds-mark { fill: var(--warn); }
+.ds-badge:hover .ds-sheet,
+.ds-badge:hover .ds-fold,
+.ds-badge:hover .ds-rule { stroke: var(--ink); }
 .hide-datasheets .datasheet-marks { display: none; }
 
 /* ------------------------------------------------------ datasheet, inspector */

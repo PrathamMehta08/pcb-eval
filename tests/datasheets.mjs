@@ -1,6 +1,6 @@
-// site/datasheets.js: the facts a person supplies, because the page cannot fetch.
+// site/datasheets.js: which parts a review would research, and what is on file.
 //
-// Three things are asserted, and the first is the one that matters.
+// Two things are asserted, and the first is the one that matters.
 //
 // The page decides which parts wear a badge with its own copy of the harness's
 // triage. If the two disagree, the board shows a warning on a part no review
@@ -9,9 +9,8 @@
 // small enough that it was written twice rather than shipped as data, so it is
 // held here the way ops and distill are held by their own parity tests.
 //
-// The other two are the storage contract (an empty record and no record mean
-// the same thing) and the boundary: what someone types must actually reach the
-// circuit pack, or the form is a place to type into a void.
+// The second is that coverage answers for every researched part and no others,
+// since that map is exactly what decides which parts wear a badge.
 //
 //   node tests/datasheets.mjs
 
@@ -31,7 +30,6 @@ globalThis.localStorage = {
 };
 
 const ds = await import("file://" + join(root, "site", "datasheets.js"));
-const { circuitPack } = await import("file://" + join(root, "site", "packs.js"));
 
 const failures = [];
 const check = (ok, message) => {
@@ -44,8 +42,10 @@ const expected = JSON.parse(
   readFileSync(join(root, "tests", "fixtures", "datasheets.json"), "utf8")
 );
 
+let sample = null;
 for (const [name, refs] of Object.entries(expected.triage)) {
   const board = JSON.parse(readFileSync(join(root, "boards", `${name}.json`), "utf8"));
+  if (name === "stm32-good") sample = board;
   const got = [...ds.needsDatasheet(board).keys()].sort();
   check(
     JSON.stringify(got) === JSON.stringify([...refs].sort()),
@@ -63,52 +63,28 @@ for (const [name, refs] of Object.entries(expected.triage)) {
 const board = JSON.parse(readFileSync(join(root, "boards", "stm32-good.json"), "utf8"));
 const name = board.meta.name;
 
-// A board nobody has filled in is the normal state, not a defect: no facts, no
-// block in the pack, and every researched part reads as missing.
-check(ds.researchBlock(board).length === 0, "an untouched board should add no pack block");
+// Coverage is a question about documents now. There is no second answer: a
+// number typed into a box could not be quoted back, so the box went, and the
+// pack carries retrieved passages instead of hand-entered parameters.
+const status = ds.coverage(sample);
+check(status.size === expected.triage["stm32-good"].length, "one entry per researched part");
 check(
-  [...ds.coverage(board).values()].every((s) => s.status === "missing"),
-  "an untouched board should show every researched part as missing"
-);
-
-// Blank fields are dropped, and a part left with nothing is forgotten rather
-// than stored empty — an empty record and no record must not look different.
-ds.setFacts(name, "U1", { vin_range_v: "  ", note: "" });
-check(ds.factsOf(name, "U1") === null, "a form submitted blank should store nothing");
-
-ds.setFacts(name, "U1", { vin_range_v: " 4.5 to 17 V ", theta_ja: "92.6 C/W", note: "" });
-check(
-  JSON.stringify(ds.factsOf(name, "U1")) ===
-    JSON.stringify({ vin_range_v: "4.5 to 17 V", theta_ja: "92.6 C/W" }),
-  `values should be trimmed and blanks dropped, got ${JSON.stringify(ds.factsOf(name, "U1"))}`
-);
-check(ds.coverage(board).get("U1")?.status === "have", "U1 should read as covered once filled");
-check(
-  ds.coverage(board).get("U2")?.status === "missing",
-  "filling one part must not cover another"
+  [...status.values()].every((s) => s.status === "missing" && s.doc === null),
+  "with nothing attached, every researched part reads as missing"
 );
 check(
-  Object.keys(ds.factsFor("some-other-board")).length === 0,
-  "facts must not leak between boards"
+  [...status.values()].every((s) => s.why),
+  "and each says why it was researched, which is what the badge's title shows"
 );
-
-// The boundary. What was typed has to arrive in the pack the reviewer is handed.
-const pack = circuitPack(board, []);
-check(pack.includes("4.5 to 17 V"), "a supplied input range should reach the circuit pack");
-check(pack.includes("92.6 C/W"), "a supplied thermal resistance should reach the circuit pack");
 check(
-  /supplied by hand/.test(pack),
-  "the pack must say these facts were typed in, not read from a document"
+  !ds.coverage(sample).has("C1"),
+  "a part nothing would research gets no entry, so it wears no badge"
 );
-check(pack.includes("DATASHEET FACTS"), "the block should be present once facts exist");
-
-ds.setFacts(name, "U1", {});
-check(!circuitPack(board, []).includes("DATASHEET FACTS"), "clearing should remove the block");
 
 for (const failure of failures) console.error("  x " + failure);
 console.log(
   failures.length
     ? `${failures.length} datasheet checks failed`
-    : `the page researches the same parts as the harness, and what is typed reaches the pack`
+    : "the page researches the same parts as the harness, and reports each as uncovered"
 );
 process.exit(failures.length ? 1 : 0);
