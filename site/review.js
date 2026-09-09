@@ -31,7 +31,6 @@ import { runGraph } from "./graph.js";
 
 export const PROMPT_ID = `review-1/${PROMPT_VERSION}`;
 export const MIN_INTERVAL_MS = 10_000;
-export const SESSION_CAP = 5;
 
 const CACHE_KEY = "pcb-eval.reviews.v1";
 const COUNT_KEY = "pcb-eval.reviewCount.v1";
@@ -308,12 +307,18 @@ export const reviewCache = {
   },
 };
 
+/**
+ * How many reviews this browser has run.
+ *
+ * Kept because the count is worth having, not because anything is refused when
+ * it grows: the page used to stop after a fixed number per browser, which
+ * punished the person exploring their own board hardest. What remains is the
+ * cooldown, and that is not a quota - it stops a held-down button from
+ * hammering a service that is already failing.
+ */
 export const budget = {
   used() {
     return Number(readJSON(COUNT_KEY, 0)) || 0;
-  },
-  left() {
-    return Math.max(0, SESSION_CAP - this.used());
   },
   spend() {
     writeJSON(COUNT_KEY, this.used() + 1);
@@ -437,13 +442,6 @@ export async function review(sample, board, { onStep, signal } = {}) {
   if (cooling > 0) {
     throw new ReviewUnavailable("cooldown", `Another review in ${Math.ceil(cooling / 1000)}s.`);
   }
-  if (budget.left() <= 0) {
-    throw new ReviewUnavailable(
-      "capped",
-      `This browser has used its ${SESSION_CAP} reviews. Boards already reviewed still load from cache.`
-    );
-  }
-
   // The cooldown starts now, so a failing service cannot be hammered. The
   // session count is spent only once a review actually completes: the server
   // enforces the limits that matter, and charging a visitor for the server's

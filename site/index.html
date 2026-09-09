@@ -84,6 +84,10 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
+/* Form controls do not inherit type. Without this the layer chips and every
+   field render in the user agent's own font while the page around them is in
+   Inter, which is the sort of difference you see before you can name it. */
+button, input, select, textarea { font-family: inherit; font-size: inherit; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
@@ -389,8 +393,11 @@ main { display: flex; flex: 1; min-height: 0; }
   color: var(--ink); background: var(--raised);
   border: 1px solid var(--line); border-radius: var(--radius);
 }
-.pins .fn { line-height: 1.3; }
-.pins .fn span { display: block; }
+.pins .fn {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .role {
   display: block; font-style: normal; font-family: var(--mono);
   font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
@@ -490,10 +497,12 @@ kbd {
 .ds-have .ds-disc { fill: rgba(20, 107, 102, .92); stroke: #7fd8cf; stroke-width: .1; }
 .ds-have .ds-glyph { fill: none; stroke: #eafbf8; stroke-width: .22; stroke-linecap: round;
   stroke-linejoin: round; }
-.ds-missing .ds-disc { fill: rgba(190, 120, 20, .93); stroke: #ffd88a; stroke-width: .1;
+.ds-missing .ds-disc { fill: rgba(24, 30, 38, .93); stroke: #8d99a4; stroke-width: .09;
   stroke-linejoin: round; }
-.ds-missing .ds-glyph { fill: none; stroke: #2a1a05; stroke-width: .24; stroke-linecap: round; }
-.ds-missing .ds-glyph-dot { fill: #2a1a05; }
+.ds-missing .ds-fold { fill: none; stroke: #8d99a4; stroke-width: .09;
+  stroke-linejoin: round; }
+.ds-missing .ds-glyph { fill: none; stroke: #8d99a4; stroke-width: .12; stroke-linecap: round; }
+.ds-badge { cursor: help; pointer-events: auto; }
 .hide-datasheets .datasheet-marks { display: none; }
 
 /* ------------------------------------------------------ datasheet, inspector */
@@ -511,7 +520,8 @@ kbd {
 
 /* ------------------------------------------------------------------ rail --- */
 .rail {
-  width: 372px; flex: none; overflow-y: auto; background: var(--panel);
+  width: clamp(372px, 26vw, 480px); flex: none; overflow-y: auto;
+  background: var(--panel);
   border-left: 1px solid var(--line);
 }
 .panel { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); }
@@ -577,17 +587,21 @@ input, select {
   border: 1px solid var(--line); border-radius: var(--radius);
 }
 
-.pins { width: 100%; border-collapse: collapse; }
-.pins th {
-  font-family: var(--mono); font-size: 11px; color: var(--ink-mid);
-  text-align: right; padding: 2px 8px 2px 0; width: 26px; font-weight: 500;
+/* Two lines per pin. As three table columns the net was 180px of a 374px rail,
+   so every name longer than "unconnected-(U2-P" was cut off - which is most of
+   them, and the clipped part is the part that distinguishes one from another. */
+.pins { list-style: none; margin: 0; padding: 0; }
+.pins li {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 5px 0; border-bottom: 1px solid var(--line-soft);
 }
-.pins td { padding: 2px 0; }
-.pins td.fn {
-  font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim);
-  padding-right: 8px; white-space: nowrap; max-width: 78px; overflow: hidden;
-  text-overflow: ellipsis;
+.pins li:last-child { border-bottom: 0; }
+.pin-id { display: flex; align-items: baseline; gap: 8px; }
+.pin-id b {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  color: var(--ink-mid); min-width: 20px;
 }
+.pins .net-pick { width: 100%; }
 
 .swap {
   font-family: var(--mono); font-size: 12px; line-height: 1; cursor: pointer;
@@ -766,13 +780,12 @@ input, select {
         <div id="source"></div>
         <div class="row" style="margin-top:10px">
           <label class="btn file">
-            Load a KiCad project
+            Open KiCad project folder
             <input type="file" id="file-input" multiple webkitdirectory directory
                    accept=".kicad_pcb,.kicad_sch">
           </label>
         </div>
-        <p class="hint">Or drop the folder on the board. Files are read in your
-          browser and never uploaded.</p>
+
       </section>
 
       <section class="panel">

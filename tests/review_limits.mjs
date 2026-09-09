@@ -114,23 +114,31 @@ async function expectCode(promise, code, label) {
   check(sample.reviews === 1, "a refused review must not have run the graph again");
 }
 
-// --------------------------------------------------------------- session cap
+// ------------------------------------------------------------ no session cap
+//
+// The page used to stop after five reviews per browser, which fell hardest on
+// the person exploring their own board. The count is still kept, because how
+// many reviews have run is worth knowing, but nothing is refused on it. The
+// cooldown is what remains, and it is a different thing: it stops a held-down
+// button from hammering a service that is already failing.
 
 {
   useStore();
   const review = await load();
-  localStorage.setItem("pcb-eval.reviewCount.v1", String(review.SESSION_CAP));
-  check(review.budget.left() === 0, "the session cap is reached");
+  localStorage.setItem("pcb-eval.reviewCount.v1", "500");
+  check(review.budget.used() === 500, "the count is read back");
 
   const sample = stubSample();
   const fresh = clone(board);
   applyEdits(fresh, [{ op: "set_value", args: { ref: "R5", value: "2k2" } }]);
-  await expectCode(review.review(sample, fresh, {}), "capped", "session cap");
-  check(sample.asked === 0, "a capped review must not have asked Claude at all");
+  const out = await review.review(sample, fresh, {});
+  check(out.cached === false, "a board reviewed after 500 others still runs");
+  check(sample.reviews === 1, "and it really did run rather than answering from cache");
 }
 
-// A board already in the cache still answers after the cap, which is the point:
-// the presets keep working, only live review stops.
+// A board already in the cache answers without running the graph, whatever the
+// count says. That was the point of the cache before the cap existed and it is
+// still the point now.
 {
   useStore();
   const review = await load();
@@ -140,9 +148,8 @@ async function expectCode(promise, code, label) {
   const work = clone(board);
   applyEdits(work, [{ op: "set_value", args: { ref: "R4", value: "R" } }]);
   await review.review(sample, work, {});
-  localStorage.setItem("pcb-eval.reviewCount.v1", String(review.SESSION_CAP));
   const replayed = await review.review(sample, work, {});
-  check(replayed.cached === true, "a cached board still answers after the cap");
+  check(replayed.cached === true, "a cached board answers from the cache");
   check(sample.reviews === 1, "and it did not run the graph again");
 }
 
@@ -226,6 +233,6 @@ for (const failure of failures) console.error("  x " + failure);
 console.log(
   failures.length
     ? `${failures.length} review-limit checks failed`
-    : "cache, cooldown, session cap, blocked storage, absence and grading all hold"
+    : "cache, cooldown, an absent cap, blocked storage, absence and grading all hold"
 );
 process.exit(failures.length ? 1 : 0);

@@ -97,6 +97,10 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
+/* Form controls do not inherit type. Without this the layer chips and every
+   field render in the user agent's own font while the page around them is in
+   Inter, which is the sort of difference you see before you can name it. */
+button, input, select, textarea { font-family: inherit; font-size: inherit; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
@@ -402,8 +406,11 @@ main { display: flex; flex: 1; min-height: 0; }
   color: var(--ink); background: var(--raised);
   border: 1px solid var(--line); border-radius: var(--radius);
 }
-.pins .fn { line-height: 1.3; }
-.pins .fn span { display: block; }
+.pins .fn {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .role {
   display: block; font-style: normal; font-family: var(--mono);
   font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
@@ -503,10 +510,12 @@ kbd {
 .ds-have .ds-disc { fill: rgba(20, 107, 102, .92); stroke: #7fd8cf; stroke-width: .1; }
 .ds-have .ds-glyph { fill: none; stroke: #eafbf8; stroke-width: .22; stroke-linecap: round;
   stroke-linejoin: round; }
-.ds-missing .ds-disc { fill: rgba(190, 120, 20, .93); stroke: #ffd88a; stroke-width: .1;
+.ds-missing .ds-disc { fill: rgba(24, 30, 38, .93); stroke: #8d99a4; stroke-width: .09;
   stroke-linejoin: round; }
-.ds-missing .ds-glyph { fill: none; stroke: #2a1a05; stroke-width: .24; stroke-linecap: round; }
-.ds-missing .ds-glyph-dot { fill: #2a1a05; }
+.ds-missing .ds-fold { fill: none; stroke: #8d99a4; stroke-width: .09;
+  stroke-linejoin: round; }
+.ds-missing .ds-glyph { fill: none; stroke: #8d99a4; stroke-width: .12; stroke-linecap: round; }
+.ds-badge { cursor: help; pointer-events: auto; }
 .hide-datasheets .datasheet-marks { display: none; }
 
 /* ------------------------------------------------------ datasheet, inspector */
@@ -524,7 +533,8 @@ kbd {
 
 /* ------------------------------------------------------------------ rail --- */
 .rail {
-  width: 372px; flex: none; overflow-y: auto; background: var(--panel);
+  width: clamp(372px, 26vw, 480px); flex: none; overflow-y: auto;
+  background: var(--panel);
   border-left: 1px solid var(--line);
 }
 .panel { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); }
@@ -590,17 +600,21 @@ input, select {
   border: 1px solid var(--line); border-radius: var(--radius);
 }
 
-.pins { width: 100%; border-collapse: collapse; }
-.pins th {
-  font-family: var(--mono); font-size: 11px; color: var(--ink-mid);
-  text-align: right; padding: 2px 8px 2px 0; width: 26px; font-weight: 500;
+/* Two lines per pin. As three table columns the net was 180px of a 374px rail,
+   so every name longer than "unconnected-(U2-P" was cut off - which is most of
+   them, and the clipped part is the part that distinguishes one from another. */
+.pins { list-style: none; margin: 0; padding: 0; }
+.pins li {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 5px 0; border-bottom: 1px solid var(--line-soft);
 }
-.pins td { padding: 2px 0; }
-.pins td.fn {
-  font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim);
-  padding-right: 8px; white-space: nowrap; max-width: 78px; overflow: hidden;
-  text-overflow: ellipsis;
+.pins li:last-child { border-bottom: 0; }
+.pin-id { display: flex; align-items: baseline; gap: 8px; }
+.pin-id b {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  color: var(--ink-mid); min-width: 20px;
 }
+.pins .net-pick { width: 100%; }
 
 .swap {
   font-family: var(--mono); font-size: 12px; line-height: 1; cursor: pointer;
@@ -779,13 +793,12 @@ input, select {
         <div id="source"></div>
         <div class="row" style="margin-top:10px">
           <label class="btn file">
-            Load a KiCad project
+            Open KiCad project folder
             <input type="file" id="file-input" multiple webkitdirectory directory
                    accept=".kicad_pcb,.kicad_sch">
           </label>
         </div>
-        <p class="hint">Or drop the folder on the board. Files are read in your
-          browser and never uploaded.</p>
+
       </section>
 
       <section class="panel">
@@ -4223,12 +4236,28 @@ function markDatasheets(svg, board, coverage) {
         el("path", { class: "ds-glyph", d: "M -0.5 0.05 L -0.12 0.45 L 0.55 -0.4" })
       );
     } else {
+      // A sheet with its corner turned, not a hazard triangle. Nothing is
+      // wrong with this part; there is simply nothing on file about it, and a
+      // warning sign says something much stronger than that.
       group.appendChild(
-        el("path", { class: "ds-disc", d: "M 0 -1.25 L 1.15 0.75 L -1.15 0.75 Z" })
+        el("path", {
+          class: "ds-disc",
+          d: "M -0.72 -1 L 0.28 -1 L 0.72 -0.56 L 0.72 1 L -0.72 1 Z",
+        })
       );
-      group.appendChild(el("path", { class: "ds-glyph", d: "M 0 -0.55 L 0 0.12" }));
-      group.appendChild(el("circle", { class: "ds-glyph-dot", cx: 0, cy: 0.42, r: 0.11 }));
+      group.appendChild(
+        el("path", { class: "ds-fold", d: "M 0.28 -1 L 0.28 -0.56 L 0.72 -0.56" })
+      );
+      group.appendChild(el("path", { class: "ds-glyph", d: "M -0.36 -0.2 L 0.36 -0.2" }));
+      group.appendChild(el("path", { class: "ds-glyph", d: "M -0.36 0.2 L 0.36 0.2" }));
+      group.appendChild(el("path", { class: "ds-glyph", d: "M -0.36 0.6 L 0.06 0.6" }));
     }
+    const title = el("title");
+    title.textContent =
+      state.status === "have"
+        ? `${fp.ref}: documentation on file`
+        : `${fp.ref}: no documentation. Researched because it ${state.why}.`;
+    group.appendChild(title);
     layer.appendChild(group);
   }
 }
@@ -4305,11 +4334,16 @@ function renderFootprint(fp, { width = 200, height = 150 } = {}) {
     svg.appendChild(group);
     // The number goes on unrotated, or a pad turned 270 degrees carries a
     // sideways label.
-    const label = el("text", {
-      class: "fp-num", x: f(pad.x), y: f(pad.y), "font-size": f(padFont(fp)),
-    });
-    label.textContent = pad.num;
-    svg.appendChild(label);
+    // A number is only worth drawing where it can be read. On a 48-pin QFP
+    // the pads are 0.3 mm across and forty-eight numbers became a smear, which
+    // is worse than no numbers: it hides the pad shapes underneath them.
+    if (Math.min(pad.w, pad.h) * scale >= 9) {
+      const label = el("text", {
+        class: "fp-num", x: f(pad.x), y: f(pad.y), "font-size": f(padFont(fp)),
+      });
+      label.textContent = pad.num;
+      svg.appendChild(label);
+    }
   }
   return svg;
 }
@@ -4774,7 +4808,6 @@ async function runGraph(board, ask, { onStep, signal } = {}) {
 
 const PROMPT_ID = `review-1/${PROMPT_VERSION}`;
 const MIN_INTERVAL_MS = 10_000;
-const SESSION_CAP = 5;
 
 const CACHE_KEY = "pcb-eval.reviews.v1";
 const COUNT_KEY = "pcb-eval.reviewCount.v1";
@@ -5051,12 +5084,18 @@ const reviewCache = {
   },
 };
 
+/**
+ * How many reviews this browser has run.
+ *
+ * Kept because the count is worth having, not because anything is refused when
+ * it grows: the page used to stop after a fixed number per browser, which
+ * punished the person exploring their own board hardest. What remains is the
+ * cooldown, and that is not a quota - it stops a held-down button from
+ * hammering a service that is already failing.
+ */
 const budget = {
   used() {
     return Number(readJSON(COUNT_KEY, 0)) || 0;
-  },
-  left() {
-    return Math.max(0, SESSION_CAP - this.used());
   },
   spend() {
     writeJSON(COUNT_KEY, this.used() + 1);
@@ -5180,13 +5219,6 @@ async function review(sample, board, { onStep, signal } = {}) {
   if (cooling > 0) {
     throw new ReviewUnavailable("cooldown", `Another review in ${Math.ceil(cooling / 1000)}s.`);
   }
-  if (budget.left() <= 0) {
-    throw new ReviewUnavailable(
-      "capped",
-      `This browser has used its ${SESSION_CAP} reviews. Boards already reviewed still load from cache.`
-    );
-  }
-
   // The cooldown starts now, so a failing service cannot be hammered. The
   // session count is spent only once a review actually completes: the server
   // enforces the limits that matter, and charging a visitor for the server's
@@ -5371,9 +5403,43 @@ function startDrag(event, target, at) {
 
 // -------------------------------------------------------------- edit plumbing
 
+/**
+ * Operations that set a value rather than change it by one.
+ *
+ * Each of these carries the whole new state in its arguments, so a run of them
+ * against one target can be collapsed to the last: replaying `rotated to 270`
+ * lands where replaying 90, 180, 270 lands. That is what makes the collapse
+ * safe to do to the log itself rather than only to the display - the log is the
+ * edit list, and it still has to reproduce the board.
+ */
+const ABSOLUTE = new Set(["set_value", "move_footprint", "rotate_footprint", "move_pin"]);
+
+/** What an edit is about, so two edits to the same thing can be recognised. */
+const target = (entry) =>
+  `${entry.op}:${entry.args.ref || ""}:${entry.args.pin || ""}`;
+
 function record(edit) {
   try {
-    state.log.push(applyEdit(state.board, edit));
+    const entry = applyEdit(state.board, edit);
+    const last = state.log[state.log.length - 1];
+    if (
+      last &&
+      ABSOLUTE.has(entry.op) &&
+      target(last) === target(entry)
+    ) {
+      // Undo has to reach the state before the run began, not before its last
+      // step, so the older entry's record of what it replaced survives and the
+      // newer one's is dropped.
+      state.log[state.log.length - 1] = {
+        ...entry,
+        from_net: last.from_net ?? entry.from_net,
+        from_value: last.from_value ?? entry.from_value,
+        from_xy: last.from_xy ?? entry.from_xy,
+        from_rot: last.from_rot ?? entry.from_rot,
+      };
+    } else {
+      state.log.push(entry);
+    }
   } catch (error) {
     flash(error.message);
     return false;
@@ -5438,14 +5504,10 @@ function renderSource() {
   const stats = state.board.layout;
   // Both labels come from the board that is loaded. The sample used to be
   // named in the source, which read as though the tool were built around it.
-  $("board-id").textContent = custom
-    ? `${custom.name} · your file`
-    : `${state.board.meta.name} · sample board`;
+  $("board-id").textContent = custom ? custom.name : "";
 
   if (!custom) {
-    panel.innerHTML = `<p class="muted">${escapeHtml(summarise(state.board))}</p>
-      <p class="hint">A board extracted from KiCad. Edit it, or load your own
-      project.</p>`;
+    panel.innerHTML = `<p class="muted">${escapeHtml(summarise(state.board))}</p>`;
   } else {
     panel.innerHTML = `
       <p class="loaded"><b>${escapeHtml(custom.name)}</b> ${escapeHtml(summarise(state.board))}</p>
@@ -5576,26 +5638,16 @@ function renderPartInspector(panel, ref) {
 
     <dl class="facts">
       <dt>Package</dt><dd>${escapeHtml((comp.footprint || "").split(":").pop())}</dd>
-      ${
-        pk
-          ? html`<dt>Body</dt><dd>${
-              pk.body ? `${mm2(pk.body.w)} × ${mm2(pk.body.h)} mm` : "not drawn on this footprint"
-            }</dd>
-            <dt>Pads</dt><dd>${pk.pads} ${pk.mount}${
-              pk.pitch ? `, ${mm2(pk.pitch)} mm pitch` : ""
-            }</dd>
-            ${pk.drills.length ? `<dt>Drills</dt><dd>${pk.drills.map(mm2).join(", ")} mm</dd>` : ""}`
-          : ""
-      }
+      ${pk ? packageRows(pk) : ""}
       ${fp ? html`<dt>Placed</dt><dd>${mm2(fp.x)}, ${mm2(fp.y)} mm · ${Number(fp.rot)}° · ${fp.layer}.Cu</dd>` : ""}
       ${fp && fp.silk !== ref ? html`<dt>Silkscreen</dt><dd>${fp.silk}</dd>` : ""}
       ${elec.rails.length ? html`<dt>Rails</dt><dd>${elec.rails.join(", ")}</dd>` : ""}
       <dt>Grounded</dt><dd>${elec.grounds.length ? escapeHtml(elec.grounds.join(", ")) : "no ground pin"}</dd>
       ${
         elec.roles.length
-          ? `<dt>Pin roles</dt><dd>${elec.roles
-              .map(([kind, n]) => html`${n}× ${kind.replace(/_/g, " ")}`)
-              .join(", ")}</dd>`
+          ? `<dt>Pin roles</dt><dd>${escapeHtml(
+              elec.roles.map(([kind, n]) => `${n}× ${kind.replace(/_/g, " ")}`).join(", ")
+            )}</dd>`
           : ""
       }
       ${elec.floating ? html`<dt>Unconnected</dt><dd>${elec.floating} of ${pins.length} pins</dd>` : ""}
@@ -5625,36 +5677,33 @@ function renderPartInspector(panel, ref) {
     <h4 class="eyebrow">Pins <span class="count">${pins.length}</span></h4>
     <input class="pin-filter" id="ins-filter" type="search" placeholder="Filter pins or nets"
            spellcheck="false" value="${escapeHtml(state.pinFilter || "")}">
-    <table class="pins">
-      <tbody>
-        ${pins
-          .map((pin) => {
-            const armed = state.armed && state.armed.ref === ref && state.armed.pin === pin.pin;
-            const role = baseType(pin.type || "");
-            return `<tr data-hay="${escapeHtml(
-              `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
-            )}">
-              <th>${escapeHtml(pin.pin)}</th>
-              <td class="fn"><span>${escapeHtml(pin.function || "")}</span>${
-                role ? html`<em class="role role-${role}">${role.replace(/_/g, " ")}</em>` : ""
-              }</td>
-              <td>
-                <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
-                  ${netNames
-                    .map(
-                      (name) =>
-                        `<option value="${escapeHtml(name)}"${name === pin.net ? " selected" : ""}>${escapeHtml(name)}</option>`
-                    )
-                    .join("")}
-                </select>
-              </td>
-              <td><button class="swap${armed ? " armed" : ""}" data-swap="${escapeHtml(pin.pin)}"
-                title="Swap this pin with another">&#8646;</button></td>
-            </tr>`;
-          })
-          .join("")}
-      </tbody>
-    </table>
+    <ul class="pins">
+      ${pins
+        .map((pin) => {
+          const armed = state.armed && state.armed.ref === ref && state.armed.pin === pin.pin;
+          const role = pinRole(pin);
+          return `<li data-hay="${escapeHtml(
+            `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
+          )}">
+            <div class="pin-id">
+              <b>${escapeHtml(pin.pin)}</b>
+              <span class="fn">${escapeHtml(pin.function || "")}</span>
+              ${role ? `<em class="role role-${escapeHtml(role)}">${escapeHtml(role.replace(/_/g, " "))}</em>` : ""}
+              <button class="swap${armed ? " armed" : ""}" data-swap="${escapeHtml(pin.pin)}"
+                title="Swap this pin with another">&#8646;</button>
+            </div>
+            <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
+              ${netNames
+                .map(
+                  (name) =>
+                    `<option value="${escapeHtml(name)}"${name === pin.net ? " selected" : ""}>${escapeHtml(name)}</option>`
+                )
+                .join("")}
+            </select>
+          </li>`;
+        })
+        .join("")}
+    </ul>
     ${state.armed && state.armed.ref === ref
       ? html`<p class="hint armed-hint">Pin ${state.armed.pin} is armed. Pick the pin to swap it with.</p>`
       : `<p class="hint">⇆ swaps two pins in one move. <kbd>R</kbd> rotates,
@@ -5699,7 +5748,7 @@ function renderPartInspector(panel, ref) {
   const applyFilter = () => {
     const needle = filter.value.trim().toLowerCase();
     state.pinFilter = filter.value;
-    for (const row of panel.querySelectorAll(".pins tr")) {
+    for (const row of panel.querySelectorAll(".pins li")) {
       row.hidden = Boolean(needle) && !row.dataset.hay.includes(needle);
     }
   };
@@ -5732,6 +5781,25 @@ function renderPartInspector(panel, ref) {
 const mm2 = (n) => Number(n).toFixed(2);
 
 /**
+ * The package facts, as definition rows.
+ *
+ * Assembled as a string rather than through `html`, because that tag escapes
+ * everything it interpolates - correctly, since the values are data - and a
+ * nested template returning markup therefore arrived on screen as its own
+ * source. Every value here is escaped on its way in instead.
+ */
+function packageRows(pk) {
+  const rows = [
+    ["Body", pk.body ? `${mm2(pk.body.w)} × ${mm2(pk.body.h)} mm` : "not drawn on this footprint"],
+    ["Pads", `${pk.pads} ${pk.mount}${pk.pitch ? `, ${mm2(pk.pitch)} mm pitch` : ""}`],
+  ];
+  if (pk.drills.length) rows.push(["Drills", `${pk.drills.map(mm2).join(", ")} mm`]);
+  return rows
+    .map(([term, value]) => `<dt>${term}</dt><dd>${escapeHtml(value)}</dd>`)
+    .join("");
+}
+
+/**
  * What a part is connected to, summarised.
  *
  * Every figure here is counted off this part's own pins. A rail it sits on, a
@@ -5740,6 +5808,22 @@ const mm2 = (n) => Number(n).toFixed(2);
  * no ground pin is normal for a two-pin passive and alarming for an MCU, and
  * which one this is belongs to whoever is reading.
  */
+/**
+ * What to call a pin, for someone reading.
+ *
+ * A ground pin's electrical type in the symbol is `power_in`, which is true and
+ * useless: VSSA is an analog ground, and labelling it POWER IN tells the reader
+ * the opposite of what they need. The name decides, not the net - the name is a
+ * property of the part, so it stays right when the part is miswired, and a
+ * power pin sitting on a ground net keeps reading as a power pin, which is
+ * exactly the case worth noticing.
+ */
+function pinRole(pin) {
+  const role = baseType(pin.type || "");
+  if (role === "power_in" && isGround(pin.function || pin.name || "")) return "ground";
+  return role;
+}
+
 function electrics(pins) {
   const rails = new Set();
   const grounds = new Set();
@@ -5862,8 +5946,7 @@ function renderLog() {
   $("undo").disabled = !state.log.length;
   $("reset").disabled = !state.log.length;
   if (!state.log.length) {
-    list.innerHTML = `<li class="muted">Nothing changed yet. Deleting a via on
-      GND, or moving a pin to another net, is a good place to start.</li>`;
+    list.innerHTML = `<li class="muted">Nothing changed yet.</li>`;
     return;
   }
   const shown = state.log.slice(-8).reverse();
@@ -6104,7 +6187,7 @@ function renderOverlay() {
       <div class="ro-empty">
         <p>${state.verdict
           ? "It reported nothing. On an untouched board that is the right answer."
-          : "Nothing has been reviewed yet. Break something first, or review the board as it is — a reviewer that flags a clean board is worth nothing, and that is the number worth knowing first."}</p>
+          : "Nothing has been reviewed yet."}</p>
         ${state.sample
           ? `<button class="primary" id="ro-go">Review this board</button>`
           : `<p class="hint">The review service is not reachable from here. Everything else on the page works.</p>`}
@@ -6239,7 +6322,7 @@ function renderReview() {
   stream.hidden = !state.reviewing;
   if (!state.reviewing) stream.textContent = "";
 
-  $("budget").textContent = `${budget.left()} of ${SESSION_CAP} left · ${reviewCache.size()} cached`;
+  $("budget").textContent = "";
 
   if (state.reviewing) {
     panel.innerHTML = `<p class="muted">Sending the board as it stands now.</p>`;
@@ -6273,8 +6356,7 @@ function renderReview() {
               }.`
             : ""
         }</p>`
-      : `<p class="muted">Reviewing the board untouched tells you the false-alarm
-         rate, which is worth knowing first.</p>`;
+      : "";
     return;
   }
 
@@ -6365,7 +6447,13 @@ function boot() {
       state.armed = null;
       select(null);
     } else if ((e.key === "r" || e.key === "R") && state.selection?.kind === "part") {
-      record({ op: "rotate_footprint", args: { ref: state.selection.ref, deg: 90 } });
+      // A quarter turn from wherever it is now. The operation takes an absolute
+      // angle, so pressing R three times used to set 90 degrees three times -
+      // the second and third threw "already at 90" and the part never moved.
+      const fp = state.board.layout.footprints.find((f) => f.ref === state.selection.ref);
+      if (fp) {
+        record({ op: "rotate_footprint", args: { ref: fp.ref, deg: (Number(fp.rot) + 90) % 360 } });
+      }
     } else {
       return;
     }

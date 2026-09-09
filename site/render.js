@@ -659,12 +659,28 @@ export function markDatasheets(svg, board, coverage) {
         el("path", { class: "ds-glyph", d: "M -0.5 0.05 L -0.12 0.45 L 0.55 -0.4" })
       );
     } else {
+      // A sheet with its corner turned, not a hazard triangle. Nothing is
+      // wrong with this part; there is simply nothing on file about it, and a
+      // warning sign says something much stronger than that.
       group.appendChild(
-        el("path", { class: "ds-disc", d: "M 0 -1.25 L 1.15 0.75 L -1.15 0.75 Z" })
+        el("path", {
+          class: "ds-disc",
+          d: "M -0.72 -1 L 0.28 -1 L 0.72 -0.56 L 0.72 1 L -0.72 1 Z",
+        })
       );
-      group.appendChild(el("path", { class: "ds-glyph", d: "M 0 -0.55 L 0 0.12" }));
-      group.appendChild(el("circle", { class: "ds-glyph-dot", cx: 0, cy: 0.42, r: 0.11 }));
+      group.appendChild(
+        el("path", { class: "ds-fold", d: "M 0.28 -1 L 0.28 -0.56 L 0.72 -0.56" })
+      );
+      group.appendChild(el("path", { class: "ds-glyph", d: "M -0.36 -0.2 L 0.36 -0.2" }));
+      group.appendChild(el("path", { class: "ds-glyph", d: "M -0.36 0.2 L 0.36 0.2" }));
+      group.appendChild(el("path", { class: "ds-glyph", d: "M -0.36 0.6 L 0.06 0.6" }));
     }
+    const title = el("title");
+    title.textContent =
+      state.status === "have"
+        ? `${fp.ref}: documentation on file`
+        : `${fp.ref}: no documentation. Researched because it ${state.why}.`;
+    group.appendChild(title);
     layer.appendChild(group);
   }
 }
@@ -741,11 +757,16 @@ export function renderFootprint(fp, { width = 200, height = 150 } = {}) {
     svg.appendChild(group);
     // The number goes on unrotated, or a pad turned 270 degrees carries a
     // sideways label.
-    const label = el("text", {
-      class: "fp-num", x: f(pad.x), y: f(pad.y), "font-size": f(padFont(fp)),
-    });
-    label.textContent = pad.num;
-    svg.appendChild(label);
+    // A number is only worth drawing where it can be read. On a 48-pin QFP
+    // the pads are 0.3 mm across and forty-eight numbers became a smear, which
+    // is worse than no numbers: it hides the pad shapes underneath them.
+    if (Math.min(pad.w, pad.h) * scale >= 9) {
+      const label = el("text", {
+        class: "fp-num", x: f(pad.x), y: f(pad.y), "font-size": f(padFont(fp)),
+      });
+      label.textContent = pad.num;
+      svg.appendChild(label);
+    }
   }
   return svg;
 }

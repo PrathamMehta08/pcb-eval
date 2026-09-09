@@ -41,7 +41,6 @@ import {
   review,
   reviewCache,
   ReviewUnavailable,
-  SESSION_CAP,
 } from "./review.js";
 
 const $ = (id) => document.getElementById(id);
@@ -166,9 +165,43 @@ function startDrag(event, target, at) {
 
 // -------------------------------------------------------------- edit plumbing
 
+/**
+ * Operations that set a value rather than change it by one.
+ *
+ * Each of these carries the whole new state in its arguments, so a run of them
+ * against one target can be collapsed to the last: replaying `rotated to 270`
+ * lands where replaying 90, 180, 270 lands. That is what makes the collapse
+ * safe to do to the log itself rather than only to the display - the log is the
+ * edit list, and it still has to reproduce the board.
+ */
+const ABSOLUTE = new Set(["set_value", "move_footprint", "rotate_footprint", "move_pin"]);
+
+/** What an edit is about, so two edits to the same thing can be recognised. */
+const target = (entry) =>
+  `${entry.op}:${entry.args.ref || ""}:${entry.args.pin || ""}`;
+
 function record(edit) {
   try {
-    state.log.push(applyEdit(state.board, edit));
+    const entry = applyEdit(state.board, edit);
+    const last = state.log[state.log.length - 1];
+    if (
+      last &&
+      ABSOLUTE.has(entry.op) &&
+      target(last) === target(entry)
+    ) {
+      // Undo has to reach the state before the run began, not before its last
+      // step, so the older entry's record of what it replaced survives and the
+      // newer one's is dropped.
+      state.log[state.log.length - 1] = {
+        ...entry,
+        from_net: last.from_net ?? entry.from_net,
+        from_value: last.from_value ?? entry.from_value,
+        from_xy: last.from_xy ?? entry.from_xy,
+        from_rot: last.from_rot ?? entry.from_rot,
+      };
+    } else {
+      state.log.push(entry);
+    }
   } catch (error) {
     flash(error.message);
     return false;
@@ -233,14 +266,10 @@ function renderSource() {
   const stats = state.board.layout;
   // Both labels come from the board that is loaded. The sample used to be
   // named in the source, which read as though the tool were built around it.
-  $("board-id").textContent = custom
-    ? `${custom.name} · your file`
-    : `${state.board.meta.name} · sample board`;
+  $("board-id").textContent = custom ? custom.name : "";
 
   if (!custom) {
-    panel.innerHTML = `<p class="muted">${escapeHtml(summarise(state.board))}</p>
-      <p class="hint">A board extracted from KiCad. Edit it, or load your own
-      project.</p>`;
+    panel.innerHTML = `<p class="muted">${escapeHtml(summarise(state.board))}</p>`;
   } else {
     panel.innerHTML = `
       <p class="loaded"><b>${escapeHtml(custom.name)}</b> ${escapeHtml(summarise(state.board))}</p>
@@ -371,26 +400,16 @@ function renderPartInspector(panel, ref) {
 
     <dl class="facts">
       <dt>Package</dt><dd>${escapeHtml((comp.footprint || "").split(":").pop())}</dd>
-      ${
-        pk
-          ? html`<dt>Body</dt><dd>${
-              pk.body ? `${mm2(pk.body.w)} × ${mm2(pk.body.h)} mm` : "not drawn on this footprint"
-            }</dd>
-            <dt>Pads</dt><dd>${pk.pads} ${pk.mount}${
-              pk.pitch ? `, ${mm2(pk.pitch)} mm pitch` : ""
-            }</dd>
-            ${pk.drills.length ? `<dt>Drills</dt><dd>${pk.drills.map(mm2).join(", ")} mm</dd>` : ""}`
-          : ""
-      }
+      ${pk ? packageRows(pk) : ""}
       ${fp ? html`<dt>Placed</dt><dd>${mm2(fp.x)}, ${mm2(fp.y)} mm · ${Number(fp.rot)}° · ${fp.layer}.Cu</dd>` : ""}
       ${fp && fp.silk !== ref ? html`<dt>Silkscreen</dt><dd>${fp.silk}</dd>` : ""}
       ${elec.rails.length ? html`<dt>Rails</dt><dd>${elec.rails.join(", ")}</dd>` : ""}
       <dt>Grounded</dt><dd>${elec.grounds.length ? escapeHtml(elec.grounds.join(", ")) : "no ground pin"}</dd>
       ${
         elec.roles.length
-          ? `<dt>Pin roles</dt><dd>${elec.roles
-              .map(([kind, n]) => html`${n}× ${kind.replace(/_/g, " ")}`)
-              .join(", ")}</dd>`
+          ? `<dt>Pin roles</dt><dd>${escapeHtml(
+              elec.roles.map(([kind, n]) => `${n}× ${kind.replace(/_/g, " ")}`).join(", ")
+            )}</dd>`
           : ""
       }
       ${elec.floating ? html`<dt>Unconnected</dt><dd>${elec.floating} of ${pins.length} pins</dd>` : ""}
@@ -420,36 +439,33 @@ function renderPartInspector(panel, ref) {
     <h4 class="eyebrow">Pins <span class="count">${pins.length}</span></h4>
     <input class="pin-filter" id="ins-filter" type="search" placeholder="Filter pins or nets"
            spellcheck="false" value="${escapeHtml(state.pinFilter || "")}">
-    <table class="pins">
-      <tbody>
-        ${pins
-          .map((pin) => {
-            const armed = state.armed && state.armed.ref === ref && state.armed.pin === pin.pin;
-            const role = baseType(pin.type || "");
-            return `<tr data-hay="${escapeHtml(
-              `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
-            )}">
-              <th>${escapeHtml(pin.pin)}</th>
-              <td class="fn"><span>${escapeHtml(pin.function || "")}</span>${
-                role ? html`<em class="role role-${role}">${role.replace(/_/g, " ")}</em>` : ""
-              }</td>
-              <td>
-                <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
-                  ${netNames
-                    .map(
-                      (name) =>
-                        `<option value="${escapeHtml(name)}"${name === pin.net ? " selected" : ""}>${escapeHtml(name)}</option>`
-                    )
-                    .join("")}
-                </select>
-              </td>
-              <td><button class="swap${armed ? " armed" : ""}" data-swap="${escapeHtml(pin.pin)}"
-                title="Swap this pin with another">&#8646;</button></td>
-            </tr>`;
-          })
-          .join("")}
-      </tbody>
-    </table>
+    <ul class="pins">
+      ${pins
+        .map((pin) => {
+          const armed = state.armed && state.armed.ref === ref && state.armed.pin === pin.pin;
+          const role = pinRole(pin);
+          return `<li data-hay="${escapeHtml(
+            `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
+          )}">
+            <div class="pin-id">
+              <b>${escapeHtml(pin.pin)}</b>
+              <span class="fn">${escapeHtml(pin.function || "")}</span>
+              ${role ? `<em class="role role-${escapeHtml(role)}">${escapeHtml(role.replace(/_/g, " "))}</em>` : ""}
+              <button class="swap${armed ? " armed" : ""}" data-swap="${escapeHtml(pin.pin)}"
+                title="Swap this pin with another">&#8646;</button>
+            </div>
+            <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
+              ${netNames
+                .map(
+                  (name) =>
+                    `<option value="${escapeHtml(name)}"${name === pin.net ? " selected" : ""}>${escapeHtml(name)}</option>`
+                )
+                .join("")}
+            </select>
+          </li>`;
+        })
+        .join("")}
+    </ul>
     ${state.armed && state.armed.ref === ref
       ? html`<p class="hint armed-hint">Pin ${state.armed.pin} is armed. Pick the pin to swap it with.</p>`
       : `<p class="hint">⇆ swaps two pins in one move. <kbd>R</kbd> rotates,
@@ -494,7 +510,7 @@ function renderPartInspector(panel, ref) {
   const applyFilter = () => {
     const needle = filter.value.trim().toLowerCase();
     state.pinFilter = filter.value;
-    for (const row of panel.querySelectorAll(".pins tr")) {
+    for (const row of panel.querySelectorAll(".pins li")) {
       row.hidden = Boolean(needle) && !row.dataset.hay.includes(needle);
     }
   };
@@ -527,6 +543,25 @@ function renderPartInspector(panel, ref) {
 const mm2 = (n) => Number(n).toFixed(2);
 
 /**
+ * The package facts, as definition rows.
+ *
+ * Assembled as a string rather than through `html`, because that tag escapes
+ * everything it interpolates - correctly, since the values are data - and a
+ * nested template returning markup therefore arrived on screen as its own
+ * source. Every value here is escaped on its way in instead.
+ */
+function packageRows(pk) {
+  const rows = [
+    ["Body", pk.body ? `${mm2(pk.body.w)} × ${mm2(pk.body.h)} mm` : "not drawn on this footprint"],
+    ["Pads", `${pk.pads} ${pk.mount}${pk.pitch ? `, ${mm2(pk.pitch)} mm pitch` : ""}`],
+  ];
+  if (pk.drills.length) rows.push(["Drills", `${pk.drills.map(mm2).join(", ")} mm`]);
+  return rows
+    .map(([term, value]) => `<dt>${term}</dt><dd>${escapeHtml(value)}</dd>`)
+    .join("");
+}
+
+/**
  * What a part is connected to, summarised.
  *
  * Every figure here is counted off this part's own pins. A rail it sits on, a
@@ -535,6 +570,22 @@ const mm2 = (n) => Number(n).toFixed(2);
  * no ground pin is normal for a two-pin passive and alarming for an MCU, and
  * which one this is belongs to whoever is reading.
  */
+/**
+ * What to call a pin, for someone reading.
+ *
+ * A ground pin's electrical type in the symbol is `power_in`, which is true and
+ * useless: VSSA is an analog ground, and labelling it POWER IN tells the reader
+ * the opposite of what they need. The name decides, not the net - the name is a
+ * property of the part, so it stays right when the part is miswired, and a
+ * power pin sitting on a ground net keeps reading as a power pin, which is
+ * exactly the case worth noticing.
+ */
+function pinRole(pin) {
+  const role = baseType(pin.type || "");
+  if (role === "power_in" && isGround(pin.function || pin.name || "")) return "ground";
+  return role;
+}
+
 function electrics(pins) {
   const rails = new Set();
   const grounds = new Set();
@@ -657,8 +708,7 @@ function renderLog() {
   $("undo").disabled = !state.log.length;
   $("reset").disabled = !state.log.length;
   if (!state.log.length) {
-    list.innerHTML = `<li class="muted">Nothing changed yet. Deleting a via on
-      GND, or moving a pin to another net, is a good place to start.</li>`;
+    list.innerHTML = `<li class="muted">Nothing changed yet.</li>`;
     return;
   }
   const shown = state.log.slice(-8).reverse();
@@ -899,7 +949,7 @@ function renderOverlay() {
       <div class="ro-empty">
         <p>${state.verdict
           ? "It reported nothing. On an untouched board that is the right answer."
-          : "Nothing has been reviewed yet. Break something first, or review the board as it is — a reviewer that flags a clean board is worth nothing, and that is the number worth knowing first."}</p>
+          : "Nothing has been reviewed yet."}</p>
         ${state.sample
           ? `<button class="primary" id="ro-go">Review this board</button>`
           : `<p class="hint">The review service is not reachable from here. Everything else on the page works.</p>`}
@@ -1034,7 +1084,7 @@ function renderReview() {
   stream.hidden = !state.reviewing;
   if (!state.reviewing) stream.textContent = "";
 
-  $("budget").textContent = `${budget.left()} of ${SESSION_CAP} left · ${reviewCache.size()} cached`;
+  $("budget").textContent = "";
 
   if (state.reviewing) {
     panel.innerHTML = `<p class="muted">Sending the board as it stands now.</p>`;
@@ -1068,8 +1118,7 @@ function renderReview() {
               }.`
             : ""
         }</p>`
-      : `<p class="muted">Reviewing the board untouched tells you the false-alarm
-         rate, which is worth knowing first.</p>`;
+      : "";
     return;
   }
 
@@ -1160,7 +1209,13 @@ function boot() {
       state.armed = null;
       select(null);
     } else if ((e.key === "r" || e.key === "R") && state.selection?.kind === "part") {
-      record({ op: "rotate_footprint", args: { ref: state.selection.ref, deg: 90 } });
+      // A quarter turn from wherever it is now. The operation takes an absolute
+      // angle, so pressing R three times used to set 90 degrees three times -
+      // the second and third threw "already at 90" and the part never moved.
+      const fp = state.board.layout.footprints.find((f) => f.ref === state.selection.ref);
+      if (fp) {
+        record({ op: "rotate_footprint", args: { ref: fp.ref, deg: (Number(fp.rot) + 90) % 360 } });
+      }
     } else {
       return;
     }
