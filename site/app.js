@@ -13,11 +13,14 @@ import {
   markDivergence,
   markRefs,
   markDatasheets,
+  packageFacts,
   renderBoard,
+  renderFootprint,
 } from "./render.js";
 import { islandCounts } from "./copper.js";
 import { MEASURED, ROLES } from "./graph.js";
 import { summarise } from "./kicad.js";
+import { baseType, isGround, isRail } from "./checks.js";
 import { coverage, factsOf, needsDatasheet, setFacts } from "./datasheets.js";
 import {
   attach,
@@ -354,6 +357,8 @@ function renderPartInspector(panel, ref) {
   }
   const pins = pinsOf(ref);
   const netNames = [...new Set(state.board.nets.map((n) => n.name))].sort();
+  const pk = fp ? packageFacts(fp) : null;
+  const elec = electrics(pins);
 
   panel.innerHTML = `
     <div class="ins-head">
@@ -361,32 +366,73 @@ function renderPartInspector(panel, ref) {
       <span class="val">${escapeHtml(comp.value)}</span>
     </div>
     ${comp.description ? html`<p class="desc">${comp.description}</p>` : ""}
+
+    <div class="fp-view" id="ins-fp"></div>
+
     <dl class="facts">
       <dt>Package</dt><dd>${escapeHtml((comp.footprint || "").split(":").pop())}</dd>
-      ${fp ? html`<dt>Placed</dt><dd>${fp.x.toFixed(2)}, ${fp.y.toFixed(2)} mm · ${Number(fp.rot)}° · ${fp.layer}.Cu</dd>` : ""}
+      ${
+        pk
+          ? html`<dt>Body</dt><dd>${
+              pk.body ? `${mm2(pk.body.w)} × ${mm2(pk.body.h)} mm` : "not drawn on this footprint"
+            }</dd>
+            <dt>Pads</dt><dd>${pk.pads} ${pk.mount}${
+              pk.pitch ? `, ${mm2(pk.pitch)} mm pitch` : ""
+            }</dd>
+            ${pk.drills.length ? `<dt>Drills</dt><dd>${pk.drills.map(mm2).join(", ")} mm</dd>` : ""}`
+          : ""
+      }
+      ${fp ? html`<dt>Placed</dt><dd>${mm2(fp.x)}, ${mm2(fp.y)} mm · ${Number(fp.rot)}° · ${fp.layer}.Cu</dd>` : ""}
       ${fp && fp.silk !== ref ? html`<dt>Silkscreen</dt><dd>${fp.silk}</dd>` : ""}
+      ${elec.rails.length ? html`<dt>Rails</dt><dd>${elec.rails.join(", ")}</dd>` : ""}
+      <dt>Grounded</dt><dd>${elec.grounds.length ? escapeHtml(elec.grounds.join(", ")) : "no ground pin"}</dd>
+      ${
+        elec.roles.length
+          ? `<dt>Pin roles</dt><dd>${elec.roles
+              .map(([kind, n]) => html`${n}× ${kind.replace(/_/g, " ")}`)
+              .join(", ")}</dd>`
+          : ""
+      }
+      ${elec.floating ? html`<dt>Unconnected</dt><dd>${elec.floating} of ${pins.length} pins</dd>` : ""}
     </dl>
 
+    <h4 class="eyebrow">Edit</h4>
     <label class="field">
       <span>Value</span>
       <input id="ins-value" type="text" value="${escapeHtml(comp.value)}" spellcheck="false">
     </label>
+    ${
+      fp
+        ? `<div class="field-pair">
+            <label class="field"><span>X mm</span>
+              <input id="ins-x" type="number" step="0.1" value="${mm2(fp.x)}"></label>
+            <label class="field"><span>Y mm</span>
+              <input id="ins-y" type="number" step="0.1" value="${mm2(fp.y)}"></label>
+          </div>
+          <div class="row">
+            <button class="btn" data-act="rot" data-deg="90">Rotate 90°</button>
+            <button class="btn" data-act="rot" data-deg="180">180°</button>
+            <button class="btn" data-act="rot" data-deg="270">270°</button>
+          </div>`
+        : ""
+    }
 
-    ${fp ? `<div class="row">
-      <button class="btn" data-act="rot" data-deg="90">Rotate 90°</button>
-      <button class="btn" data-act="rot" data-deg="180">180°</button>
-      <button class="btn" data-act="rot" data-deg="270">270°</button>
-    </div>` : ""}
-
-    <h4 class="eyebrow">Pins</h4>
+    <h4 class="eyebrow">Pins <span class="count">${pins.length}</span></h4>
+    <input class="pin-filter" id="ins-filter" type="search" placeholder="Filter pins or nets"
+           spellcheck="false" value="${escapeHtml(state.pinFilter || "")}">
     <table class="pins">
       <tbody>
         ${pins
           .map((pin) => {
             const armed = state.armed && state.armed.ref === ref && state.armed.pin === pin.pin;
-            return `<tr>
+            const role = baseType(pin.type || "");
+            return `<tr data-hay="${escapeHtml(
+              `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
+            )}">
               <th>${escapeHtml(pin.pin)}</th>
-              <td class="fn">${escapeHtml(pin.function || "")}</td>
+              <td class="fn"><span>${escapeHtml(pin.function || "")}</span>${
+                role ? html`<em class="role role-${role}">${role.replace(/_/g, " ")}</em>` : ""
+              }</td>
               <td>
                 <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
                   ${netNames
@@ -406,15 +452,30 @@ function renderPartInspector(panel, ref) {
     </table>
     ${state.armed && state.armed.ref === ref
       ? html`<p class="hint armed-hint">Pin ${state.armed.pin} is armed. Pick the pin to swap it with.</p>`
-      : `<p class="hint">⇆ swaps two pins in one move.</p>`}
+      : `<p class="hint">⇆ swaps two pins in one move. <kbd>R</kbd> rotates,
+         <kbd>Esc</kbd> deselects.</p>`}
     <p class="hint">A net change edits the net list only. The copper keeps its
       routing, and the board shows where the two now disagree.</p>
   `;
+
+  if (fp) $("ins-fp").appendChild(renderFootprint(fp));
 
   const value = $("ins-value");
   value.addEventListener("change", () => {
     if (value.value !== comp.value) record({ op: "set_value", args: { ref, value: value.value } });
   });
+  // Typed coordinates go through the same move the drag does, so one undo
+  // entry covers either way of having moved the part.
+  const nudge = () => {
+    const x = Number($("ins-x").value);
+    const y = Number($("ins-y").value);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (Math.abs(x - fp.x) < 1e-4 && Math.abs(y - fp.y) < 1e-4) return;
+    record({ op: "move_footprint", args: { ref, x, y } });
+  };
+  $("ins-x")?.addEventListener("change", nudge);
+  $("ins-y")?.addEventListener("change", nudge);
+
   for (const button of panel.querySelectorAll('[data-act="rot"]')) {
     button.addEventListener("click", () =>
       record({ op: "rotate_footprint", args: { ref, deg: Number(button.dataset.deg) } })
@@ -425,6 +486,21 @@ function renderPartInspector(panel, ref) {
       record({ op: "move_pin", args: { ref, pin: picker.dataset.pin, to_net: picker.value } })
     );
   }
+  // A forty-eight pin part is a wall of selects, and the pin somebody wants is
+  // never the one on screen. Filtering is local to the table and holds across a
+  // re-render, because every edit re-renders and losing the filter each time
+  // would make it useless for the case it exists for.
+  const filter = $("ins-filter");
+  const applyFilter = () => {
+    const needle = filter.value.trim().toLowerCase();
+    state.pinFilter = filter.value;
+    for (const row of panel.querySelectorAll(".pins tr")) {
+      row.hidden = Boolean(needle) && !row.dataset.hay.includes(needle);
+    }
+  };
+  filter.addEventListener("input", applyFilter);
+  applyFilter();
+
   // A swap takes two clicks: arm one pin, then pick the one to exchange it
   // with. Two move_pins would leave both on one net in between, which is not
   // what a crossed connector looks like.
@@ -445,6 +521,39 @@ function renderPartInspector(panel, ref) {
     });
   }
   renderDatasheetPanel(panel, ref);
+}
+
+/** Two decimals, which is the precision a board file is drawn to. */
+const mm2 = (n) => Number(n).toFixed(2);
+
+/**
+ * What a part is connected to, summarised.
+ *
+ * Every figure here is counted off this part's own pins. A rail it sits on, a
+ * ground it does or does not reach, how many pins are driving and how many are
+ * being driven, and how many go nowhere. None of it is a verdict: a part with
+ * no ground pin is normal for a two-pin passive and alarming for an MCU, and
+ * which one this is belongs to whoever is reading.
+ */
+function electrics(pins) {
+  const rails = new Set();
+  const grounds = new Set();
+  const roles = new Map();
+  let floating = 0;
+  for (const pin of pins) {
+    const net = pin.net || "";
+    if (isGround(net)) grounds.add(net.replace(/^\//, ""));
+    else if (isRail(net)) rails.add(net.replace(/^\//, ""));
+    if (/^unconnected-/.test(net)) floating += 1;
+    const role = baseType(pin.type || "");
+    if (role) roles.set(role, (roles.get(role) || 0) + 1);
+  }
+  return {
+    rails: [...rails].sort(),
+    grounds: [...grounds].sort(),
+    roles: [...roles].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
+    floating,
+  };
 }
 
 function renderPadInspector(panel, sel) {
@@ -1039,6 +1148,23 @@ function boot() {
     onBusy: (busy) => {
       $("stage").classList.toggle("loading", busy);
     },
+  });
+
+  // Keyboard, for the two things done often enough to be worth a key.
+  // Ignored while typing, or every value field would rotate the part.
+  document.addEventListener("keydown", (e) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+    if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Escape") {
+      if (document.querySelector(".modal-back")) return;
+      state.armed = null;
+      select(null);
+    } else if ((e.key === "r" || e.key === "R") && state.selection?.kind === "part") {
+      record({ op: "rotate_footprint", args: { ref: state.selection.ref, deg: 90 } });
+    } else {
+      return;
+    }
+    e.preventDefault();
   });
 
   $("undo").addEventListener("click", undoLast);

@@ -668,3 +668,180 @@ export function markDatasheets(svg, board, coverage) {
     layer.appendChild(group);
   }
 }
+
+/**
+ * One footprint, drawn on its own, at its own scale.
+ *
+ * The board view answers "where is this part". It cannot answer "what does this
+ * pad look like", because at board scale a 0402 is four pixels. This draws the
+ * part alone: the fabrication outline that says where the body sits, the
+ * silkscreen, and every pad at its real size and shape, numbered.
+ *
+ * Drawn unrotated. The footprint's placement angle belongs to the board, and a
+ * part inspected at 270 degrees should not be read upside down - the rotation is
+ * stated in the facts beside it instead.
+ */
+export function renderFootprint(fp, { width = 200, height = 150 } = {}) {
+  const box = footprintBounds(fp);
+  const w = box.x2 - box.x1;
+  const h = box.y2 - box.y1;
+  // Fit the box, rather than fixing the width: a six-pin header is three times
+  // taller than it is wide, and fixing the width made it 500 pixels of rail.
+  const scale = Math.min(width / w, height / h);
+  const svg = el("svg", {
+    class: "fp-svg",
+    viewBox: `${f(box.x1)} ${f(box.y1)} ${f(w)} ${f(h)}`,
+    width: Math.round(w * scale),
+    height: Math.round(h * scale),
+    role: "img",
+    "aria-label": `Footprint of ${fp.ref}: ${fp.pads.length} pads`,
+  });
+
+  // Fabrication and silkscreen first, so a pad is never hidden behind a line.
+  for (const g of fp.graphics || []) {
+    const fab = /Fab$/.test(g.layer || "");
+    const cls = fab ? "fp-fab" : "fp-silk";
+    if (g.kind === "line") {
+      svg.appendChild(el("line", { class: cls, x1: f(g.x1), y1: f(g.y1), x2: f(g.x2), y2: f(g.y2) }));
+    } else if (g.kind === "rect") {
+      svg.appendChild(
+        el("rect", {
+          class: cls, x: f(Math.min(g.x1, g.x2)), y: f(Math.min(g.y1, g.y2)),
+          width: f(Math.abs(g.x2 - g.x1)), height: f(Math.abs(g.y2 - g.y1)),
+        })
+      );
+    } else if (g.kind === "circle") {
+      svg.appendChild(el("circle", { class: cls, cx: f(g.x), cy: f(g.y), r: f(g.r) }));
+    } else if (g.kind === "poly" && (g.points || []).length > 1) {
+      svg.appendChild(
+        el("polyline", { class: cls, points: g.points.map((p) => `${f(p.x)},${f(p.y)}`).join(" ") })
+      );
+    }
+  }
+
+  for (const pad of fp.pads) {
+    const group = el("g", {
+      class: `fp-pad fp-${pad.kind}`,
+      transform: `translate(${f(pad.x)} ${f(pad.y)})${pad.rot ? ` rotate(${f(-pad.rot)})` : ""}`,
+    });
+    if (pad.shape === "circle") {
+      group.appendChild(el("circle", { class: "fp-copper", cx: 0, cy: 0, r: f(pad.w / 2) }));
+    } else {
+      group.appendChild(
+        el("rect", {
+          class: "fp-copper", x: f(-pad.w / 2), y: f(-pad.h / 2),
+          width: f(pad.w), height: f(pad.h),
+          rx: pad.shape === "roundrect" ? f(Math.min(pad.w, pad.h) * 0.25) : 0,
+        })
+      );
+    }
+    if (pad.drill > 0) {
+      group.appendChild(el("circle", { class: "fp-drill", cx: 0, cy: 0, r: f(pad.drill / 2) }));
+    }
+    svg.appendChild(group);
+    // The number goes on unrotated, or a pad turned 270 degrees carries a
+    // sideways label.
+    const label = el("text", {
+      class: "fp-num", x: f(pad.x), y: f(pad.y), "font-size": f(padFont(fp)),
+    });
+    label.textContent = pad.num;
+    svg.appendChild(label);
+  }
+  return svg;
+}
+
+/** Every pad and every graphic, plus a margin, so nothing touches the edge. */
+function footprintBounds(fp) {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  const grow = (x, y) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    x1 = Math.min(x1, x); y1 = Math.min(y1, y);
+    x2 = Math.max(x2, x); y2 = Math.max(y2, y);
+  };
+  for (const pad of fp.pads || []) {
+    const reach = Math.max(pad.w, pad.h) / 2;
+    grow(pad.x - reach, pad.y - reach);
+    grow(pad.x + reach, pad.y + reach);
+  }
+  for (const g of fp.graphics || []) {
+    if (g.kind === "line" || g.kind === "rect") {
+      grow(g.x1, g.y1); grow(g.x2, g.y2);
+    } else if (g.kind === "circle") {
+      grow(g.x - g.r, g.y - g.r); grow(g.x + g.r, g.y + g.r);
+    } else if (g.kind === "poly") {
+      for (const p of g.points || []) grow(p.x, p.y);
+    }
+  }
+  if (!Number.isFinite(x1)) return { x1: -1, y1: -1, x2: 1, y2: 1 };
+  const pad = Math.max(0.2, (x2 - x1 + y2 - y1) * 0.06);
+  return { x1: x1 - pad, y1: y1 - pad, x2: x2 + pad, y2: y2 + pad };
+}
+
+/** Pad numbers sized to the part, so a 0402 is not labelled in 3 mm type. */
+function padFont(fp) {
+  const smallest = Math.min(...(fp.pads || []).map((p) => Math.max(p.w, p.h)), 2);
+  return Math.max(0.22, Math.min(0.8, smallest * 0.55));
+}
+
+/**
+ * The physical facts of a package, measured rather than looked up.
+ *
+ * The body size is the fabrication outline's extent, which is what KiCad draws
+ * the part's real body as. There is no 3D model in the extracted board, so
+ * nothing here is a height or a rendering: it is the footprint's own geometry,
+ * which is the part of "what is this package" the board file actually knows.
+ */
+export function packageFacts(fp) {
+  const pads = fp.pads || [];
+  const fab = (fp.graphics || []).filter((g) => /Fab$/.test(g.layer || ""));
+  let body = null;
+  if (fab.length) {
+    const xs = [], ys = [];
+    for (const g of fab) {
+      if (g.kind === "circle") { xs.push(g.x - g.r, g.x + g.r); ys.push(g.y - g.r, g.y + g.r); }
+      else if (g.kind === "poly") { for (const p of g.points || []) { xs.push(p.x); ys.push(p.y); } }
+      else { xs.push(g.x1, g.x2); ys.push(g.y1, g.y2); }
+    }
+    // An arc contributes no endpoints here, so a shape list can come back
+    // holding undefined. Taking a max over that yields NaN and a body of
+    // "NaN x NaN mm", which reads as a measurement and is not one.
+    const wide = xs.filter(Number.isFinite);
+    const tall = ys.filter(Number.isFinite);
+    if (wide.length && tall.length) {
+      body = {
+        w: Math.max(...wide) - Math.min(...wide),
+        h: Math.max(...tall) - Math.min(...tall),
+      };
+    }
+  }
+  const kinds = new Set(pads.map((p) => p.kind));
+  const mount = kinds.has("smd")
+    ? kinds.size > 1 ? "SMD, with through-hole" : "SMD"
+    : kinds.has("thru_hole") ? "Through-hole" : "Mechanical";
+  return { body, mount, pads: pads.length, pitch: pitchOf(pads), drills: drillsOf(pads) };
+}
+
+/**
+ * The smallest gap between neighbouring pad centres, which is the pitch for
+ * anything laid out on a row. Null when there are fewer than two pads to
+ * measure between - a single-pad footprint has no pitch, and saying 0 would
+ * read as one.
+ */
+function pitchOf(pads) {
+  if (pads.length < 2) return null;
+  let best = Infinity;
+  for (let i = 0; i < pads.length; i += 1) {
+    for (let j = i + 1; j < pads.length; j += 1) {
+      const d = Math.hypot(pads[i].x - pads[j].x, pads[i].y - pads[j].y);
+      if (d > 0.01) best = Math.min(best, d);
+    }
+  }
+  return Number.isFinite(best) ? best : null;
+}
+
+/** The distinct drill sizes, which is what a fab house asks about first. */
+function drillsOf(pads) {
+  return [...new Set(pads.filter((p) => p.drill > 0).map((p) => Number(p.drill.toFixed(4))))].sort(
+    (a, b) => a - b
+  );
+}

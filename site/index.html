@@ -170,7 +170,8 @@ main { display: flex; flex: 1; min-height: 0; }
 /* The well behind it is dark in both themes, so this panel does not follow the
    page palette — it is furniture on the board, like the layer chips. */
 #review-overlay {
-  position: absolute; right: 12px; top: 12px; bottom: 12px; width: 340px;
+  position: absolute; right: 12px; top: 12px; bottom: 12px;
+  width: clamp(340px, 34vw, 560px);
   max-width: calc(100% - 24px); display: flex; flex-direction: column;
   background: rgba(10, 12, 16, .93); border: 1px solid var(--line);
   border-radius: 5px; overflow: hidden;
@@ -201,6 +202,8 @@ main { display: flex; flex: 1; min-height: 0; }
 .ro-score .warn { border-color: var(--warn); } .ro-score .warn b { color: var(--warn); }
 
 .ro-list { overflow-y: auto; flex: 1; }
+.ro-item .bullet { max-width: 68ch; }
+.ro-said, .ro-role { max-width: 72ch; }
 .ro-item {
   display: block; width: 100%; text-align: left; cursor: pointer; color: inherit;
   padding: 10px 14px; background: none; border: 0;
@@ -350,6 +353,56 @@ main { display: flex; flex: 1; min-height: 0; }
 }
 .stranded { fill: none; stroke: var(--crit); stroke-width: .16; opacity: .9; }
 .footprint { cursor: move; }
+
+/* ------------------------------------------------------- footprint detail ---
+   The board view answers "where is this part". At board scale a 0402 is four
+   pixels, so it cannot answer "what does this pad look like". This does. */
+.fp-view {
+  display: flex; align-items: center; justify-content: center;
+  margin: 10px 0 12px; padding: 10px; min-height: 84px;
+  background: var(--well); border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.fp-svg { max-width: 100%; height: auto; }
+.fp-fab { fill: none; stroke: #4a5560; stroke-width: .05; }
+.fp-silk { fill: none; stroke: var(--silk); stroke-width: .06; opacity: .55; }
+.fp-copper { fill: var(--pad); }
+.fp-np_thru_hole .fp-copper { fill: #55606a; }
+.fp-drill { fill: var(--hole); }
+.fp-num {
+  fill: #17202a; font-family: var(--mono); font-weight: 600;
+  text-anchor: middle; dominant-baseline: central; pointer-events: none;
+}
+.fp-np_thru_hole + .fp-num { fill: #aab4bd; }
+
+/* ------------------------------------------------------------- inspector --- */
+.facts dt { color: var(--ink-dim); }
+.eyebrow .count {
+  margin-left: 6px; padding: 0 5px; border-radius: 7px; font-size: 9px;
+  color: var(--ink-dim); background: var(--raised); border: 1px solid var(--line);
+}
+.field-pair { display: flex; gap: 8px; }
+.field-pair .field { flex: 1; min-width: 0; }
+.pin-filter {
+  width: 100%; margin: 0 0 6px; padding: 5px 8px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--ink); background: var(--raised);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.pins .fn { line-height: 1.3; }
+.pins .fn span { display: block; }
+.role {
+  display: block; font-style: normal; font-family: var(--mono);
+  font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.role-power_in, .role-power_out { color: var(--warn); }
+.role-output, .role-open_collector, .role-tri_state { color: var(--mint); }
+kbd {
+  font-family: var(--mono); font-size: 10px; padding: 0 4px;
+  border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 3px; background: var(--raised); color: var(--ink-mid);
+}
 
 /* ---------------------------------------------------------------- dialog ---
    Attaching a document means reading what came back out of it, and the rail is

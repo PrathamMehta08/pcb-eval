@@ -183,7 +183,8 @@ main { display: flex; flex: 1; min-height: 0; }
 /* The well behind it is dark in both themes, so this panel does not follow the
    page palette — it is furniture on the board, like the layer chips. */
 #review-overlay {
-  position: absolute; right: 12px; top: 12px; bottom: 12px; width: 340px;
+  position: absolute; right: 12px; top: 12px; bottom: 12px;
+  width: clamp(340px, 34vw, 560px);
   max-width: calc(100% - 24px); display: flex; flex-direction: column;
   background: rgba(10, 12, 16, .93); border: 1px solid var(--line);
   border-radius: 5px; overflow: hidden;
@@ -214,6 +215,8 @@ main { display: flex; flex: 1; min-height: 0; }
 .ro-score .warn { border-color: var(--warn); } .ro-score .warn b { color: var(--warn); }
 
 .ro-list { overflow-y: auto; flex: 1; }
+.ro-item .bullet { max-width: 68ch; }
+.ro-said, .ro-role { max-width: 72ch; }
 .ro-item {
   display: block; width: 100%; text-align: left; cursor: pointer; color: inherit;
   padding: 10px 14px; background: none; border: 0;
@@ -363,6 +366,56 @@ main { display: flex; flex: 1; min-height: 0; }
 }
 .stranded { fill: none; stroke: var(--crit); stroke-width: .16; opacity: .9; }
 .footprint { cursor: move; }
+
+/* ------------------------------------------------------- footprint detail ---
+   The board view answers "where is this part". At board scale a 0402 is four
+   pixels, so it cannot answer "what does this pad look like". This does. */
+.fp-view {
+  display: flex; align-items: center; justify-content: center;
+  margin: 10px 0 12px; padding: 10px; min-height: 84px;
+  background: var(--well); border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.fp-svg { max-width: 100%; height: auto; }
+.fp-fab { fill: none; stroke: #4a5560; stroke-width: .05; }
+.fp-silk { fill: none; stroke: var(--silk); stroke-width: .06; opacity: .55; }
+.fp-copper { fill: var(--pad); }
+.fp-np_thru_hole .fp-copper { fill: #55606a; }
+.fp-drill { fill: var(--hole); }
+.fp-num {
+  fill: #17202a; font-family: var(--mono); font-weight: 600;
+  text-anchor: middle; dominant-baseline: central; pointer-events: none;
+}
+.fp-np_thru_hole + .fp-num { fill: #aab4bd; }
+
+/* ------------------------------------------------------------- inspector --- */
+.facts dt { color: var(--ink-dim); }
+.eyebrow .count {
+  margin-left: 6px; padding: 0 5px; border-radius: 7px; font-size: 9px;
+  color: var(--ink-dim); background: var(--raised); border: 1px solid var(--line);
+}
+.field-pair { display: flex; gap: 8px; }
+.field-pair .field { flex: 1; min-width: 0; }
+.pin-filter {
+  width: 100%; margin: 0 0 6px; padding: 5px 8px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--ink); background: var(--raised);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.pins .fn { line-height: 1.3; }
+.pins .fn span { display: block; }
+.role {
+  display: block; font-style: normal; font-family: var(--mono);
+  font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.role-power_in, .role-power_out { color: var(--warn); }
+.role-output, .role-open_collector, .role-tri_state { color: var(--mint); }
+kbd {
+  font-family: var(--mono); font-size: 10px; padding: 0 4px;
+  border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 3px; background: var(--raised); color: var(--ink-mid);
+}
 
 /* ---------------------------------------------------------------- dialog ---
    Attaching a document means reading what came back out of it, and the rail is
@@ -4180,6 +4233,183 @@ function markDatasheets(svg, board, coverage) {
   }
 }
 
+/**
+ * One footprint, drawn on its own, at its own scale.
+ *
+ * The board view answers "where is this part". It cannot answer "what does this
+ * pad look like", because at board scale a 0402 is four pixels. This draws the
+ * part alone: the fabrication outline that says where the body sits, the
+ * silkscreen, and every pad at its real size and shape, numbered.
+ *
+ * Drawn unrotated. The footprint's placement angle belongs to the board, and a
+ * part inspected at 270 degrees should not be read upside down - the rotation is
+ * stated in the facts beside it instead.
+ */
+function renderFootprint(fp, { width = 200, height = 150 } = {}) {
+  const box = footprintBounds(fp);
+  const w = box.x2 - box.x1;
+  const h = box.y2 - box.y1;
+  // Fit the box, rather than fixing the width: a six-pin header is three times
+  // taller than it is wide, and fixing the width made it 500 pixels of rail.
+  const scale = Math.min(width / w, height / h);
+  const svg = el("svg", {
+    class: "fp-svg",
+    viewBox: `${f(box.x1)} ${f(box.y1)} ${f(w)} ${f(h)}`,
+    width: Math.round(w * scale),
+    height: Math.round(h * scale),
+    role: "img",
+    "aria-label": `Footprint of ${fp.ref}: ${fp.pads.length} pads`,
+  });
+
+  // Fabrication and silkscreen first, so a pad is never hidden behind a line.
+  for (const g of fp.graphics || []) {
+    const fab = /Fab$/.test(g.layer || "");
+    const cls = fab ? "fp-fab" : "fp-silk";
+    if (g.kind === "line") {
+      svg.appendChild(el("line", { class: cls, x1: f(g.x1), y1: f(g.y1), x2: f(g.x2), y2: f(g.y2) }));
+    } else if (g.kind === "rect") {
+      svg.appendChild(
+        el("rect", {
+          class: cls, x: f(Math.min(g.x1, g.x2)), y: f(Math.min(g.y1, g.y2)),
+          width: f(Math.abs(g.x2 - g.x1)), height: f(Math.abs(g.y2 - g.y1)),
+        })
+      );
+    } else if (g.kind === "circle") {
+      svg.appendChild(el("circle", { class: cls, cx: f(g.x), cy: f(g.y), r: f(g.r) }));
+    } else if (g.kind === "poly" && (g.points || []).length > 1) {
+      svg.appendChild(
+        el("polyline", { class: cls, points: g.points.map((p) => `${f(p.x)},${f(p.y)}`).join(" ") })
+      );
+    }
+  }
+
+  for (const pad of fp.pads) {
+    const group = el("g", {
+      class: `fp-pad fp-${pad.kind}`,
+      transform: `translate(${f(pad.x)} ${f(pad.y)})${pad.rot ? ` rotate(${f(-pad.rot)})` : ""}`,
+    });
+    if (pad.shape === "circle") {
+      group.appendChild(el("circle", { class: "fp-copper", cx: 0, cy: 0, r: f(pad.w / 2) }));
+    } else {
+      group.appendChild(
+        el("rect", {
+          class: "fp-copper", x: f(-pad.w / 2), y: f(-pad.h / 2),
+          width: f(pad.w), height: f(pad.h),
+          rx: pad.shape === "roundrect" ? f(Math.min(pad.w, pad.h) * 0.25) : 0,
+        })
+      );
+    }
+    if (pad.drill > 0) {
+      group.appendChild(el("circle", { class: "fp-drill", cx: 0, cy: 0, r: f(pad.drill / 2) }));
+    }
+    svg.appendChild(group);
+    // The number goes on unrotated, or a pad turned 270 degrees carries a
+    // sideways label.
+    const label = el("text", {
+      class: "fp-num", x: f(pad.x), y: f(pad.y), "font-size": f(padFont(fp)),
+    });
+    label.textContent = pad.num;
+    svg.appendChild(label);
+  }
+  return svg;
+}
+
+/** Every pad and every graphic, plus a margin, so nothing touches the edge. */
+function footprintBounds(fp) {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  const grow = (x, y) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    x1 = Math.min(x1, x); y1 = Math.min(y1, y);
+    x2 = Math.max(x2, x); y2 = Math.max(y2, y);
+  };
+  for (const pad of fp.pads || []) {
+    const reach = Math.max(pad.w, pad.h) / 2;
+    grow(pad.x - reach, pad.y - reach);
+    grow(pad.x + reach, pad.y + reach);
+  }
+  for (const g of fp.graphics || []) {
+    if (g.kind === "line" || g.kind === "rect") {
+      grow(g.x1, g.y1); grow(g.x2, g.y2);
+    } else if (g.kind === "circle") {
+      grow(g.x - g.r, g.y - g.r); grow(g.x + g.r, g.y + g.r);
+    } else if (g.kind === "poly") {
+      for (const p of g.points || []) grow(p.x, p.y);
+    }
+  }
+  if (!Number.isFinite(x1)) return { x1: -1, y1: -1, x2: 1, y2: 1 };
+  const pad = Math.max(0.2, (x2 - x1 + y2 - y1) * 0.06);
+  return { x1: x1 - pad, y1: y1 - pad, x2: x2 + pad, y2: y2 + pad };
+}
+
+/** Pad numbers sized to the part, so a 0402 is not labelled in 3 mm type. */
+function padFont(fp) {
+  const smallest = Math.min(...(fp.pads || []).map((p) => Math.max(p.w, p.h)), 2);
+  return Math.max(0.22, Math.min(0.8, smallest * 0.55));
+}
+
+/**
+ * The physical facts of a package, measured rather than looked up.
+ *
+ * The body size is the fabrication outline's extent, which is what KiCad draws
+ * the part's real body as. There is no 3D model in the extracted board, so
+ * nothing here is a height or a rendering: it is the footprint's own geometry,
+ * which is the part of "what is this package" the board file actually knows.
+ */
+function packageFacts(fp) {
+  const pads = fp.pads || [];
+  const fab = (fp.graphics || []).filter((g) => /Fab$/.test(g.layer || ""));
+  let body = null;
+  if (fab.length) {
+    const xs = [], ys = [];
+    for (const g of fab) {
+      if (g.kind === "circle") { xs.push(g.x - g.r, g.x + g.r); ys.push(g.y - g.r, g.y + g.r); }
+      else if (g.kind === "poly") { for (const p of g.points || []) { xs.push(p.x); ys.push(p.y); } }
+      else { xs.push(g.x1, g.x2); ys.push(g.y1, g.y2); }
+    }
+    // An arc contributes no endpoints here, so a shape list can come back
+    // holding undefined. Taking a max over that yields NaN and a body of
+    // "NaN x NaN mm", which reads as a measurement and is not one.
+    const wide = xs.filter(Number.isFinite);
+    const tall = ys.filter(Number.isFinite);
+    if (wide.length && tall.length) {
+      body = {
+        w: Math.max(...wide) - Math.min(...wide),
+        h: Math.max(...tall) - Math.min(...tall),
+      };
+    }
+  }
+  const kinds = new Set(pads.map((p) => p.kind));
+  const mount = kinds.has("smd")
+    ? kinds.size > 1 ? "SMD, with through-hole" : "SMD"
+    : kinds.has("thru_hole") ? "Through-hole" : "Mechanical";
+  return { body, mount, pads: pads.length, pitch: pitchOf(pads), drills: drillsOf(pads) };
+}
+
+/**
+ * The smallest gap between neighbouring pad centres, which is the pitch for
+ * anything laid out on a row. Null when there are fewer than two pads to
+ * measure between - a single-pad footprint has no pitch, and saying 0 would
+ * read as one.
+ */
+function pitchOf(pads) {
+  if (pads.length < 2) return null;
+  let best = Infinity;
+  for (let i = 0; i < pads.length; i += 1) {
+    for (let j = i + 1; j < pads.length; j += 1) {
+      const d = Math.hypot(pads[i].x - pads[j].x, pads[i].y - pads[j].y);
+      if (d > 0.01) best = Math.min(best, d);
+    }
+  }
+  return Number.isFinite(best) ? best : null;
+}
+
+/** The distinct drill sizes, which is what a fab house asks about first. */
+function drillsOf(pads) {
+  return [...new Set(pads.filter((p) => p.drill > 0).map((p) => Number(p.drill.toFixed(4))))].sort(
+    (a, b) => a - b
+  );
+}
+
 // ===== site/graph.js ==================================================
 
 // The review graph, in the browser. The mirror of graph/build.py.
@@ -5018,6 +5248,7 @@ async function review(sample, board, { onStep, signal } = {}) {
 
 
 
+
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -5331,6 +5562,8 @@ function renderPartInspector(panel, ref) {
   }
   const pins = pinsOf(ref);
   const netNames = [...new Set(state.board.nets.map((n) => n.name))].sort();
+  const pk = fp ? packageFacts(fp) : null;
+  const elec = electrics(pins);
 
   panel.innerHTML = `
     <div class="ins-head">
@@ -5338,32 +5571,73 @@ function renderPartInspector(panel, ref) {
       <span class="val">${escapeHtml(comp.value)}</span>
     </div>
     ${comp.description ? html`<p class="desc">${comp.description}</p>` : ""}
+
+    <div class="fp-view" id="ins-fp"></div>
+
     <dl class="facts">
       <dt>Package</dt><dd>${escapeHtml((comp.footprint || "").split(":").pop())}</dd>
-      ${fp ? html`<dt>Placed</dt><dd>${fp.x.toFixed(2)}, ${fp.y.toFixed(2)} mm · ${Number(fp.rot)}° · ${fp.layer}.Cu</dd>` : ""}
+      ${
+        pk
+          ? html`<dt>Body</dt><dd>${
+              pk.body ? `${mm2(pk.body.w)} × ${mm2(pk.body.h)} mm` : "not drawn on this footprint"
+            }</dd>
+            <dt>Pads</dt><dd>${pk.pads} ${pk.mount}${
+              pk.pitch ? `, ${mm2(pk.pitch)} mm pitch` : ""
+            }</dd>
+            ${pk.drills.length ? `<dt>Drills</dt><dd>${pk.drills.map(mm2).join(", ")} mm</dd>` : ""}`
+          : ""
+      }
+      ${fp ? html`<dt>Placed</dt><dd>${mm2(fp.x)}, ${mm2(fp.y)} mm · ${Number(fp.rot)}° · ${fp.layer}.Cu</dd>` : ""}
       ${fp && fp.silk !== ref ? html`<dt>Silkscreen</dt><dd>${fp.silk}</dd>` : ""}
+      ${elec.rails.length ? html`<dt>Rails</dt><dd>${elec.rails.join(", ")}</dd>` : ""}
+      <dt>Grounded</dt><dd>${elec.grounds.length ? escapeHtml(elec.grounds.join(", ")) : "no ground pin"}</dd>
+      ${
+        elec.roles.length
+          ? `<dt>Pin roles</dt><dd>${elec.roles
+              .map(([kind, n]) => html`${n}× ${kind.replace(/_/g, " ")}`)
+              .join(", ")}</dd>`
+          : ""
+      }
+      ${elec.floating ? html`<dt>Unconnected</dt><dd>${elec.floating} of ${pins.length} pins</dd>` : ""}
     </dl>
 
+    <h4 class="eyebrow">Edit</h4>
     <label class="field">
       <span>Value</span>
       <input id="ins-value" type="text" value="${escapeHtml(comp.value)}" spellcheck="false">
     </label>
+    ${
+      fp
+        ? `<div class="field-pair">
+            <label class="field"><span>X mm</span>
+              <input id="ins-x" type="number" step="0.1" value="${mm2(fp.x)}"></label>
+            <label class="field"><span>Y mm</span>
+              <input id="ins-y" type="number" step="0.1" value="${mm2(fp.y)}"></label>
+          </div>
+          <div class="row">
+            <button class="btn" data-act="rot" data-deg="90">Rotate 90°</button>
+            <button class="btn" data-act="rot" data-deg="180">180°</button>
+            <button class="btn" data-act="rot" data-deg="270">270°</button>
+          </div>`
+        : ""
+    }
 
-    ${fp ? `<div class="row">
-      <button class="btn" data-act="rot" data-deg="90">Rotate 90°</button>
-      <button class="btn" data-act="rot" data-deg="180">180°</button>
-      <button class="btn" data-act="rot" data-deg="270">270°</button>
-    </div>` : ""}
-
-    <h4 class="eyebrow">Pins</h4>
+    <h4 class="eyebrow">Pins <span class="count">${pins.length}</span></h4>
+    <input class="pin-filter" id="ins-filter" type="search" placeholder="Filter pins or nets"
+           spellcheck="false" value="${escapeHtml(state.pinFilter || "")}">
     <table class="pins">
       <tbody>
         ${pins
           .map((pin) => {
             const armed = state.armed && state.armed.ref === ref && state.armed.pin === pin.pin;
-            return `<tr>
+            const role = baseType(pin.type || "");
+            return `<tr data-hay="${escapeHtml(
+              `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
+            )}">
               <th>${escapeHtml(pin.pin)}</th>
-              <td class="fn">${escapeHtml(pin.function || "")}</td>
+              <td class="fn"><span>${escapeHtml(pin.function || "")}</span>${
+                role ? html`<em class="role role-${role}">${role.replace(/_/g, " ")}</em>` : ""
+              }</td>
               <td>
                 <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
                   ${netNames
@@ -5383,15 +5657,30 @@ function renderPartInspector(panel, ref) {
     </table>
     ${state.armed && state.armed.ref === ref
       ? html`<p class="hint armed-hint">Pin ${state.armed.pin} is armed. Pick the pin to swap it with.</p>`
-      : `<p class="hint">⇆ swaps two pins in one move.</p>`}
+      : `<p class="hint">⇆ swaps two pins in one move. <kbd>R</kbd> rotates,
+         <kbd>Esc</kbd> deselects.</p>`}
     <p class="hint">A net change edits the net list only. The copper keeps its
       routing, and the board shows where the two now disagree.</p>
   `;
+
+  if (fp) $("ins-fp").appendChild(renderFootprint(fp));
 
   const value = $("ins-value");
   value.addEventListener("change", () => {
     if (value.value !== comp.value) record({ op: "set_value", args: { ref, value: value.value } });
   });
+  // Typed coordinates go through the same move the drag does, so one undo
+  // entry covers either way of having moved the part.
+  const nudge = () => {
+    const x = Number($("ins-x").value);
+    const y = Number($("ins-y").value);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (Math.abs(x - fp.x) < 1e-4 && Math.abs(y - fp.y) < 1e-4) return;
+    record({ op: "move_footprint", args: { ref, x, y } });
+  };
+  $("ins-x")?.addEventListener("change", nudge);
+  $("ins-y")?.addEventListener("change", nudge);
+
   for (const button of panel.querySelectorAll('[data-act="rot"]')) {
     button.addEventListener("click", () =>
       record({ op: "rotate_footprint", args: { ref, deg: Number(button.dataset.deg) } })
@@ -5402,6 +5691,21 @@ function renderPartInspector(panel, ref) {
       record({ op: "move_pin", args: { ref, pin: picker.dataset.pin, to_net: picker.value } })
     );
   }
+  // A forty-eight pin part is a wall of selects, and the pin somebody wants is
+  // never the one on screen. Filtering is local to the table and holds across a
+  // re-render, because every edit re-renders and losing the filter each time
+  // would make it useless for the case it exists for.
+  const filter = $("ins-filter");
+  const applyFilter = () => {
+    const needle = filter.value.trim().toLowerCase();
+    state.pinFilter = filter.value;
+    for (const row of panel.querySelectorAll(".pins tr")) {
+      row.hidden = Boolean(needle) && !row.dataset.hay.includes(needle);
+    }
+  };
+  filter.addEventListener("input", applyFilter);
+  applyFilter();
+
   // A swap takes two clicks: arm one pin, then pick the one to exchange it
   // with. Two move_pins would leave both on one net in between, which is not
   // what a crossed connector looks like.
@@ -5422,6 +5726,39 @@ function renderPartInspector(panel, ref) {
     });
   }
   renderDatasheetPanel(panel, ref);
+}
+
+/** Two decimals, which is the precision a board file is drawn to. */
+const mm2 = (n) => Number(n).toFixed(2);
+
+/**
+ * What a part is connected to, summarised.
+ *
+ * Every figure here is counted off this part's own pins. A rail it sits on, a
+ * ground it does or does not reach, how many pins are driving and how many are
+ * being driven, and how many go nowhere. None of it is a verdict: a part with
+ * no ground pin is normal for a two-pin passive and alarming for an MCU, and
+ * which one this is belongs to whoever is reading.
+ */
+function electrics(pins) {
+  const rails = new Set();
+  const grounds = new Set();
+  const roles = new Map();
+  let floating = 0;
+  for (const pin of pins) {
+    const net = pin.net || "";
+    if (isGround(net)) grounds.add(net.replace(/^\//, ""));
+    else if (isRail(net)) rails.add(net.replace(/^\//, ""));
+    if (/^unconnected-/.test(net)) floating += 1;
+    const role = baseType(pin.type || "");
+    if (role) roles.set(role, (roles.get(role) || 0) + 1);
+  }
+  return {
+    rails: [...rails].sort(),
+    grounds: [...grounds].sort(),
+    roles: [...roles].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
+    floating,
+  };
 }
 
 function renderPadInspector(panel, sel) {
@@ -6016,6 +6353,23 @@ function boot() {
     onBusy: (busy) => {
       $("stage").classList.toggle("loading", busy);
     },
+  });
+
+  // Keyboard, for the two things done often enough to be worth a key.
+  // Ignored while typing, or every value field would rotate the part.
+  document.addEventListener("keydown", (e) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+    if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Escape") {
+      if (document.querySelector(".modal-back")) return;
+      state.armed = null;
+      select(null);
+    } else if ((e.key === "r" || e.key === "R") && state.selection?.kind === "part") {
+      record({ op: "rotate_footprint", args: { ref: state.selection.ref, deg: 90 } });
+    } else {
+      return;
+    }
+    e.preventDefault();
   });
 
   $("undo").addEventListener("click", undoLast);
