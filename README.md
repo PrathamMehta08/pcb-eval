@@ -55,50 +55,133 @@ times, because a single run of this cannot be told apart from noise.
 
 `openai/gpt-oss-120b` - 5 trials - 300 calls - prompts `29d9b80529de` -
 schema `96e5a7694704` - corpus `56602c9aa9ca` - pipeline
-`d7d5464cc261` - full record in
+`4c9f32168aaa` - full record in
 [`results/latest.json`](results/latest.json)
 
-Three detectors. **one prompt** is a single call with the whole board. **V7** is
-that same call, byte for byte, with a deterministic layer before it and a
-deterministic gate after. **V8** is V7 plus one more call that asks the reviewer
-what its own first pass missed. Neither has an LLM critic - see below.
+Three detectors on one corpus: two boards, one clean case each and thirteen
+seeded defects, five trials. Every seeded board carries exactly one planted
+defect, so a trial is 13 chances to catch something and 2 chances to invent
+something.
+
+## The three architectures
+
+Boxes a model sees are marked `LLM`. Everything else is arithmetic.
+
+```text
+ONE PROMPT                V7                          V8
+
+                          analyse                     analyse
+                          measure the board,          measure the board,
+                          run the rules               run the rules
+                             |                           |
+  distil the board        distil the board            distil the board
+     |                       |                           |
+  +--------+              +--------+                  +--------+
+  | review |  LLM         | review |  LLM             | review |  LLM
+  +--------+              +--------+                  +--------+
+     |                       |                           |
+     |                       |                        +-------------+
+     |                       |                        | second look |  LLM
+     |                       |                        +-------------+
+     |                       |                           |
+     |                    validate                    validate
+     |                    subject exists?             subject exists?
+     |                    board refutes it?           board refutes it?
+     |                    duplicate?                  duplicate?
+     |                       |                           |
+     |                    aggregate                   aggregate
+     |                    merge with the rules,       merge with the rules,
+     |                    rank, score                 rank, score
+     |                       |                           |
+  findings                findings                    findings
+
+1 call/board            1 call/board                2 calls/board
+```
+
+**One prompt** is the baseline: the whole distilled board, one call, whatever it
+says is the answer. No rules, no checking.
+
+**V7** wraps that same call in deterministic work. Before it, `analyse` runs the
+rule checks. After it, `validate` throws out any finding whose part or net is
+not on the board, that repeats another finding, or that the board's own copper
+contradicts. Then `aggregate` merges what the reviewer said with what the rules
+measured. The reviewer is handed the baseline's prompt through the baseline's
+own builder - not similar, identical - so any difference is the wrapping and not
+a better-written question. Same one call per board.
+
+**V8** adds one call. After the first pass it shows the reviewer its own list of
+findings and asks what that list is missing. It sees the board and its own
+answer; never the rule findings, never the defects.
+
+Neither has an LLM critic. There was one, and it was measured and deleted - see
+below.
+
+## What they scored
 
 | per trial, median (min-max) | one prompt | V7 | V8 |
 |---|---|---|---|
-| defects matched, of 13 | 7 (4-9) | 9 (8-11) | **12 (8-12)** |
-| findings on the clean board | **4 (3-5)** | 5 (3-6) | 8 (6-9) |
-| unmatched findings on the seeded boards | **26 (22-36)** | 30 (17-46) | 52 (44-75) |
-| **findings the copper refutes - reported** | 6 total | **0** | **0** |
-| model calls per board | 1 | 1 | 2 |
-
-Over five trials, recall on the seeded defects:
+| defects caught, of 13 | 7 (4-9) | 9 (8-11) | **12 (8-12)** |
+| findings on the clean boards | **4 (3-5)** | 5 (3-6) | 8 (6-9) |
+| unmatched findings on seeded boards | **26 (22-36)** | 30 (17-46) | 52 (44-75) |
 
 | over 5 trials | one prompt | V7 | V8 |
 |---|---|---|---|
-| **rule-silent, of 45** | 24 | 27 | **35** |
-| all defects, of 65 | 33 | 47 | **55** |
-| board-refuted claims proposed | 6 | 3 | 13 |
-| board-refuted claims reported | 6 | **0** | **0** |
+| **rule-silent recall** | 24 of 45 - 53% | 27 of 45 - 60% | **35 of 45 - 78%** |
+| all defects | 33 of 65 - 51% | 47 of 65 - 72% | **55 of 65 - 85%** |
+| **findings the copper refutes - reported** | 6 | **0** | **0** |
+| model calls per board | 1 | 1 | 2 |
+| **cost per full pass** (15 boards) | $0.024 | $0.024 | $0.058 |
+| cost per board | $0.0016 | $0.0016 | $0.0039 |
 
-**Rule-silent is the headline, and it is the smaller number on purpose.** Four
-of the thirteen seeded defects are also caught by a deterministic rule, and
+At these prices a hundred-board run costs sixteen cents with V7 and thirty-nine
+with V8. The model is `openai/gpt-oss-120b` at $0.15 per million tokens in and
+$0.60 out; a different model moves every figure in that row and none above it.
+
+## What "rule-silent" means, and why it is the headline
+
+Four of the thirteen seeded defects are also caught by a deterministic rule, and
 three of those are a rule and a generator written from the same condition -
-`supply-on-signal` against `power-pin-on-signal-net`, `value-unorderable`
-against `value-not-orderable`. Any system carrying those rules catches those
-defects, so recall over all thirteen partly measures that coincidence rather
-than the reviewer. The rule-silent column is the nine no rule fires on, and V8
-wins there too: **35 of 45 against 24**.
+`supply-on-signal` against the `power-pin-on-signal-net` rule,
+`value-unorderable` against `value-not-orderable`. The defect is planted by the
+same logic that detects it.
 
-The other column that matters is the last one. The single prompt reported six
-findings the board's own copper contradicts. V7 and V8 proposed sixteen between
-them and reported none, because the deterministic gate refuses a finding whose
-subject is not on the board, whose evidence is not in what the model was shown,
-or that the board itself disproves. That gate is not the grader - the grader is
-a separate frozen function - so this is not the ruler being moved.
+Any system carrying those rules catches those defects without a model being
+involved at all. So recall over all thirteen is partly a measurement of that
+coincidence rather than of the reviewer.
 
-What V8 costs is noise: eight findings on a clean board against four. It finds
-half again as many real defects and roughly doubles what it says about a board
-that is fine.
+**Rule-silent recall is over the nine defects no rule fires on.** It is the
+smaller, less flattering number, and it is the one that distinguishes one
+reviewer from another. V8 wins there - 78% against 53% - so the gain is the
+architecture and not the rules.
+
+Both are reported because both are true: rule-silent measures the reviewer, and
+all-defects measures what the system actually delivers to someone reviewing a
+board.
+
+## What "÷ single" means
+
+Corpora differ in difficulty, and this project has changed corpus twice. An
+absolute recall from one cannot be compared with an absolute recall from
+another - the current corpus has thirteen defects across two boards where the
+old one had seven on one, and the baseline drops from 69% to 51% between them
+without anything about the baseline changing.
+
+So an architecture is quoted as a ratio: **its recall divided by the recall of a
+single flat prompt on the same corpus, in the same trials.** The baseline
+absorbs the difficulty difference, and 1.42 means "caught 42% more than one
+prompt did, measured beside it".
+
+| measured on | architecture | ÷ single |
+|---|---|---|
+| old corpus, prompts that named the defects | 3 reviewers | 1.14 |
+| old corpus, board-agnostic prompts | 3 reviewers | **0.88** |
+| this corpus | V7 | 1.42 |
+| this corpus | V8 | **1.67** |
+
+The 1.14 is the number this repository exists to disown: the specialist graph
+beat one prompt only while the prompts spelled out the conventions the seeded
+defects broke. Take that out and the same architecture loses - 0.88 - which is
+the finding the next section is about.
 
 ### The LLM critic was measured three ways and deleted
 
