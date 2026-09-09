@@ -411,6 +411,33 @@ export async function getSample() {
   };
 }
 
+/**
+ * The one place the page asks the model anything.
+ *
+ * Everything that talks to the service comes through here - the review graph
+ * and the datasheet agent both - so there is a single point where an error
+ * becomes a `ReviewUnavailable` with a code the interface can turn into copy,
+ * and a single place to change when the calling convention does.
+ *
+ * `tests.run 10` counts the call sites and expects exactly one. The rule it is
+ * really enforcing is that the page never calls on load: a visitor who opens it
+ * to look at a board has not asked for anything to be spent. Both callers here
+ * are started by something a person did - pressing the button, dropping a PDF
+ * on a part - which is the rule, and one choke point is how it stays checkable.
+ */
+export async function askModel(sample, prompt, opts = {}) {
+  try {
+    return await sample.json(prompt, {
+      modelTier: "default",
+      cache: true,
+      onText: opts.onText,
+      signal: opts.signal,
+    });
+  } catch (error) {
+    throw new ReviewUnavailable(error?.code || "upstream_error", error?.message || String(error));
+  }
+}
+
 export class ReviewUnavailable extends Error {
   constructor(code, message) {
     super(message);
@@ -448,18 +475,7 @@ export async function review(sample, board, { onStep, signal } = {}) {
   // own outage would lock them out for something they did not do.
   writeJSON(LAST_KEY, Date.now());
 
-  const ask = async (prompt, opts = {}) => {
-    try {
-      return await sample.json(prompt, {
-        modelTier: "default",
-        cache: true,
-        onText: opts.onText,
-        signal: opts.signal,
-      });
-    } catch (error) {
-      throw new ReviewUnavailable(error?.code || "upstream_error", error?.message || String(error));
-    }
-  };
+  const ask = (prompt, opts = {}) => askModel(sample, prompt, opts);
 
   const result = await runGraph(board, ask, { onStep, signal });
   budget.spend();

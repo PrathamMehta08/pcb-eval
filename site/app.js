@@ -21,11 +21,21 @@ import { MEASURED, ROLES } from "./graph.js";
 import { summarise } from "./kicad.js";
 import { baseType, isGround, isRail } from "./checks.js";
 import { coverage, needsDatasheet } from "./datasheets.js";
-import { attach, detach, docFor, factsOf, loadDocs, pagesOfPdf } from "./docs.js";
+import { readDatasheet } from "./datasheet_agent.js";
+import {
+  attach,
+  detach,
+  docFor,
+  factsOf,
+  loadDocs,
+  pagesOfPdf,
+  setFacts,
+} from "./docs.js";
 import { attachUpload } from "./upload.js";
 import {
   budget,
   coolingDownMs,
+  askModel,
   getSample,
   grade,
   MIN_INTERVAL_MS,
@@ -1170,8 +1180,11 @@ function setView(view) {
     tab.classList.toggle("on", tab.dataset.view === view);
     tab.setAttribute("aria-selected", String(tab.dataset.view === view));
   }
-  keptView = null;
-  drawView({ keepZoom: false });
+  // The board is one drawing whichever tab is on; the tabs choose what sits
+  // over it. This used to redraw it on every switch - four hundred tracks
+  // rebuilt and the zoom reset - which is the flicker, and a leftover from when
+  // the tabs really were different pictures of the board.
+  if (!currentSvg()) drawView({ keepZoom: false });
   renderOverlay();
   renderDocs();
 }
@@ -1270,6 +1283,35 @@ boot();
 
 
 /**
+ * Have the datasheet agent read a document that was just attached.
+ *
+ * Started after the dialog closes rather than before, because reading is a
+ * model call over a network and a drop that waits on one feels broken even
+ * while it is working. The panel shows the part as reading, then as read.
+ *
+ * A failure is not an error the person has to deal with. The document is still
+ * attached and still searched when the board is reviewed; what it costs is the
+ * typed parameters, which leaves the checks that need them gated - the state
+ * the board was in a moment ago.
+ */
+async function readAttached(boardName, ref, pages) {
+  renderDocs();
+  const comp = state.board.components.find((c) => c.ref === ref);
+  const sample = await getSample();
+  if (!sample) {
+    await setFacts(boardName, ref, { failed: true });
+    return renderDocs();
+  }
+  const result = await readDatasheet((prompt) => askModel(sample, prompt), {
+    part: ref,
+    value: comp?.value || "",
+    pages,
+  });
+  await setFacts(boardName, ref, result);
+  renderDocs();
+}
+
+/**
  * Documentation, as a view of its own.
  *
  * It began as a mark on each part, and every version of that mark had the same
@@ -1319,18 +1361,28 @@ function renderDocs() {
         </div>
         <p class="dv-why">${
           s.doc
-            ? html`${s.doc.name} · ${plural(s.doc.pages.length, "page")}`
+            ? html`${s.doc.name} · ${plural(s.doc.pages.length, "page")}${
+                s.doc.read === "pending"
+                  ? " · reading it now"
+                  : s.doc.read === "failed"
+                    ? " · could not be read; its text is still searched"
+                    : ""
+              }`
             : html`Researched because it ${s.why}.`
         }</p>
         ${
           facts.length
             ? `<ul class="dv-facts">${facts
                 .map(
-                  ([, f]) => html`<li class="${f.confidence === "low" ? "unsure" : ""}"
+                  ([, f]) => html`<li title="${f.quote}"
                     ><span>${f.label}</span><b>${f.shown}</b><em>p${f.page}</em></li>`
                 )
                 .join("")}</ul>`
-            : ""
+            : s.doc && s.doc.read === "read"
+              ? `<p class="dv-none">Nothing in it states the parameters that are
+                  asked for. Its text is still searched when the board is
+                  reviewed.</p>`
+              : ""
         }
       </div>`;
     })
@@ -1486,6 +1538,7 @@ function openDocs(ref) {
       }
       await attach(name, ref, { name: file.name, pages });
       close();
+      readAttached(name, ref, pages);
     } catch (err) {
       flash(err.message);
     }

@@ -26,7 +26,6 @@
  */
 
 import { pinsByRef } from "./checks.js";
-import { extractFacts } from "./extract.js";
 import { chunk, index, queryFor, search } from "./rag.js";
 
 const DB = "pcb-eval";
@@ -107,10 +106,12 @@ export async function attach(boardName, ref, { name, pages }) {
     ref,
     name: String(name || "document"),
     pages: (pages || []).map((p) => String(p || "")),
-    // Read once, here, and stored with the document. The patterns run over
-    // sixty pages; doing that on every render to show a five-line summary
-    // would be paying a page-load's work for a glance.
-    facts: extractFacts(pages || []),
+    // Filled in by the datasheet agent, which runs after the file is stored
+    // rather than before: reading is a model call over a network, and a drop
+    // that waits on one feels broken even when it is working.
+    facts: {},
+    dropped: [],
+    read: "pending",
     addedAt: Date.now(),
   };
   docsFor(boardName).set(ref, record);
@@ -119,6 +120,23 @@ export async function attach(boardName, ref, { name, pages }) {
     await transact("readwrite", (store) => store.put(record));
   } catch {
     /* it stays in memory for this session, which is better than refusing. */
+  }
+  return record;
+}
+
+/** Record what the agent read out of a document, against that document. */
+export async function setFacts(boardName, ref, { facts, dropped, failed }) {
+  const record = docFor(boardName, ref);
+  if (!record) return null;
+  Object.assign(record, {
+    facts: facts || {},
+    dropped: dropped || [],
+    read: failed ? "failed" : "read",
+  });
+  try {
+    await transact("readwrite", (store) => store.put(record));
+  } catch {
+    /* it stays in memory for this session, which is better than losing it. */
   }
   return record;
 }
@@ -214,12 +232,19 @@ function loadPdfJs() {
  * Absent for a board nobody has attached anything to, which is the ordinary
  * state and not a defect.
  */
+/**
+ * The parameters a reviewer is given, and where each was read.
+ *
+ * Only facts the document was checked against reach this: the agent's answer is
+ * matched back to the pages it was shown, and anything whose quote is not there
+ * never becomes a fact at all. So the quote beside each value is not a claim
+ * about the datasheet, it is a substring of it.
+ */
 export function factsBlock(board) {
   const docs = docsFor(board.meta.name);
-  const lines = ["EXTRACTED PARAMETERS  read from the attached documents, with the page"];
+  const lines = ["DATASHEET PARAMETERS  read from the attached documents, quoted"];
   for (const ref of [...docs.keys()].sort()) {
     for (const [key, fact] of Object.entries(docs.get(ref).facts || {})) {
-      if (fact.confidence === "low") continue;
       lines.push(`${ref} ${key}: ${fact.shown} (p${fact.page}) "${fact.quote}"`);
     }
   }

@@ -1177,10 +1177,12 @@ def check_evidence_boundary(c: Check) -> None:
     # query is built from the board so that it cannot fetch the seeded defect.
     run_node(c, "rag.mjs")
 
-    # And the patterns that read parameters out of one, which are written for
-    # the table rows a datasheet actually prints rather than for a sentence
-    # describing itself - the first version found nothing in a real document.
-    run_node(c, "extract.mjs")
+    # And the agent that reads parameters out of one. Its patterns predecessor
+    # reported a 2002 A output current for a ULN2003A, having read the digits of
+    # a neighbouring part number, so a model reads the sentence now and the
+    # document checks the model: a fact whose quote is not in the pages it was
+    # shown never becomes a fact.
+    run_node(c, "datasheet_agent.mjs")
 
 
 # -------------------------------------------------------------------------- 16
