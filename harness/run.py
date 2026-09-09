@@ -17,6 +17,7 @@ score that outlives the system it measured is worse than no score.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import statistics
 import sys
@@ -31,6 +32,8 @@ from baseline.single_prompt import review_once  # noqa: E402
 from graph.build import run_graph  # noqa: E402
 from graph.prompts import prompt_hash  # noqa: E402
 from harness.grade import corpus_hash, grade, pipeline_hash, refuted, schema_hash, totals  # noqa: E402
+from harness.packs import PACK_VERSION  # noqa: E402
+from harness.research import FACTS_FORMAT  # noqa: E402
 from harness.llm import PRICE_IN, PRICE_OUT, Client  # noqa: E402
 from harness.ops import apply_edits, board_hash  # noqa: E402
 from harness.generators import defects_for  # noqa: E402
@@ -125,6 +128,26 @@ def run_one(detector: str, case: dict, client: Client) -> dict:
         "tokens_out": sum(c.get("tokens_out", 0) for c in state.get("calls", [])),
         "seconds": round(time.monotonic() - started, 1),
     }
+    # What a scored run has to carry to be reproducible: the exact packs each
+    # model was shown, which specialists existed, what every stage refused and
+    # why, and the coverage. A result that cannot say what was asked of the
+    # model is a result nobody can check.
+    row["packs"] = {name: pack for name, pack in (state.get("packs") or {}).items()}
+    row["pack_hashes"] = {
+        name: hashlib.sha256(pack.encode("utf-8")).hexdigest()[:16]
+        for name, pack in row["packs"].items()
+    }
+    row["enabled_agents"] = list(state.get("enabled_agents") or [])
+    row["coverage"] = dict(state.get("coverage") or {})
+    row["rejected"] = [
+        {
+            "stage": entry.get("stage", "?"),
+            "because": entry.get("because", ""),
+            "title": (entry.get("finding") or {}).get("title", ""),
+        }
+        for entry in (state.get("rejected") or [])
+    ]
+    row["report"] = state.get("report") or {}
     row["grade"] = grade(findings, case["defects"])
     # What the board refutes, before and after whatever the detector does about
     # it. For the single prompt those two are the same list, which is the point.
@@ -328,6 +351,10 @@ def main() -> int:
         "model": client.model,
         "cost": cost,
         "prompt_hash": prompt_hash(),
+        "pack_version": PACK_VERSION,
+        "facts_format": FACTS_FORMAT,
+        "temperature": client.temperature,
+        "max_tokens": client.max_tokens,
         "schema_hash": schema_hash(),
         "pipeline_hash": pipeline_hash(),
         # The corpus is the eight boards. It is deduplicated because scoring
@@ -343,10 +370,17 @@ def main() -> int:
         },
         "rows": rows,
     }
+    # The packs themselves are megabytes across a sweep and their hashes are
+    # what a reproduction needs to compare; the full text stays in the timestamped
+    # file and is stripped from the one that is committed.
     out = args.out or RESULTS / f"sweep-{time.strftime('%Y%m%d-%H%M%S')}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=1), encoding="utf-8")
-    (RESULTS / "latest.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
+    slim = {
+        **result,
+        "rows": [{k: v for k, v in row.items() if k != "packs"} for row in result["rows"]],
+    }
+    (RESULTS / "latest.json").write_text(json.dumps(slim, indent=1), encoding="utf-8")
     print(f"wrote {out}")
     return 0
 
