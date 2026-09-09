@@ -30,9 +30,7 @@ from langgraph.graph import END, StateGraph
 from graph.nodes.adjudicate import make_adjudicate
 from graph.nodes.review import reviewers
 from graph.state import ReviewState, key
-from harness.checks import run_checks
-from harness.datasheet_checks import run_datasheet_checks
-from harness.dfm import run_dfm
+from harness.evaluate import evaluate
 from harness.research import brief
 from harness.distill import distill
 from harness.packs import build_packs
@@ -43,20 +41,23 @@ MAX_PASSES = 2
 def ingest(state: ReviewState) -> dict:
     """Everything here is measured. No model has been asked anything yet."""
     board = state["board"]
-    deterministic = run_checks(board)
-    dfm = run_dfm(board)
-    datasheet = run_datasheet_checks(board, brief(board, offline=True))
+    facts = brief(board, offline=True)
+    # One layer, one record of what it could and could not do. `coverage` says
+    # which evaluators ran and why the rest did not, and travels to the report:
+    # a domain that was not assessed is not a domain that passed.
+    result = evaluate(board, facts, state.get("inputs"))
+    deterministic = result["findings"]
     return {
+        "coverage": result["coverage"],
+        "measured": result["measured"],
         "distilled": distill(board),
         "deterministic": deterministic,
         # The seam. Built here, from measurements only, and handed to the
         # reviewers instead of the board.
-        "packs": build_packs(board, brief(board, offline=True), deterministic + dfm + datasheet),
+        "packs": build_packs(board, facts, deterministic + result["measured"]),
         # The fourth evaluator, and the only one that is pure geometry. It does
         # not feed the gate: a DFM finding is already complete, and looping the
         # reviewers over it would spend calls to be told what the board said.
-        "dfm": dfm,
-        "datasheet": datasheet,
         "findings": [],
         "confirmed": [],
         "gates": [],

@@ -981,6 +981,45 @@ def check_evidence_boundary(c: Check) -> None:
         "a pack with no deterministic findings says so rather than omitting the section",
     )
 
+    # A check that could not run must say so. A skipped check and a passing one
+    # look identical in a report unless one of them is labelled, and the whole
+    # point of gating is that an unassessed domain is not a clean one.
+    from harness.evaluate import evaluate, unassessed
+    from harness.research import brief
+
+    board = load_board()
+    bare = evaluate(board, brief(board, offline=True), None)
+    missing = unassessed(bare["coverage"])
+    c.that(
+        "junction_temp" in missing and "rail_within_input_range" in missing,
+        f"checks without inputs are skipped, with a reason: {missing}",
+    )
+    c.that(
+        all(reason for reason in missing.values()),
+        "every skip states what was missing",
+    )
+    c.that(
+        not any(f["rule"] in ("junction_temp", "rail_within_input_range") for f in bare["findings"]),
+        "a skipped check produces no finding at all",
+    )
+
+    supplied = evaluate(
+        board,
+        brief(board, offline=True),
+        {"ambient_c": 25.0, "dissipation_w": {"S1": 1.7}, "rails": {"/IN": 12.0}},
+    )
+    c.that(
+        "rail_within_input_range" not in unassessed(supplied["coverage"]),
+        "supplying rail voltages lets the rail check run",
+    )
+    # Ambient and a dissipation are still not enough without a thermal
+    # resistance from a datasheet; reporting "ran" there would read as a pass.
+    c.that(
+        "junction_temp" in unassessed(supplied["coverage"]),
+        "the thermal check still skips when no datasheet gives a theta_JA",
+    )
+    c.note(f"unassessed on a bare board: {sorted(missing)}")
+
 
 # ---------------------------------------------------------------------------
 

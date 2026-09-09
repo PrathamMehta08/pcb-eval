@@ -22,12 +22,19 @@ class ReviewState(TypedDict, total=False):
     packs: dict
     #: What the deterministic rules measured. Never produced by a model.
     deterministic: list[dict]
-    #: Manufacturability findings, also measured. Reported, but kept out of the
-    #: gate: they are complete as they stand, so there is nothing to chase.
-    dfm: list[dict]
-    #: Findings a datasheet settles, from harness/datasheet_checks.py. Also
-    #: measured, and also reported rather than chased.
-    datasheet: list[dict]
+    #: Findings the deterministic layer settled outright - manufacturability,
+    #: datasheet requirements, gated checks. Reported, never chased: the gate
+    #: sends the reviewers round again for rules they missed, and there is
+    #: nothing for them to add to a number.
+    measured: list[dict]
+    #: Which evaluators ran, and why each of the rest did not. First-class
+    #: because a skipped check and a passing check look identical in a report
+    #: unless one of them says so.
+    coverage: dict
+    #: Inputs a KiCad project cannot supply - rail voltages, load currents,
+    #: ambient, stackup. Absent by default, which is why the checks that need
+    #: them are skipped rather than estimated.
+    inputs: dict
     #: What the reviewers proposed, appended to as each one finishes.
     #:
     #: Annotated because the reviewers run in parallel and LangGraph refuses two

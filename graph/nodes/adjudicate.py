@@ -157,7 +157,7 @@ def make_adjudicate(client):
         covered = set()
         for item in confirmed:
             covered |= key(item)
-        for item in list(state.get("dfm", [])) + list(state.get("datasheet", [])):
+        for item in state.get("measured", []):
             if key(item) & covered:
                 continue
             confirmed.append(item)
