@@ -239,7 +239,7 @@ function unbuildableValue(board) {
     if (/\d/.test(value)) continue;
     out.push(
       finding(
-        "unbuildable-value",
+        "value-not-orderable",
         `${comp.ref} has value ${JSON.stringify(value)}, which is not a quantity`,
         "There is no magnitude here, so the line cannot be ordered and nobody " +
           "assembling the board knows what to fit.",

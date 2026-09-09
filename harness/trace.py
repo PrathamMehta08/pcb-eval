@@ -1,7 +1,7 @@
 """Run the graph and keep everything it thought, not just what it concluded.
 
     python -m harness.trace                 all eight boards
-    python -m harness.trace ground-stranded one of them
+    python -m harness.trace <preset-id>        one of them
 
 Writes `results/trace.json`: for every board, every node in the order it ran,
 with the job it was given, the model's own reasoning, what it proposed, and —

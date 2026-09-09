@@ -1,11 +1,15 @@
 """Deterministic detectors. LLM nodes propose; these dispose.
 
-Seven rules, one per seed defect, each written as a rule an engineer would
-actually apply rather than as a lookup for the edit that was injected. The
-contract in PLAN.md section 10 is two-sided and the second half is the hard one:
-**every preset trips its own rule, and the clean board trips none.** A detector
-that fires on the untouched board is worthless in exactly the way section 5.3
-warns about.
+Rules an engineer would actually apply, written against conventions rather than
+against any particular fault. They were built alongside an earlier corpus that
+has since been replaced, and none of them was rewritten to suit the current one:
+whatever they catch now, they catch by generalising. That is the point of them.
+
+**The contract is that the clean boards trip nothing.** A detector that fires on
+an untouched board is worthless however many defects it also finds, and every
+rule here has to stay silent on two real boards from different designers. What
+fraction of the seeded defects they happen to catch is a measurement reported by
+the sweep, not a requirement any rule was built to satisfy.
 
 The split between the two halves is deliberate. Schematic operations change the
 netlist only, so the copper rules below see the board exactly as it was routed
@@ -102,11 +106,10 @@ def check_power_pin_miswired(board: dict) -> list[dict]:
     why this stays quiet on a board full of `PA1_11` and `Pin_5_5`.
 
     Two limits worth stating rather than discovering. It sees only pins the
-    designer happened to name after a net, so `S1.4` (`VFB_4`) against a net
-    called `/FB` is invisible to it — the feedback half of the buck swap trips
-    this rule through `S1.6` alone. And two grounds are never a mismatch,
-    because splitting the return around a switcher is what you are supposed
-    to do.
+    designer happened to name after a net, so a pin called `VFB_4` against a net
+    called `/FB` is invisible to it: the names have to match for the binding to
+    be explicit. And two grounds are never a mismatch, because splitting the
+    return around a switcher is what you are supposed to do.
     """
     net_names = {n["name"].lstrip("/").upper(): n["name"] for n in board["nets"]}
     out = []
@@ -407,7 +410,7 @@ def check_power_pin_on_signal_net(board: dict) -> list[dict]:
     return out
 
 
-@rule("unbuildable-value", "major")
+@rule("value-not-orderable", "major")
 def check_unbuildable_value(board: dict) -> list[dict]:
     """A resistor, capacitor or inductor needs a magnitude, or it cannot be bought.
 
@@ -425,7 +428,7 @@ def check_unbuildable_value(board: dict) -> list[dict]:
             continue
         out.append(
             finding(
-                "unbuildable-value",
+                "value-not-orderable",
                 # An explicit quote rather than !r: repr uses single quotes and
                 # JSON.stringify uses double, and the two copies of this rule
                 # have to produce the same sentence.

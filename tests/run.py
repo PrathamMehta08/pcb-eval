@@ -212,11 +212,13 @@ def check_ops(c: Check) -> None:
     from harness.ops import apply_edits, board_hash, undo
     from harness.presets import PRESETS, edits_for
 
-    board = load_board()
-    original = board_hash(board)
-    c.equals(len(PRESETS), 7, "preset count")
+    from harness.run import _load
+
+    c.equals(len(PRESETS), 10, "preset count")
 
     for preset in PRESETS:
+        board = _load(preset["board"])
+        original = board_hash(board)
         work = json.loads(json.dumps(board))
         edits = edits_for(preset, work)
         c.that(len(edits) > 0, f"{preset['id']}: has at least one edit")
@@ -232,26 +234,37 @@ def check_ops(c: Check) -> None:
 # --------------------------------------------------------------------------- 5
 
 
-@step(5, "harness/checks.py trips on every preset and stays quiet on the clean board")
+@step(5, "harness/checks.py stays silent on boards that are not broken")
 def check_detectors(c: Check) -> None:
+    """The contract is silence on a clean board, and nothing more.
+
+    It used to be two-sided: every preset had to trip a named rule of its own.
+    That pairing is what made the rules an answer key rather than a detector, so
+    the requirement is gone and what is left is a measurement. The seeded
+    defects here were chosen without reference to any rule, and how many the
+    rules happen to catch is reported rather than asserted.
+    """
     from harness.checks import run_checks
-    from harness.ops import apply_edits
-    from harness.presets import PRESETS, edits_for
+    from harness.run import corpus
 
-    clean = load_board()
-    findings = run_checks(clean)
-    c.equals(
-        [f["rule"] for f in findings], [], f"clean board trips nothing: {findings}"
-    )
-
-    for preset in PRESETS:
-        work = json.loads(json.dumps(clean))
-        apply_edits(work, edits_for(preset, work))
-        rules = {f["rule"] for f in run_checks(work)}
-        c.that(
-            preset["rule"] in rules,
-            f"{preset['id']}: expected rule {preset['rule']!r}, got {sorted(rules)}",
+    cases = corpus()
+    clean = [case for case in cases if not case["defects"]]
+    c.equals(len(clean), 2, "two clean boards, from two different designers")
+    for case in clean:
+        findings = run_checks(case["board"])
+        c.equals(
+            [f["rule"] for f in findings],
+            [],
+            f"{case['id']} trips nothing: {[f['title'] for f in findings]}",
         )
+
+    seeded = [case for case in cases if case["defects"]]
+    c.equals(len(seeded), 10, "ten seeded defects")
+    hit = [case["id"] for case in seeded if run_checks(case["board"])]
+    c.note(
+        f"rules fire on {len(hit)} of {len(seeded)} held-out defects"
+        + (f": {', '.join(hit)}" if hit else "")
+    )
 
 
 # --------------------------------------------------------------------------- 6
@@ -263,9 +276,11 @@ def check_distill(c: Check) -> None:
     from harness.ops import apply_edits
     from harness.presets import PRESETS, edits_for
 
+    from harness.run import corpus
+
+    boards = [(case["id"], case["board"]) for case in corpus()]
     clean = load_board()
-    boards = [("clean", clean)]
-    for preset in PRESETS:
+    for preset in []:
         work = json.loads(json.dumps(clean))
         apply_edits(work, edits_for(preset, work))
         boards.append((preset["id"], work))
@@ -677,7 +692,7 @@ def check_graph(c: Check) -> None:
     )
 
     broken = json.loads(json.dumps(clean))
-    apply_edits(broken, edits_for(BY_ID["ground-stranded"], broken))
+    apply_edits(broken, edits_for(BY_ID["diode-reversed"], broken))
 
     # A rule fires and nothing the model says accounts for it: loop, then give up
     # rather than declare the board fine. The gate must never take the model's
@@ -744,7 +759,7 @@ def check_sweep(c: Check) -> None:
     )
 
     cases = corpus()
-    c.equals(len(cases), 8, "eight boards: one clean and seven seeded")
+    c.equals(len(cases), 12, "twelve boards: two clean and ten seeded")
     c.equals(
         result["corpus_hash"],
         corpus_hash(sorted({board_hash(case["board"]) for case in cases})),
@@ -759,7 +774,7 @@ def check_sweep(c: Check) -> None:
 
     detectors = {row["detector"] for row in result["rows"]}
     c.equals(detectors, {"single", "graph"}, "both detectors ran")
-    c.equals(len(result["rows"]), 16 * trials, "eight boards times two detectors times the trials")
+    c.equals(len(result["rows"]), 24 * trials, "twelve boards times two detectors times the trials")
     c.that(
         all("trial" in row for row in result["rows"]),
         "every row says which trial it came from",
@@ -771,7 +786,7 @@ def check_sweep(c: Check) -> None:
         if not c.that("grade" in row, f"{row['board']} was graded"):
             break
     clean_rows = [r for r in result["rows"] if not r["defects"]]
-    c.equals(len(clean_rows), 2 * trials, "the clean board was run under both detectors")
+    c.equals(len(clean_rows), 4 * trials, "both clean boards ran under both detectors")
 
     # The spread is the point of repeating, so it has to be in the record
     # rather than recomputed by whoever reads it.

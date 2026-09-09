@@ -34,31 +34,27 @@ SCHEMA = """{"findings": [{
 #:
 #: This is the architecture change. The old schema could only be checked for
 #: existence and for two hard-coded phrasings; this one can be checked per kind.
-#: A vocabulary is a prompt. The first version of this list offered
-#: `trace_undersized`, and on the clean board the reviewers filed twelve of them
-#: - a quarter of everything they reported there - each resting on a current
-#: figure the board data does not contain and the critic therefore could not
-#: refute. Offering a category is an instruction to go and fill it, which is the
-#: same failure as a report template with a section per topic. So a kind earns
-#: its place here only if something can settle it.
-CLAIM_KINDS = (
-    "pin_miswired",
-    "pinout_order",
-    "connector_incomplete",
-    "pin_floating",
-    "value_unbuildable",
-    "net_split",
-    "decoupling_distance",
-    "missing_component",
-    "manufacturability",
-    "other",
-)
+#: A vocabulary is a prompt, and this one was a list of the seeded defects.
+#:
+#: It offered the reviewers a closed set - `value_unbuildable`, `pinout_order`,
+#: `net_split` and the rest - which was the corpus's own defect taxonomy handed
+#: to the detector as the output format. Two things were measured about it.
+#: Offering `trace_undersized`, for a quantity the board data does not carry,
+#: produced twelve fabricated findings on a clean board out of thirty-six. And
+#: once the board-specific hints were removed from the jobs, three quarters of
+#: everything the reviewers said fell into the two kinds that can always be
+#: satisfied - `pin_floating` and `decoupling_distance` - while the defect
+#: actually seeded went unmentioned. A closed list is a checklist, and a model
+#: fills the cheapest boxes on it.
+#:
+#: So there is no list any more. A reviewer invents a short tag for what it
+#: found, which is enough for two findings about one defect to collide, and the
+#: critic decides what it can from the finding's own words and the board.
+#: Nothing here tells a detector what kinds of defect exist.
+CLAIM_KINDS: tuple[str, ...] = ()
 
 GRAPH_SCHEMA = """{"findings": [{
-  "claim": one of "pin_miswired" | "pinout_order" | "connector_incomplete" |
-           "pin_floating" | "value_unbuildable" | "net_split" |
-           "decoupling_distance" | "missing_component" |
-           "manufacturability" | "other",
+  "claim": "a short lowercase tag naming the kind of defect, in your own words",
   "subject": "<the one ref or net this finding is about>",
   "evidence": "a line copied exactly from the board data above",
   "severity": "critical" | "major" | "minor",
@@ -79,8 +75,8 @@ CLAIM_RULES = """
 Every finding must carry three extra fields, and a finding without them is
 discarded unread:
 
-- `claim`: the kind of defect, from the list in the schema. Pick the one that
-  fits; use "other" only when none does.
+- `claim`: a short lowercase tag for the kind of defect, in your own words.
+  Two findings about the same kind of problem should carry the same tag.
 - `subject`: the one ref or net the finding is actually about. Not a list. If
   you cannot name a single subject, you are describing more than one finding.
 - `evidence`: one line copied exactly from the board data above — the line that
@@ -91,13 +87,7 @@ Name only what the finding needs. Listing extra refs and nets does not make a
 finding stronger; it makes it unfalsifiable, and unfalsifiable findings are
 thrown out.
 
-What the board data does not contain: any current, load, power, temperature or
-timing figure. There is no supply current for any rail, no duty cycle, no
-ambient, and no stackup beyond the layer count. A finding that depends on one of
-those depends on a number you would have to supply yourself, and supplying it is
-inventing evidence. Do not report trace width, current capacity, heating or
-power dissipation. Report what the netlist, the copper geometry and the pin
-functions can settle."""
+inventing evidence."""
 
 #: Deliberately empty, and it used to describe one board.
 #:
@@ -114,6 +104,12 @@ BOARD_CONTEXT = ""
 #: jobs each say what is not theirs, and the single prompt has no area at all —
 #: telling it otherwise would hand the comparison to the graph on wording.
 _TAIL = """
+
+The board data carries no current, load, power, temperature or timing figure.
+There is no supply current for any rail, no duty cycle and no ambient. A finding
+that depends on one of those depends on a number you would have to supply
+yourself, and supplying it is inventing evidence.
+
 Use the exact ref and net strings from the board so findings can be matched to
 the design. Reply with JSON only, in exactly this shape:
 
@@ -139,54 +135,34 @@ def _node(job: str, distilled: str) -> str:
 
 DATASHEET_JOB = """Your area is what each pin is for, against what it is wired to.
 
-The net list gives every pin the chip's own name for it, taken from the symbol
-library, and the pin's electrical type. Use them. Look for:
+The NETS section gives every pin the name its symbol library uses for it and the
+pin's electrical type, alongside the net the designer put it on. The COMPONENTS
+section gives each part its value, package and the library's own description of
+what it is.
 
-- a pin whose library name says one node and whose net is another;
-- a supply or bias pin sitting on a net with no source of that supply;
-- a control pin wired somewhere its part cannot work from;
-- a part whose value cannot be ordered.
+Report anything in that which is wrong. Report only defects in your area: leave
+copper, placement and trace geometry to another reviewer."""
 
-Report only defects in your area. Do not comment on layout, copper, trace
-widths or placement — another reviewer has those."""
+CONNECTIONS_JOB = """Your area is the wiring between parts, and off the board.
 
-CONNECTIONS_JOB = """Your area is the wiring between parts and off the board.
+The NETS section lists every net with the pins on it. Connectors are parts like
+any other; what plugs into one is not written down anywhere, so the designer's
+own net names are the only statement of intent you have.
 
-Look for:
-
-- a connector whose pin order does not match the module that plugs into it.
-  Headers like these are not keyed, so the board has to match the cable; the
-  designer's own net names are what say which module is expected.
-- an input pin with nothing holding it at reset. An MCU port is high impedance
-  until firmware configures it, so an input whose only company is an MCU port
-  and no pull resistor floats from power-up.
-- two pins that both drive on one net, or a net with no driver at all;
-- a connector that leaves the board with no ground or supply among its pins;
-- a pin the design clearly meant to use that is left unconnected.
-
-Report only defects in your area. Do not comment on layout, copper, trace
-widths or placement — another reviewer has those."""
+Report anything in that wiring which is wrong. Report only defects in your area:
+leave copper, placement and trace geometry to another reviewer."""
 
 LAYOUT_JOB = """Your area is placement and copper.
 
 The COPPER section states, per net, how many pads it has, how many separate
-copper islands those pads sit on, how much track, the narrowest track, how many
-vias, and which layers carry a pour. Read it carefully. Look for:
+copper islands those pads sit on, how much track it carries, its narrowest
+track, how many vias, and which layers carry a pour. The DECOUPLING section
+gives the distance in millimetres from every supply pin to the nearest capacitor
+on its own net.
 
-- a net whose pads sit on more than one island. That net is not connected,
-  whatever the net list says. Both ERC and DRC read the net list rather than
-  the copper, so both pass a board like that.
-- a ground net with no vias tying the layers together, or with a pour on only
-  one layer while pads sit on both;
-- a decoupling capacitor far from the pin it serves. The DECOUPLING section
-  gives that distance in millimetres for every supply pin on the board.
-
-The board data carries no current, load, power, temperature or timing figure.
-Do not report trace width, current capacity or heating: any such finding would
-rest on a number you supplied yourself.
-
-Report only defects in your area. Do not comment on schematic connectivity, pin
-functions or part values — another reviewer has those."""
+Report anything in that geometry which is wrong. Report only defects in your
+area: leave pin functions, part values and netlist connectivity to another
+reviewer."""
 
 ADJUDICATE_JOB = """You are merging three reviews of one board into one list.
 
@@ -207,25 +183,18 @@ Here is the board they reviewed.
 
 {distilled}"""
 
-SINGLE_PROMPT_JOB = """Review this board before it is manufactured. Weigh three
-things:
+SINGLE_PROMPT_JOB = """Review this board before it is manufactured.
 
-1. What each pin is for, against what it is wired to. The net list gives every
-   pin the chip's own name and its electrical type.
-2. The wiring between parts and off the board: connector pin order against the
-   modules that plug in, inputs with nothing holding them at reset, nets with
-   no driver, parts whose value cannot be ordered.
-3. Placement and copper. The COPPER section states, per net, how many pads it
-   has, how many separate copper islands those pads sit on, how much track, the
-   narrowest track, how many vias, and which layers carry a pour; the
-   DECOUPLING section gives the distance from every supply pin to the nearest
-   capacitor on its net. A net whose pads sit on more than one island is not
-   connected, whatever the net list says. Ground return, pour coverage,
-   decoupling distance.
+You have the whole design. The COMPONENTS section gives each part its value,
+package and the library's description of what it is. The NETS section gives
+every net, the pins on it, each pin's library name and its electrical type. The
+COPPER section states, per net, how many pads it has, how many separate copper
+islands those pads sit on, how much track it carries, its narrowest track, how
+many vias, and which layers carry a pour. The DECOUPLING section gives the
+distance in millimetres from every supply pin to the nearest capacitor on its
+own net.
 
-The board data carries no current, load, power, temperature or timing figure.
-Do not report trace width, current capacity or heating: any such finding would
-rest on a number you supplied yourself.
+Report anything wrong with the design.
 
 Do not report style, silkscreen or aesthetics, or anything you would have to
 guess at."""

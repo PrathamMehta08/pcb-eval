@@ -27,20 +27,25 @@ const check = (ok, message) => {
   if (!ok) failures.push(message);
 };
 
-// How many of each the seven presets must produce. A value change touches no
-// net, so it is visible only as the ring on the part it edited.
+// What each defect on this board must produce. A schematic edit leaves the
+// copper where it was, so the pads it moved go stale; a copper edit strands
+// pads instead; a value change touches neither and shows only as a ring on the
+// part. Reversing a footprint is the interesting one - it never touches the
+// netlist, so the only trace of it is two pads that no longer reach their nets.
+//
+// Only this board's defects appear here. The corpus spans two boards now, and
+// the other one's edits name refs that do not exist on this board at all.
 const EXPECTED = {
-  clean: { stale: 0, stranded: 0 },
-  "vfb-vbst-swap": { stale: 2, stranded: 0 },
-  "stepper-common-open": { stale: 2, stranded: 0 },
-  "servo-power-end-pin": { stale: 2, stranded: 0 },
-  "ultrasonic-crossed": { stale: 2, stranded: 0 },
-  "stepper-in4-floating": { stale: 1, stranded: 0 },
-  "unbuildable-value": { stale: 0, stranded: 0 },
-  "ground-stranded": { stale: 0, stranded: 32 },
+  "clean:stm32-good": { stale: 0, stranded: 0 },
+  "mcu-ground-lifted": { stale: 1, stranded: 0 },
+  "bulk-cap-on-signal": { stale: 1, stranded: 0 },
+  "outputs-shorted": { stale: 1, stranded: 0 },
+  "ldo-in-out-swapped": { stale: 2, stranded: 0 },
+  "diode-reversed": { stale: 0, stranded: 2 },
 };
 
 for (const testCase of fixture.cases) {
+  if (!(testCase.id in EXPECTED)) continue; // a defect on the other board
   const work = JSON.parse(JSON.stringify(board));
   applyEdits(work, testCase.edits);
   const got = divergence(work);

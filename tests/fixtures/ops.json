@@ -296,430 +296,186 @@
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
-   "id": "preset:vfb-vbst-swap",
-   "edits": [
-    {
-     "op": "move_pin",
-     "args": {
-      "ref": "S1",
-      "pin": "4",
-      "to_net": "VBST"
-     }
-    },
-    {
-     "op": "move_pin",
-     "args": {
-      "ref": "S1",
-      "pin": "6",
-      "to_net": "/FB"
-     }
-    }
-   ],
-   "hash": "7856e2336b5d4031",
-   "labels": [
-    "S1.4: /FB \u2192 VBST",
-    "S1.6: VBST \u2192 /FB"
-   ],
-   "undo_hash": "fdbf9eacfc0782bf"
-  },
-  {
-   "id": "preset:stepper-common-open",
-   "edits": [
-    {
-     "op": "move_pin",
-     "args": {
-      "ref": "U3",
-      "pin": "12",
-      "to_net": "/O5"
-     }
-    },
-    {
-     "op": "move_pin",
-     "args": {
-      "ref": "J11",
-      "pin": "5",
-      "to_net": "/O5"
-     }
-    }
-   ],
-   "hash": "a8eb1da0f9724cb3",
-   "labels": [
-    "U3.12: unconnected-(U3-O5-Pad12) \u2192 /O5",
-    "J11.5: +5V \u2192 /O5"
-   ],
-   "undo_hash": "fdbf9eacfc0782bf"
-  },
-  {
-   "id": "preset:servo-power-end-pin",
-   "edits": [
-    {
-     "op": "swap_pins",
-     "args": {
-      "ref": "J4",
-      "pin_a": "2",
-      "pin_b": "3"
-     }
-    }
-   ],
-   "hash": "75e1377d6f051e78",
-   "labels": [
-    "J4: pin 2 \u2194 pin 3 (+5V \u2194 GND)"
-   ],
-   "undo_hash": "fdbf9eacfc0782bf"
-  },
-  {
-   "id": "preset:ultrasonic-crossed",
-   "edits": [
-    {
-     "op": "swap_pins",
-     "args": {
-      "ref": "J2",
-      "pin_a": "2",
-      "pin_b": "3"
-     }
-    }
-   ],
-   "hash": "9ee2a2bf2fada762",
-   "labels": [
-    "J2: pin 2 \u2194 pin 3 (/TRIG \u2194 /ECHO)"
-   ],
-   "undo_hash": "fdbf9eacfc0782bf"
-  },
-  {
-   "id": "preset:stepper-in4-floating",
-   "edits": [
-    {
-     "op": "move_pin",
-     "args": {
-      "ref": "R11",
-      "pin": "2",
-      "to_net": "/STEPPER_IN1"
-     }
-    }
-   ],
-   "hash": "0bad4e573e92f1cd",
-   "labels": [
-    "R11.2: /STEPPER_IN4 \u2192 /STEPPER_IN1"
-   ],
-   "undo_hash": "fdbf9eacfc0782bf"
-  },
-  {
-   "id": "preset:unbuildable-value",
+   "id": "preset:fb-divider-swapped",
    "edits": [
     {
      "op": "set_value",
      "args": {
-      "ref": "R4",
-      "value": "R"
+      "ref": "R1",
+      "value": "56.2K"
+     }
+    },
+    {
+     "op": "set_value",
+     "args": {
+      "ref": "R2",
+      "value": "10K"
      }
     }
    ],
-   "hash": "1a242d1ffcc64481",
+   "hash": "532203f3d97b8192",
    "labels": [
-    "R4: value '10k' \u2192 'R'"
+    "R1: value '1k5' \u2192 '56.2K'",
+    "R2: value '56k2' \u2192 '10K'"
    ],
    "undo_hash": "fdbf9eacfc0782bf"
   },
   {
-   "id": "preset:ground-stranded",
+   "id": "preset:bootstrap-cap-oversized",
    "edits": [
     {
-     "op": "delete_via",
+     "op": "set_value",
      "args": {
-      "via_id": "v0"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v1"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v2"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v3"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v4"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v5"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v6"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v7"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v8"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v9"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v10"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v11"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v12"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v13"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v14"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v15"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v16"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v17"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v18"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v19"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v20"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v21"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v22"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v23"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v24"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v25"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v26"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v27"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v28"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v29"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v30"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v31"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v32"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v33"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v34"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v35"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v36"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v37"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v38"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v39"
-     }
-    },
-    {
-     "op": "delete_via",
-     "args": {
-      "via_id": "v40"
-     }
-    },
-    {
-     "op": "toggle_zone",
-     "args": {
-      "zone_id": "z3"
+      "ref": "C2",
+      "value": "10uF"
      }
     }
    ],
-   "hash": "dc90b203ec800217",
+   "hash": "ce823cd5dbd69a0a",
    "labels": [
-    "deleted GND via at (51.9, 31.4)",
-    "deleted GND via at (30.4, 13.6)",
-    "deleted GND via at (21.6, 9.6)",
-    "deleted GND via at (32.5, 2.0)",
-    "deleted GND via at (5.0, 13.9)",
-    "deleted GND via at (3.7, 7.7)",
-    "deleted GND via at (53.4, 30.3)",
-    "deleted GND via at (23.4, 13.0)",
-    "deleted GND via at (35.0, 2.5)",
-    "deleted GND via at (36.7, 7.2)",
-    "deleted GND via at (33.7, 28.0)",
-    "deleted GND via at (26.7, 12.2)",
-    "deleted GND via at (22.9, 9.7)",
-    "deleted GND via at (23.3, 21.2)",
-    "deleted GND via at (5.0, 16.5)",
-    "deleted GND via at (20.0, 17.9)",
-    "deleted GND via at (38.3, 28.0)",
-    "deleted GND via at (38.0, 19.9)",
-    "deleted GND via at (29.8, 17.4)",
-    "deleted GND via at (3.8, 11.1)",
-    "deleted GND via at (5.0, 19.0)",
-    "deleted GND via at (3.8, 6.1)",
-    "deleted GND via at (39.1, 14.5)",
-    "deleted GND via at (2.4, 24.9)",
-    "deleted GND via at (49.4, 30.5)",
-    "deleted GND via at (3.7, 9.3)",
-    "deleted GND via at (25.6, 4.2)",
-    "deleted GND via at (34.8, 19.3)",
-    "deleted GND via at (52.3, 33.1)",
-    "deleted GND via at (23.1, 23.3)",
-    "deleted GND via at (5.0, 21.5)",
-    "deleted GND via at (31.4, 30.6)",
-    "deleted GND via at (29.1, 28.0)",
-    "deleted GND via at (39.1, 36.2)",
-    "deleted GND via at (20.0, 14.4)",
-    "deleted GND via at (37.1, 33.1)",
-    "deleted GND via at (28.3, 9.9)",
-    "deleted GND via at (28.5, 38.8)",
-    "deleted GND via at (50.7, 31.4)",
-    "deleted GND via at (49.4, 31.9)",
-    "deleted GND via at (52.0, 13.9)",
-    "removed GND pour on F.Cu"
+    "C2: value '22u' \u2192 '10uF'"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "preset:output-cap-undersized",
+   "edits": [
+    {
+     "op": "set_value",
+     "args": {
+      "ref": "C3",
+      "value": "0.1uF"
+     }
+    }
+   ],
+   "hash": "7e68c63b463b13a7",
+   "labels": [
+    "C3: value '22u' \u2192 '0.1uF'"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "preset:feedback-from-input",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "R2",
+      "pin": "1",
+      "to_net": "/IN"
+     }
+    }
+   ],
+   "hash": "bd9b66df4959d9c4",
+   "labels": [
+    "R2.1: +5V \u2192 /IN"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "preset:inductor-bypassed",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "L1",
+      "pin": "1",
+      "to_net": "/OUT"
+     }
+    }
+   ],
+   "hash": "4228744068bb7b98",
+   "labels": [
+    "L1.1: /SW \u2192 /OUT"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "preset:mcu-ground-lifted",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "U2",
+      "pin": "23",
+      "to_net": "/GND_LIFTED"
+     }
+    }
+   ],
+   "hash": "34ae364036366763",
+   "labels": [
+    "U2.23: GND \u2192 /GND_LIFTED"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "preset:bulk-cap-on-signal",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "C2",
+      "pin": "1",
+      "to_net": "/SERVO_1"
+     }
+    }
+   ],
+   "hash": "dc56d6c490c489d6",
+   "labels": [
+    "C2.1: +3.3V \u2192 /SERVO_1"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "preset:outputs-shorted",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "U2",
+      "pin": "17",
+      "to_net": "/SERVO_1"
+     }
+    }
+   ],
+   "hash": "8e763b817fdddbf3",
+   "labels": [
+    "U2.17: /SERVO_2 \u2192 /SERVO_1"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "preset:ldo-in-out-swapped",
+   "edits": [
+    {
+     "op": "swap_pins",
+     "args": {
+      "ref": "U1",
+      "pin_a": "2",
+      "pin_b": "3"
+     }
+    }
+   ],
+   "hash": "81119e0c6159790a",
+   "labels": [
+    "U1: pin 2 \u2194 pin 3 (+3.3V \u2194 /VIN_LDO)"
+   ],
+   "undo_hash": "fdbf9eacfc0782bf"
+  },
+  {
+   "id": "preset:diode-reversed",
+   "edits": [
+    {
+     "op": "rotate_footprint",
+     "args": {
+      "ref": "D1",
+      "deg": 270.0
+     }
+    }
+   ],
+   "hash": "c18d8e2cf6f04752",
+   "labels": [
+    "D1: rotated to 270\u00b0"
    ],
    "undo_hash": "fdbf9eacfc0782bf"
   }

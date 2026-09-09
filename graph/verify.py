@@ -22,7 +22,7 @@ It listed `pin_floating` as undecidable. That was a misreading of this codebase 
 `harness/checks.py` decides it already, and anything the rules can decide the
 critic can decide. Then the first attempt at deciding it asked whether the
 *part* reached a rail, which is true of every powered IC on the board and would
-have deleted the real `stepper-in4-floating` defect. Held-ness belongs to the
+have deleted a real floating-input defect outright. Held-ness belongs to the
 net: a part is never floating as a whole, only one of its pins is.
 
 It also offered `trace_undersized` in the vocabulary. On the clean board the
@@ -46,23 +46,26 @@ from __future__ import annotations
 from graph.nodes.adjudicate import contradiction
 from harness.checks import _reaches_rail, is_ground, is_rail, islands
 
-#: Claim kinds a measurement can settle, and the ones it cannot. Anything not
-#: listed as checkable is passed through untouched.
+#: A claim is free text now, so the critic cannot dispatch on a closed set of
+#: kinds - it reads the tag and the finding's own words for the substrings that
+#: say which measurement applies. A model that writes `floating_input`,
+#: `pin_floating` or `input floats` all land on the same check, and one that
+#: writes something nothing here recognises is passed through rather than
+#: guessed at.
 CHECKABLE = {
-    "net_split",
-    "value_unbuildable",
-    "missing_component",
-    "decoupling_distance",
-    # Floating was on the uncheckable list, which was a misreading of this
-    # codebase: `harness/checks.py` already decides it, and a claim the rules
-    # can decide is a claim the critic can decide. What it needs is the net the
-    # subject sits on, and whether anything on that net holds a level.
-    "pin_floating",
+    "split": ("split", "island", "isolat", "not connected", "unconnected", "disconnect"),
+    "value": ("value", "unbuildable", "unorderable", "non-numeric"),
+    "missing": ("missing", "absent", "not populated", "no component"),
+    "floating": ("float", "no pull", "undriven", "high impedance", "no driver"),
 }
-UNCHECKABLE = {
-    "manufacturability",  # the DFM rules own this; a model claim adds nothing
-    "other",
-}
+
+
+def _kinds(item: dict) -> set:
+    """Which checks this finding's own words invite."""
+    text = " ".join(
+        str(item.get(k) or "") for k in ("claim", "title", "why")
+    ).lower()
+    return {name for name, words in CHECKABLE.items() if any(w in text for w in words)}
 
 
 def facts(board: dict) -> dict:
@@ -77,7 +80,7 @@ def facts(board: dict) -> dict:
     # Which *nets* something holds at a level. Held-ness belongs to the net, not
     # to the part: the first version of this marked a part held if any of its
     # pins reached a rail, which makes every powered IC permanently "not
-    # floating" and would have deleted the real stepper-in4-floating defect.
+    # floating" and would have deleted a real floating-input defect outright.
     #
     # A pull resistor or an inductor to a rail holds a net; a capacitor does
     # not, because it does not conduct at DC and leaves the input floating just
@@ -119,8 +122,6 @@ def verify(item: dict, f: dict, distilled: str) -> str:
     Four gates, cheapest first. The first two are about the finding being
     well-formed at all; the last two are about the board disagreeing with it.
     """
-    claim = str(item.get("claim") or "").strip()
-
     # 1. A subject that is not on this board. The single strongest signal there
     #    is: the finding is about a different design.
     subject = item.get("subject") or ""
@@ -136,9 +137,9 @@ def verify(item: dict, f: dict, distilled: str) -> str:
         if squeeze(evidence) not in squeeze(distilled):
             return f"its evidence is not a line in the board data: {evidence[:60]!r}"
 
-    # 3. Per-kind measurement, for the kinds a measurement settles.
-    if claim in CHECKABLE:
-        reason = _by_kind(claim, item, f, subject)
+    # 3. Whatever measurement the finding's own words invite.
+    for kind in _kinds(item):
+        reason = _by_kind(kind, item, f, subject)
         if reason:
             return reason
 
@@ -147,10 +148,10 @@ def verify(item: dict, f: dict, distilled: str) -> str:
     return contradiction(item, f)
 
 
-def _by_kind(claim: str, item: dict, f: dict, subject: str) -> str:
+def _by_kind(kind: str, item: dict, f: dict, subject: str) -> str:
     s = _norm(subject)
 
-    if claim == "net_split":
+    if kind == "split":
         # Claimed in pieces; the copper says one piece.
         for name in [s] + [_norm(n) for n in item.get("nets", [])]:
             if f["islands"].get(name, 0) == 1 and f["pads"].get(name, 0) >= 2:
@@ -159,18 +160,18 @@ def _by_kind(claim: str, item: dict, f: dict, subject: str) -> str:
                     f"{f['pads'][name]} of its pads"
                 )
 
-    elif claim == "value_unbuildable":
+    elif kind == "value":
         for ref in [s] + [_norm(r) for r in item.get("refs", [])]:
             value = f["values"].get(ref, "")
             if value and any(ch.isdigit() for ch in value):
                 return f"{ref} has the value {value}, which can be ordered"
 
-    elif claim == "missing_component":
+    elif kind == "missing":
         # "R9 is missing" on a board that has an R9 is a misread, not a defect.
         if s in f["refs"]:
             return f"{s} is on this board"
 
-    elif claim == "pin_floating":
+    elif kind == "floating":
         # Claimed floating, on a net something holds. Judged on the nets the
         # finding names, because held-ness is a property of the net: a part is
         # never "floating" as a whole, only one of its pins is. A finding whose
@@ -179,10 +180,5 @@ def _by_kind(claim: str, item: dict, f: dict, subject: str) -> str:
         for name in [s] + [_norm(n) for n in item.get("nets", [])]:
             if name in f.get("held", ()):
                 return f"{name} is held at a level by a resistor or inductor to a rail"
-
-    elif claim == "decoupling_distance":
-        # The distilled board states the distance; if the finding names a pin
-        # that is already close, it is describing a problem that is not there.
-        pass  # measured in the DECOUPLING section, checked via evidence above
 
     return ""

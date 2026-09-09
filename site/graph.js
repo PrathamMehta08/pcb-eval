@@ -77,7 +77,7 @@ const NODE_REF = /^([A-Za-z]{1,3}\d+)\.[A-Za-z0-9_]+/;
  * The same habit `tidy` exists for. Left literal, a subject of `S1.4` is a part
  * that is not on the board, and the critic throws the finding out for a
  * formatting convention — which is exactly what it did to the real defect on
- * `vfb-vbst-swap` the first time this field was wired up.
+ * a correctly identified defect the first time this field was wired up.
  */
 function normaliseSubject(value) {
   const text = String(value ?? "").trim();

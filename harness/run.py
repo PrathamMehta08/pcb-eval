@@ -35,27 +35,47 @@ from harness.llm import PRICE_IN, PRICE_OUT, Client  # noqa: E402
 from harness.ops import apply_edits, board_hash  # noqa: E402
 from harness.presets import PRESETS, edits_for  # noqa: E402
 
-BOARD_JSON = ROOT / "boards" / "stm32-good.json"
+#: Every board the sweep scores. A defect names the board it belongs to, so the
+#: corpus is one clean case per board plus one case per defect.
+BOARDS = {
+    "stm32-good": ROOT / "boards" / "stm32-good.json",
+    "dcdcc": ROOT / "boards" / "dcdcc.json",
+}
+BOARD_JSON = BOARDS["stm32-good"]
 RESULTS = ROOT / "results"
 
 
+def _load(name: str) -> dict:
+    return json.loads(BOARDS[name].read_text(encoding="utf-8"))
+
+
 def corpus() -> list[dict]:
-    """The eight boards, built fresh from the one extracted board."""
-    good = json.loads(BOARD_JSON.read_text(encoding="utf-8"))
-    boards = [
+    """The clean boards, then every seeded defect, built fresh each time.
+
+    Two boards rather than one, because seven defects on a single design was a
+    corpus you could overfit by accident - and the rules and prompts had. The
+    clean cases carry no defects at all, so every finding on them is a false
+    alarm; they are what stop a detector scoring well by flagging everything.
+    """
+    boards = {name: _load(name) for name in BOARDS}
+    cases = [
         {
-            "id": "clean",
-            "title": "The board as manufactured",
-            "board": good,
+            "id": f"clean:{name}",
+            "board_name": name,
+            "title": f"{name} as designed",
+            "board": board,
             "defects": [],
         }
+        for name, board in boards.items()
     ]
     for preset in PRESETS:
-        work = json.loads(json.dumps(good))
+        name = preset["board"]
+        work = json.loads(json.dumps(boards[name]))
         apply_edits(work, edits_for(preset, work))
-        boards.append(
+        cases.append(
             {
                 "id": preset["id"],
+                "board_name": name,
                 "title": preset["title"],
                 "board": work,
                 "defects": [
@@ -68,7 +88,7 @@ def corpus() -> list[dict]:
                 ],
             }
         )
-    return boards
+    return cases
 
 
 def run_one(detector: str, case: dict, client: Client) -> dict:
@@ -82,6 +102,7 @@ def run_one(detector: str, case: dict, client: Client) -> dict:
     row = {
         "detector": detector,
         "board": case["id"],
+        "board_name": case["board_name"],
         "title": case["title"],
         "board_hash": board_hash(case["board"]),
         "defects": case["defects"],

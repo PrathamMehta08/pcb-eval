@@ -152,8 +152,8 @@ def make_adjudicate(client):
         # still deduped against what the reviewers said, because a defect the
         # model already described does not become two defects by also being
         # measured. Appending them blind cost five extra findings across a
-        # sweep - one per trial on vfb-vbst-swap, where the datasheet rule and
-        # the reviewers both report the same broken bootstrap capacitor.
+        # sweep - one per trial on the board where a datasheet rule and the
+        # reviewers both reported the same broken part.
         covered = set()
         for item in confirmed:
             covered |= key(item)

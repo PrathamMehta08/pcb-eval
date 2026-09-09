@@ -81,7 +81,7 @@ def normalise_subject(value) -> str:
     was written. Left literal, a subject of `S1.4` is a part that is not on the
     board, and the critic throws out the finding for a formatting convention -
     which is exactly how twenty correct findings were lost in the first scored
-    sweep. It cost the true positive on `vfb-vbst-swap` the first time this
+    sweep. It threw out a correctly identified defect the first time this
     field was wired up, which is why there is a test for it now.
     """
     text = str(value or "").strip()
