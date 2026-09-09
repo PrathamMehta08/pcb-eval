@@ -51,6 +51,12 @@ class ReviewState(TypedDict, total=False):
     confirmed: list[dict]
     #: What adjudication threw out, each with the measurement that refuted it.
     dropped: list[dict]
+    #: Findings that exist only in the interaction between two reviewers.
+    cross_domain: list[dict]
+    #: Everything any stage refused, with the reason. Kept rather than discarded
+    #: because a list of rejections is the only way to tell a strict critic from
+    #: a broken one.
+    rejected: Annotated[list[dict], operator.add]
     passes: int
     #: One row per model call, for the cost log. Appended, for the same reason.
     calls: Annotated[list[dict], operator.add]

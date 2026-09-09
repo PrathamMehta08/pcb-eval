@@ -1112,6 +1112,78 @@ def check_evidence_boundary(c: Check) -> None:
         c.note(f"enabled with assumptions: {sorted(with_thermal)}")
 
 
+# -------------------------------------------------------------------------- 16
+
+
+@step(16, "cross-domain findings must genuinely span two reviewers")
+def check_cross_domain(c: Check) -> None:
+    """The rule is enforced in code, not asked for in the prompt.
+
+    Asked for cross-domain findings, a model will rewrite one specialist's
+    finding with two domain names in it. That is the path of least resistance
+    rather than a risk to be prompted away, so `enforce` throws out anything
+    that does not cite two findings from two different reviewers - before the
+    finding exists, where no wording can get past it.
+    """
+    from graph.nodes.cross_domain import MIN_PRODUCERS, enforce
+
+    by_id = {
+        "F001": {"id": "F001", "source": "circuit", "title": "a circuit finding"},
+        "F002": {"id": "F002", "source": "physical", "title": "a physical finding"},
+        "F003": {"id": "F003", "source": "circuit", "title": "another circuit finding"},
+    }
+
+    cases = [
+        ("two reviewers", ["F001", "F002"], True, ""),
+        ("one source only", ["F001"], False, "at least 2"),
+        ("two from one reviewer", ["F001", "F003"], False, "one reviewer"),
+        ("an id that does not exist", ["F001", "F999"], False, "at least 2"),
+        ("no sources at all", [], False, "at least 2"),
+    ]
+    for label, sources, should_keep, expect in cases:
+        item = {"claim": "x", "title": "t", "sources": list(sources)}
+        kept, rejected = enforce([item], by_id)
+        if should_keep:
+            c.equals(len(kept), 1, f"a finding citing {label} is kept")
+            if kept:
+                c.equals(
+                    kept[0]["domains"],
+                    ["circuit", "physical"],
+                    "and it records which domains it spans",
+                )
+        else:
+            c.equals(len(kept), 0, f"a finding citing {label} is rejected")
+            c.that(
+                rejected and expect in rejected[0][1],
+                f"and says why: {rejected[0][1] if rejected else 'no reason given'}",
+            )
+
+    c.equals(MIN_PRODUCERS, 2, "two producers is the threshold")
+
+    # Unknown ids are dropped from the citation list rather than carried, so a
+    # finding cannot claim support it does not have.
+    kept, _ = enforce(
+        [{"claim": "x", "title": "t", "sources": ["F001", "F002", "F404"]}], by_id
+    )
+    if c.equals(len(kept), 1, "a mostly-valid citation list survives"):
+        c.equals(kept[0]["sources"], ["F001", "F002"], "with the unknown id removed")
+
+    # The node does not call a model at all when there is nothing to combine.
+    from graph.nodes.cross_domain import make_cross_domain
+
+    class Refuses:
+        def json(self, *a, **k):
+            raise AssertionError("the model was called with nothing to combine")
+
+    node = make_cross_domain(Refuses())
+    out = node({"confirmed": [{"id": "F001", "source": "circuit", "title": "only one"}]})
+    c.that(
+        "skipped" in out.get("coverage", {}).get("cross_domain", ""),
+        f"one reviewer means no call and a coverage note: {out.get('coverage', {}).get('cross_domain')}",
+    )
+    c.that(not out.get("cross_domain"), "and no findings")
+
+
 # ---------------------------------------------------------------------------
 
 

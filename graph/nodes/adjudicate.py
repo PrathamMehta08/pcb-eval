@@ -163,6 +163,12 @@ def make_adjudicate(client):
             confirmed.append(item)
             covered |= key(item)
 
+        # Ids, so a later stage can cite a finding rather than re-describe it.
+        # Assigned here because this is the first point at which the set of
+        # findings is settled for the pass.
+        for n, item in enumerate(confirmed, start=1):
+            item.setdefault("id", f"F{n:03d}")
+
         return {
             "findings": findings,
             "confirmed": confirmed,

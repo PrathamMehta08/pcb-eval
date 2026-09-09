@@ -235,6 +235,56 @@ a noisy load and a quiet one.
 Every current you use must come from RAILS. Do not derive one from a component
 value or a trace width."""
 
+CROSS_DOMAIN_JOB = """You are looking for problems no single reviewer could have
+seen.
+
+Below are the findings every specialist produced, each tagged with the reviewer
+that produced it and given an id. Each of those reviewers saw one slice of this
+board and nothing else: the circuit reviewer has no copper, the physical
+reviewer has no pin meanings. You are the only stage that sees all of them.
+
+What is worth reporting is a defect that exists only in the interaction. Each
+part of it is acceptable on its own and the combination is not. The shapes that
+occur:
+
+- something electrically correct that the physical implementation makes
+  ineffective
+- something inside a limit that the layout or the thermal environment pushes
+  outside it
+- two findings with one root cause that neither reviewer could name, because
+  the cause sits in the other's domain
+- a margin each domain treats as adequate and that they spend jointly
+- a fix one reviewer proposes that would create a problem in another's area
+
+THE RULE THAT DEFINES THIS NODE
+
+Every finding you return must cite at least two of the ids below, from at least
+two different reviewers, and must say what is true of the combination that is
+not true of either part alone. This is checked mechanically: a finding citing
+one id, or two ids from the same reviewer, is discarded before anyone reads it.
+
+Restating a specialist's finding in different words is not a cross-domain
+finding. Summarising several is not one either. If the findings below have no
+genuine interaction, return {"findings": []} - that is the common and correct
+outcome, and a node that always finds an interaction is a node inventing them.
+
+OUTPUT
+
+{"findings": [{
+  "claim": "a short lowercase tag for the interaction",
+  "sources": ["the ids you are combining, two or more, from different reviewers"],
+  "subject": "<the one ref or net this is about>",
+  "evidence": "a line copied exactly from a cited finding or from the board data",
+  "severity": "critical" | "major" | "minor",
+  "confidence": "high" | "medium" | "low",
+  "refs": ["<ref>"],
+  "nets": ["<net>"],
+  "problem": "one line naming the interaction",
+  "why": "what is true of the combination that is not true of either part",
+  "assumption": "what this rests on, or null",
+  "fix": "one sentence naming the change that would correct it"
+}]}"""
+
 ADJUDICATE_JOB = """You are merging three reviews of one board into one list.
 
 Below are findings from three reviewers, each numbered. Some describe the same
@@ -330,6 +380,11 @@ def single_prompt_template() -> str:
     return _build(SINGLE_PROMPT_JOB, BOARD_SLOT)
 
 
+def cross_domain_prompt(findings_text: str) -> str:
+    """The merge stage's sibling: findings in, interactions out, no board."""
+    return CROSS_DOMAIN_JOB + "\n\n" + findings_text
+
+
 def adjudicate_prompt(findings_text: str, distilled: str) -> str:
     return (
         ADJUDICATE_JOB.replace("{findings}", findings_text)
@@ -352,6 +407,7 @@ def prompt_hash() -> str:
             THERMAL_JOB,
             SIGNAL_INTEGRITY_JOB,
             POWER_INTEGRITY_JOB,
+            CROSS_DOMAIN_JOB,
             ADJUDICATE_JOB,
             SINGLE_PROMPT_JOB,
         ]
