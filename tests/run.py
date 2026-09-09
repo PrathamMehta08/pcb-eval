@@ -966,6 +966,34 @@ def check_evidence_boundary(c: Check) -> None:
             f"{case['id']}: circuit {len(circuit)} chars, physical {len(physical)} chars"
         )
 
+    # No pack may name what a seeded defect was planted on.
+    #
+    # This is the leak that made a sweep meaningless once. The ALREADY MEASURED
+    # block listed each deterministic finding with its refs and nets, so on a
+    # seeded board the circuit pack read "S1 pin 1 (GND_1) is on /ECHO, not GND"
+    # - the planted refs and nets, which are exactly what the grader matches.
+    # Recall on those defects was double the rest, and the graph only led where
+    # it had been told. The block now names the check and not its subject.
+    for case in corpus():
+        if not case["defects"]:
+            continue
+        planted = case["defects"][0]
+        subjects = {r.upper() for r in planted["refs"]}
+        subjects |= {n.upper().lstrip("/") for n in planted["nets"]}
+        # Nets like GND appear all over a copper section legitimately; what must
+        # not appear is the defect's subject inside the measured-findings block.
+        for name, pack in (ingest({"board": case["board"]}).get("packs") or {}).items():
+            for heading in ("ALREADY MEASURED", "COMPUTED"):
+                start = pack.find(heading)
+                if start < 0:
+                    continue
+                block = pack[start : pack.find("\n\n", start) if pack.find("\n\n", start) > 0 else len(pack)]
+                leaked = sorted(w for w in subjects if w and w in block.upper())
+                c.that(
+                    not leaked,
+                    f"{case['id']}: the {name} pack's {heading} block names {leaked}",
+                )
+
     # Every reviewer maps to exactly one pack, and only to packs that exist.
     mapping = {name: pack for name, (_, pack) in REVIEWERS.items()}
     c.that(

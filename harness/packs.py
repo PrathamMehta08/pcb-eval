@@ -59,10 +59,19 @@ def _header(board: dict, agent: str) -> list[str]:
 
 
 def _findings_block(findings: list[dict], title: str) -> list[str]:
-    """Deterministic findings, so a reviewer does not spend its call on them.
+    """Which checks already fired, without saying what they fired on.
 
-    Stated as measurements that have already been reported rather than as a list
-    of the kinds of defect that exist - a reviewer given a taxonomy fills it in.
+    This block exists so a reviewer does not spend its call repeating a
+    measurement. Naming the check achieves that. Naming its refs and nets also
+    hands over the answer: on a seeded board those are exactly what the grader
+    matches, so a reviewer could name the same part in some adjacent finding and
+    be scored as having found the defect. It was doing that - the circuit pack
+    for a supply-on-signal board read "S1 pin 1 (GND_1) is on /ECHO, not GND",
+    which is the planted defect, its refs and its nets.
+
+    So the check is named and its subject is not. A reviewer told that
+    `net-island` has already fired knows not to go looking for split copper; it
+    does not know which net.
     """
     if not findings:
         return [
@@ -70,12 +79,13 @@ def _findings_block(findings: list[dict], title: str) -> list[str]:
             "Nothing. No deterministic check failed in this area, which is not "
             "the same as the area being correct.",
         ]
-    lines = [title]
-    for item in findings:
-        refs = ", ".join(item.get("refs") or []) or "-"
-        nets = ", ".join(item.get("nets") or []) or "-"
-        lines.append(f"- {item['title']} (refs {refs}; nets {nets})")
-    return lines
+    names = sorted({str(item.get("rule") or "a deterministic check") for item in findings})
+    return [
+        title,
+        "These checks have already fired on this board and their findings are "
+        "already in the report. Do not look for what they cover:",
+        *(f"- {name}" for name in names),
+    ]
 
 
 def _research_block(research: dict) -> list[str]:
@@ -142,6 +152,8 @@ def physical_pack(board: dict, findings: list[dict]) -> str:
 
 #: Which deterministic findings belong in which pack. A finding is shown to the
 #: reviewer whose domain it falls in, so that reviewer does not repeat it.
+THERMAL_RULES = {"junction_temp"}
+
 GEOMETRY_RULES = {
     "net-island",
     "dfm-annular-ring",
@@ -230,10 +242,15 @@ def build_packs(
         "physical": physical_pack(board, geometry),
     }
     gates = enabled(inputs, research)
+    # A gated reviewer sees the findings from its own domain only. It was being
+    # handed every deterministic finding, so the thermal reviewer was reading
+    # the circuit reviewer's subject matter - a hole in the boundary this module
+    # exists to hold.
+    thermal_findings = [f for f in findings if f.get("rule") in THERMAL_RULES]
     if not gates["thermal"]:
-        packs["thermal"] = thermal_pack(board, research, inputs, findings)
+        packs["thermal"] = thermal_pack(board, research, inputs, thermal_findings)
     if not gates["signal_integrity"]:
-        packs["signal_integrity"] = si_pack(board, inputs, findings)
+        packs["signal_integrity"] = si_pack(board, inputs, geometry)
     if not gates["power_integrity"]:
-        packs["power_integrity"] = pi_pack(board, inputs, findings)
+        packs["power_integrity"] = pi_pack(board, inputs, geometry)
     return packs
