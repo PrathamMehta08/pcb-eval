@@ -147,10 +147,21 @@ def make_adjudicate(client):
             else:
                 confirmed.append(item)
 
-        # Manufacturability findings are measurements, so they join the report
-        # already verified. They are appended rather than adjudicated: there is
-        # nothing for a model to merge, and nothing for the critic to doubt.
-        confirmed = confirmed + list(state.get("dfm", [])) + list(state.get("datasheet", []))
+        # Measured findings join the report already verified: there is nothing
+        # for a model to merge and nothing for the critic to doubt. They are
+        # still deduped against what the reviewers said, because a defect the
+        # model already described does not become two defects by also being
+        # measured. Appending them blind cost five extra findings across a
+        # sweep - one per trial on vfb-vbst-swap, where the datasheet rule and
+        # the reviewers both report the same broken bootstrap capacitor.
+        covered = set()
+        for item in confirmed:
+            covered |= key(item)
+        for item in list(state.get("dfm", [])) + list(state.get("datasheet", [])):
+            if key(item) & covered:
+                continue
+            confirmed.append(item)
+            covered |= key(item)
 
         return {
             "findings": findings,
