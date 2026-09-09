@@ -12,11 +12,13 @@ import {
   highlightNets,
   markDivergence,
   markRefs,
+  markDatasheets,
   renderBoard,
 } from "./render.js";
 import { islandCounts } from "./copper.js";
 import { MEASURED, ROLES } from "./graph.js";
 import { summarise } from "./kicad.js";
+import { coverage, factsOf, needsDatasheet, setFacts } from "./datasheets.js";
 import { attachUpload } from "./upload.js";
 import {
   budget,
@@ -79,6 +81,7 @@ function drawView({ keepZoom = true } = {}) {
   svg.dataset.view = "board";
   stage.appendChild(svg);
 
+  markDatasheets(svg, state.board, coverage(state.board));
   panzoom = attachPanZoom(svg, {
     onPointerDown: startDrag,
     onTap: (target) => select(target ? describe(target) : null),
@@ -429,6 +432,7 @@ function renderPartInspector(panel, ref) {
       renderInspector();
     });
   }
+  renderDatasheetPanel(panel, ref);
 }
 
 function renderPadInspector(panel, sel) {
@@ -1066,3 +1070,74 @@ function boot() {
 }
 
 boot();
+
+
+/**
+ * What the review knows about this part's datasheet, and a way to tell it more.
+ *
+ * Shown only for parts a review would research. The fields are the ones the
+ * harness extracts and the evaluators consume, so what is typed here reaches a
+ * check rather than a paragraph: an input range feeds the rail comparison, a
+ * companion part feeds the required-part check, a thermal resistance feeds the
+ * junction temperature. Everything is optional, and blank means the check that
+ * needs it is skipped rather than guessed.
+ */
+function renderDatasheetPanel(panel, ref) {
+  const needed = needsDatasheet(state.board);
+  const why = needed.get(ref);
+  if (!why) return;
+
+  const have = factsOf(state.board.meta.name, ref) || {};
+  const fields = [
+    ["vin_range_v", "Input range", "e.g. 4.5-17 V"],
+    ["external_part", "Needs part", "e.g. 0.1uF between VBST and SW"],
+    ["theta_ja", "Theta JA", "e.g. 92.6 C/W"],
+    ["max_junction_c", "Max Tj", "e.g. 125 C"],
+    ["note", "Other", "anything else the datasheet states"],
+  ];
+  const filled = Object.keys(have).length;
+  const wrap = document.createElement("div");
+  wrap.className = `ds-panel ${filled ? "have" : "missing"}`;
+  wrap.innerHTML = `
+    <h4>${filled ? "Datasheet supplied" : "No datasheet"}</h4>
+    <p class="ds-why">${
+      filled
+        ? "These reach the deterministic checks, not just the review."
+        : html`Researched because it ${why}. Nothing is assumed in its absence —
+            the checks that need these are skipped.`
+    }</p>
+    ${fields
+      .map(
+        ([key, label, hint]) => html`<label class="ds-field"
+          ><span>${label}</span
+          ><input data-ds="${key}" value="${have[key] || ""}" placeholder="${hint}"
+        /></label>`
+      )
+      .join("")}
+    <div class="row"><button class="btn" id="ds-save">Save</button>${
+      filled ? '<button class="btn danger" id="ds-clear">Clear</button>' : ""
+    }</div>`;
+  panel.appendChild(wrap);
+
+  const collect = () =>
+    Object.fromEntries(
+      [...wrap.querySelectorAll("[data-ds]")].map((i) => [i.dataset.ds, i.value])
+    );
+  wrap.querySelector("#ds-save").addEventListener("click", () => {
+    setFacts(state.board.meta.name, ref, collect());
+    paintDatasheets();
+    renderInspector();
+    flash(`Datasheet facts saved for ${ref}`);
+  });
+  wrap.querySelector("#ds-clear")?.addEventListener("click", () => {
+    setFacts(state.board.meta.name, ref, {});
+    paintDatasheets();
+    renderInspector();
+  });
+}
+
+/** Repaint the badges from whatever is stored now. */
+function paintDatasheets() {
+  const svg = document.querySelector("#stage .board-svg");
+  if (svg) markDatasheets(svg, state.board, coverage(state.board));
+}

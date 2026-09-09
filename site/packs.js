@@ -6,13 +6,15 @@
  * reviewer has no copper to speculate about; the physical reviewer has no pin
  * semantics to duplicate.
  *
- * One honest difference from the Python. The page has no research layer - it
- * cannot fetch a datasheet, and it must not depend on a vendor CDN to review a
- * board someone just dropped on it - so the circuit pack here carries no
- * RESEARCHED FACTS section. Everything else is built from the same sections in
- * the same order, and `tests/checks_parity.mjs` holds the two together.
+ * One honest difference from the Python. The page cannot fetch a datasheet, and
+ * must not depend on a vendor CDN to review a board someone just dropped on it,
+ * so its facts are the ones a person typed in rather than ones read out of a
+ * document - and the block says so, because a reviewer leaning on one should be
+ * able to tell where it came from. Everything else is built from the same
+ * sections in the same order.
  */
 
+import { researchBlock } from "./datasheets.js";
 import {
   componentsSection,
   copperSection,
@@ -71,6 +73,9 @@ export function circuitPack(board, findings = []) {
     header(board),
     componentsSection(board),
     netsSection(board),
+    // Whatever anyone typed in about a part's datasheet. Empty for a board
+    // nobody has filled in, which is the normal state and not a defect.
+    researchBlock(board),
     findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
   ]);
 }

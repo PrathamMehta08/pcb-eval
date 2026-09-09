@@ -351,6 +351,32 @@ main { display: flex; flex: 1; min-height: 0; }
 .stranded { fill: none; stroke: var(--crit); stroke-width: .16; opacity: .9; }
 .footprint { cursor: move; }
 
+/* ------------------------------------------------------- datasheet badges ---
+   Only on parts a review would research. A tick over every resistor would be
+   forty ticks saying nothing. */
+.ds-badge { pointer-events: none; }
+.ds-have .ds-disc { fill: rgba(20, 107, 102, .92); stroke: #7fd8cf; stroke-width: .1; }
+.ds-have .ds-glyph { fill: none; stroke: #eafbf8; stroke-width: .22; stroke-linecap: round;
+  stroke-linejoin: round; }
+.ds-missing .ds-disc { fill: rgba(190, 120, 20, .93); stroke: #ffd88a; stroke-width: .1;
+  stroke-linejoin: round; }
+.ds-missing .ds-glyph { fill: none; stroke: #2a1a05; stroke-width: .24; stroke-linecap: round; }
+.ds-missing .ds-glyph-dot { fill: #2a1a05; }
+.hide-datasheets .datasheet-marks { display: none; }
+
+/* ------------------------------------------------------ datasheet, inspector */
+.ds-panel { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius);
+  background: var(--raised); border-left: 2px solid var(--line); }
+.ds-panel.have { border-left-color: var(--mint); }
+.ds-panel.missing { border-left-color: var(--warn); }
+.ds-panel h4 { margin: 0 0 4px; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); font-weight: 600; }
+.ds-why { margin: 0 0 8px; font-size: 11.5px; color: var(--ink-dim); }
+.ds-field { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+.ds-field span { font-family: var(--mono); font-size: 10px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-dim); width: 92px; flex: none; }
+.ds-field input { flex: 1; }
+
 /* ------------------------------------------------------------------ rail --- */
 .rail {
   width: 372px; flex: none; overflow-y: auto; background: var(--panel);
@@ -592,6 +618,7 @@ input, select {
         <button class="chip" data-layer="b-cu">B.Cu</button>
         <button class="chip" data-layer="silk">Silk</button>
         <button class="chip" data-layer="labels">Refs</button>
+        <button class="chip" data-layer="datasheets">Datasheets</button>
       </div>
       <div class="overlay-br">
         <button class="chip" id="fit">Fit</button>

@@ -364,6 +364,32 @@ main { display: flex; flex: 1; min-height: 0; }
 .stranded { fill: none; stroke: var(--crit); stroke-width: .16; opacity: .9; }
 .footprint { cursor: move; }
 
+/* ------------------------------------------------------- datasheet badges ---
+   Only on parts a review would research. A tick over every resistor would be
+   forty ticks saying nothing. */
+.ds-badge { pointer-events: none; }
+.ds-have .ds-disc { fill: rgba(20, 107, 102, .92); stroke: #7fd8cf; stroke-width: .1; }
+.ds-have .ds-glyph { fill: none; stroke: #eafbf8; stroke-width: .22; stroke-linecap: round;
+  stroke-linejoin: round; }
+.ds-missing .ds-disc { fill: rgba(190, 120, 20, .93); stroke: #ffd88a; stroke-width: .1;
+  stroke-linejoin: round; }
+.ds-missing .ds-glyph { fill: none; stroke: #2a1a05; stroke-width: .24; stroke-linecap: round; }
+.ds-missing .ds-glyph-dot { fill: #2a1a05; }
+.hide-datasheets .datasheet-marks { display: none; }
+
+/* ------------------------------------------------------ datasheet, inspector */
+.ds-panel { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius);
+  background: var(--raised); border-left: 2px solid var(--line); }
+.ds-panel.have { border-left-color: var(--mint); }
+.ds-panel.missing { border-left-color: var(--warn); }
+.ds-panel h4 { margin: 0 0 4px; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); font-weight: 600; }
+.ds-why { margin: 0 0 8px; font-size: 11.5px; color: var(--ink-dim); }
+.ds-field { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+.ds-field span { font-family: var(--mono); font-size: 10px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-dim); width: 92px; flex: none; }
+.ds-field input { flex: 1; }
+
 /* ------------------------------------------------------------------ rail --- */
 .rail {
   width: 372px; flex: none; overflow-y: auto; background: var(--panel);
@@ -605,6 +631,7 @@ input, select {
         <button class="chip" data-layer="b-cu">B.Cu</button>
         <button class="chip" data-layer="silk">Silk</button>
         <button class="chip" data-layer="labels">Refs</button>
+        <button class="chip" data-layer="datasheets">Datasheets</button>
       </div>
       <div class="overlay-br">
         <button class="chip" id="fit">Fit</button>
@@ -1944,12 +1971,14 @@ function distill(board) {
  * reviewer has no copper to speculate about; the physical reviewer has no pin
  * semantics to duplicate.
  *
- * One honest difference from the Python. The page has no research layer - it
- * cannot fetch a datasheet, and it must not depend on a vendor CDN to review a
- * board someone just dropped on it - so the circuit pack here carries no
- * RESEARCHED FACTS section. Everything else is built from the same sections in
- * the same order, and `tests/checks_parity.mjs` holds the two together.
+ * One honest difference from the Python. The page cannot fetch a datasheet, and
+ * must not depend on a vendor CDN to review a board someone just dropped on it,
+ * so its facts are the ones a person typed in rather than ones read out of a
+ * document - and the block says so, because a reviewer leaning on one should be
+ * able to tell where it came from. Everything else is built from the same
+ * sections in the same order.
  */
+
 
 
 const PACK_VERSION = "1";
@@ -2003,6 +2032,9 @@ function circuitPack(board, findings = []) {
     header(board),
     componentsSection(board),
     netsSection(board),
+    // Whatever anyone typed in about a part's datasheet. Empty for a board
+    // nobody has filled in, which is the normal state and not a defect.
+    researchBlock(board),
     findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
   ]);
 }
@@ -2757,6 +2789,157 @@ async function filesFrom(transfer) {
   return out;
 }
 
+// ===== site/datasheets.js =============================================
+
+/**
+ * Datasheet facts the person reviewing supplies, because the page cannot fetch.
+ *
+ * The harness has a research layer: it downloads a datasheet, caches it, and
+ * pulls parameters out with the page it found them on. The page cannot do any
+ * of that. It has no server, the artifact CSP blocks the fetch, and a board
+ * someone just dropped on it must not need a vendor CDN to be reviewed.
+ *
+ * So the browser asks instead. A component that would be researched and has no
+ * facts wears a warning; one with facts wears a check; everything else - the
+ * passives, the connectors, the mounting holes - wears nothing, because a
+ * datasheet for a 10k resistor answers no question worth asking.
+ *
+ * WHAT COUNTS AS A FACT
+ *
+ * The same shape the harness extracts, minus the provenance it cannot have.
+ * Every field is optional and an empty store is the normal state: an absent
+ * fact means the check that needs it is skipped, exactly as it does in the
+ * harness, and never means a default.
+ *
+ * Stored per board name in localStorage, so the work of typing in a part's
+ * input range is not lost on reload. Storage can throw - a private window, or
+ * a browser told to block site data - so every access is guarded and the page
+ * works with none of it.
+ */
+
+
+const KEY = "pcb-eval.datasheets.v1";
+
+/** Descriptions that mark a part as active silicon. Mirrors harness/research.py. */
+const SIGNIFICANT =
+  /regulat|converter|\bMCU\b|microcontroller|driver|sensor|transceiver|memory|flash|eeprom|\bADC\b|\bDAC\b|\bPHY\b|amplifier|comparator|reference|oscillator|controller|switch mode|step-down|step-up|LDO/i;
+const POWER_TYPES = new Set(["power_in", "power_out", "open_collector", "tri_state"]);
+const NEVER_RESEARCHED = /^(R|C|L|FB|TP|H|Y)\d/;
+
+/**
+ * Which parts are worth a datasheet, and why. First rule that matches wins.
+ *
+ * The reason is a predicate, not a noun: it is read back to a person as
+ * "researched because it <why>", and a phrase that does not finish that
+ * sentence is a phrase nobody wrote for a reader.
+ *
+ * The same triage the harness runs, so the badges on the board agree with what
+ * a scored review would actually research. A two-pin passive never qualifies
+ * however it matched: what is worth knowing about it is its value, and the
+ * netlist already carries that.
+ */
+function needsDatasheet(board) {
+  const pins = pinsByRef(board);
+  const out = new Map();
+  for (const comp of board.components) {
+    const mine = pins.get(comp.ref) || [];
+    const rails = new Set(
+      mine.map((p) => p.net).filter((n) => /^\/?(VBUS|VCC|VDD|VEE|VIN|VOUT|[+-]?\d+V\d*|[+-]\d+(\.\d+)?V)[A-Z0-9]*$/i.test(n))
+    );
+    let why = null;
+    if (mine.length >= 6) why = `has ${mine.length} pins`;
+    else if (/^(U|S|IC|Q)\d/.test(comp.ref))
+      why = `carries a ${comp.ref[0]} designator`;
+    else if (mine.some((p) => POWER_TYPES.has(baseType(p.type)))) why = "carries a power or driver pin";
+    else if (SIGNIFICANT.test(`${comp.description || ""} ${comp.value || ""}`))
+      why = "reads as an active part";
+    else if (rails.size > 1) why = `sits on ${rails.size} supply rails`;
+    if (!why) continue;
+    if (NEVER_RESEARCHED.test(comp.ref) && mine.length <= 2) continue;
+    out.set(comp.ref, why);
+  }
+  return out;
+}
+
+function read() {
+  try {
+    return JSON.parse(localStorage.getItem(KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function write(all) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(all));
+  } catch {
+    /* a private window, or site data blocked. The page still works. */
+  }
+}
+
+/** Every fact supplied for this board, keyed by ref. */
+function factsFor(boardName) {
+  return read()[boardName] || {};
+}
+
+/** What has been supplied for one part, or null. */
+function factsOf(boardName, ref) {
+  return factsFor(boardName)[ref] || null;
+}
+
+/**
+ * Record what someone read off a datasheet. Empty fields are dropped, and a
+ * part with nothing left is forgotten rather than stored empty - an empty
+ * record and no record mean the same thing and should not look different.
+ */
+function setFacts(boardName, ref, facts) {
+  const all = read();
+  const board = { ...(all[boardName] || {}) };
+  const kept = {};
+  for (const [name, value] of Object.entries(facts || {})) {
+    const text = typeof value === "string" ? value.trim() : value;
+    if (text === "" || text === null || text === undefined) continue;
+    kept[name] = text;
+  }
+  if (Object.keys(kept).length) board[ref] = kept;
+  else delete board[ref];
+  all[boardName] = board;
+  write(all);
+  return board[ref] || null;
+}
+
+/** How each part stands: "have", "missing", or absent when it needs nothing. */
+function coverage(board) {
+  const needed = needsDatasheet(board);
+  const have = factsFor(board.meta.name);
+  const out = new Map();
+  for (const [ref, why] of needed) {
+    out.set(ref, { status: have[ref] ? "have" : "missing", why });
+  }
+  return out;
+}
+
+/**
+ * The researched-facts block for the circuit pack, in the harness's shape.
+ *
+ * Marked as supplied by hand rather than read from a document, because that is
+ * what it is: nobody checked these against a PDF, and a reviewer leaning on one
+ * should be able to say where it came from.
+ */
+function researchBlock(board) {
+  const have = factsFor(board.meta.name);
+  const refs = Object.keys(have).sort();
+  if (!refs.length) return [];
+  const values = new Map(board.components.map((c) => [c.ref, c.value]));
+  const lines = ["DATASHEET FACTS  supplied by hand, not read from a document"];
+  for (const ref of refs) {
+    for (const [name, value] of Object.entries(have[ref])) {
+      lines.push(`${ref} (${values.get(ref) || "?"}) ${name}: ${value}`);
+    }
+  }
+  return lines;
+}
+
 // ===== site/render.js =================================================
 
 // The three views, drawn from the Board object rather than from KiCad's plots.
@@ -3118,6 +3301,7 @@ function renderBoard(board, { copper = true, showSilk = true, showRefs = true } 
   svg.appendChild(el("path", { class: "edge", d: outlinePath(layout.outline) }));
   svg.appendChild(el("g", { class: "divergence" }));
   svg.appendChild(el("g", { class: "marks" }));
+  svg.appendChild(el("g", { class: "datasheet-marks" }));
   return svg;
 }
 
@@ -3383,6 +3567,49 @@ function attachPanZoom(svg, { onPointerDown, onTap } = {}) {
       return { ...view };
     },
   };
+}
+
+/**
+ * A badge over a part, saying whether anyone has told the review what its
+ * datasheet says.
+ *
+ * Only on parts that would be researched. A tick over every resistor would be
+ * forty ticks saying nothing; the badge is worth drawing exactly where its
+ * absence is worth noticing.
+ *
+ * Drawn last, outside the footprint's own transform, so a part rotated 270
+ * degrees does not get an upside-down warning triangle.
+ */
+function markDatasheets(svg, board, coverage) {
+  const layer = svg.querySelector(".datasheet-marks");
+  if (!layer) return;
+  while (layer.firstChild) layer.removeChild(layer.firstChild);
+  if (!coverage || !coverage.size) return;
+
+  for (const fp of board.layout.footprints) {
+    const state = coverage.get(fp.ref);
+    if (!state) continue;
+    const group = el("g", {
+      class: `ds-badge ds-${state.status}`,
+      transform: `translate(${f(fp.x)} ${f(fp.y)})`,
+    });
+    group.dataset.ref = fp.ref;
+    group.dataset.status = state.status;
+
+    if (state.status === "have") {
+      group.appendChild(el("circle", { class: "ds-disc", cx: 0, cy: 0, r: 1.15 }));
+      group.appendChild(
+        el("path", { class: "ds-glyph", d: "M -0.5 0.05 L -0.12 0.45 L 0.55 -0.4" })
+      );
+    } else {
+      group.appendChild(
+        el("path", { class: "ds-disc", d: "M 0 -1.25 L 1.15 0.75 L -1.15 0.75 Z" })
+      );
+      group.appendChild(el("path", { class: "ds-glyph", d: "M 0 -0.55 L 0 0.12" }));
+      group.appendChild(el("circle", { class: "ds-glyph-dot", cx: 0, cy: 0.42, r: 0.11 }));
+    }
+    layer.appendChild(group);
+  }
 }
 
 // ===== site/graph.js ==================================================
@@ -4221,6 +4448,7 @@ async function review(sample, board, { onStep, signal } = {}) {
 
 
 
+
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -4270,6 +4498,7 @@ function drawView({ keepZoom = true } = {}) {
   svg.dataset.view = "board";
   stage.appendChild(svg);
 
+  markDatasheets(svg, state.board, coverage(state.board));
   panzoom = attachPanZoom(svg, {
     onPointerDown: startDrag,
     onTap: (target) => select(target ? describe(target) : null),
@@ -4620,6 +4849,7 @@ function renderPartInspector(panel, ref) {
       renderInspector();
     });
   }
+  renderDatasheetPanel(panel, ref);
 }
 
 function renderPadInspector(panel, sel) {
@@ -5257,6 +5487,77 @@ function boot() {
 }
 
 boot();
+
+
+/**
+ * What the review knows about this part's datasheet, and a way to tell it more.
+ *
+ * Shown only for parts a review would research. The fields are the ones the
+ * harness extracts and the evaluators consume, so what is typed here reaches a
+ * check rather than a paragraph: an input range feeds the rail comparison, a
+ * companion part feeds the required-part check, a thermal resistance feeds the
+ * junction temperature. Everything is optional, and blank means the check that
+ * needs it is skipped rather than guessed.
+ */
+function renderDatasheetPanel(panel, ref) {
+  const needed = needsDatasheet(state.board);
+  const why = needed.get(ref);
+  if (!why) return;
+
+  const have = factsOf(state.board.meta.name, ref) || {};
+  const fields = [
+    ["vin_range_v", "Input range", "e.g. 4.5-17 V"],
+    ["external_part", "Needs part", "e.g. 0.1uF between VBST and SW"],
+    ["theta_ja", "Theta JA", "e.g. 92.6 C/W"],
+    ["max_junction_c", "Max Tj", "e.g. 125 C"],
+    ["note", "Other", "anything else the datasheet states"],
+  ];
+  const filled = Object.keys(have).length;
+  const wrap = document.createElement("div");
+  wrap.className = `ds-panel ${filled ? "have" : "missing"}`;
+  wrap.innerHTML = `
+    <h4>${filled ? "Datasheet supplied" : "No datasheet"}</h4>
+    <p class="ds-why">${
+      filled
+        ? "These reach the deterministic checks, not just the review."
+        : html`Researched because it ${why}. Nothing is assumed in its absence —
+            the checks that need these are skipped.`
+    }</p>
+    ${fields
+      .map(
+        ([key, label, hint]) => html`<label class="ds-field"
+          ><span>${label}</span
+          ><input data-ds="${key}" value="${have[key] || ""}" placeholder="${hint}"
+        /></label>`
+      )
+      .join("")}
+    <div class="row"><button class="btn" id="ds-save">Save</button>${
+      filled ? '<button class="btn danger" id="ds-clear">Clear</button>' : ""
+    }</div>`;
+  panel.appendChild(wrap);
+
+  const collect = () =>
+    Object.fromEntries(
+      [...wrap.querySelectorAll("[data-ds]")].map((i) => [i.dataset.ds, i.value])
+    );
+  wrap.querySelector("#ds-save").addEventListener("click", () => {
+    setFacts(state.board.meta.name, ref, collect());
+    paintDatasheets();
+    renderInspector();
+    flash(`Datasheet facts saved for ${ref}`);
+  });
+  wrap.querySelector("#ds-clear")?.addEventListener("click", () => {
+    setFacts(state.board.meta.name, ref, {});
+    paintDatasheets();
+    renderInspector();
+  });
+}
+
+/** Repaint the badges from whatever is stored now. */
+function paintDatasheets() {
+  const svg = document.querySelector("#stage .board-svg");
+  if (svg) markDatasheets(svg, state.board, coverage(state.board));
+}
 </script>
 
 </body></html>

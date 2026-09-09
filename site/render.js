@@ -358,6 +358,7 @@ export function renderBoard(board, { copper = true, showSilk = true, showRefs = 
   svg.appendChild(el("path", { class: "edge", d: outlinePath(layout.outline) }));
   svg.appendChild(el("g", { class: "divergence" }));
   svg.appendChild(el("g", { class: "marks" }));
+  svg.appendChild(el("g", { class: "datasheet-marks" }));
   return svg;
 }
 
@@ -623,4 +624,47 @@ export function attachPanZoom(svg, { onPointerDown, onTap } = {}) {
       return { ...view };
     },
   };
+}
+
+/**
+ * A badge over a part, saying whether anyone has told the review what its
+ * datasheet says.
+ *
+ * Only on parts that would be researched. A tick over every resistor would be
+ * forty ticks saying nothing; the badge is worth drawing exactly where its
+ * absence is worth noticing.
+ *
+ * Drawn last, outside the footprint's own transform, so a part rotated 270
+ * degrees does not get an upside-down warning triangle.
+ */
+export function markDatasheets(svg, board, coverage) {
+  const layer = svg.querySelector(".datasheet-marks");
+  if (!layer) return;
+  while (layer.firstChild) layer.removeChild(layer.firstChild);
+  if (!coverage || !coverage.size) return;
+
+  for (const fp of board.layout.footprints) {
+    const state = coverage.get(fp.ref);
+    if (!state) continue;
+    const group = el("g", {
+      class: `ds-badge ds-${state.status}`,
+      transform: `translate(${f(fp.x)} ${f(fp.y)})`,
+    });
+    group.dataset.ref = fp.ref;
+    group.dataset.status = state.status;
+
+    if (state.status === "have") {
+      group.appendChild(el("circle", { class: "ds-disc", cx: 0, cy: 0, r: 1.15 }));
+      group.appendChild(
+        el("path", { class: "ds-glyph", d: "M -0.5 0.05 L -0.12 0.45 L 0.55 -0.4" })
+      );
+    } else {
+      group.appendChild(
+        el("path", { class: "ds-disc", d: "M 0 -1.25 L 1.15 0.75 L -1.15 0.75 Z" })
+      );
+      group.appendChild(el("path", { class: "ds-glyph", d: "M 0 -0.55 L 0 0.12" }));
+      group.appendChild(el("circle", { class: "ds-glyph-dot", cx: 0, cy: 0.42, r: 0.11 }));
+    }
+    layer.appendChild(group);
+  }
 }

@@ -1,11 +1,11 @@
 {
- "at": "2026-09-09T01:16:19",
+ "at": "2026-09-09T01:25:36",
  "model": "openai/gpt-oss-120b",
  "cost": {
-  "calls": 494,
-  "tokens_in": 1030266,
-  "tokens_out": 692643,
-  "dollars": 0.5701
+  "calls": 488,
+  "tokens_in": 1031214,
+  "tokens_out": 681355,
+  "dollars": 0.5635
  },
  "prompt_hash": "ef0c91f215d6",
  "pack_version": "1",
@@ -16,12 +16,12 @@
  "pipeline_hash": "d7d5464cc261",
  "corpus_hash": "56602c9aa9ca",
  "usage": {
-  "calls": 494,
-  "cached": 85,
-  "tokens_in": 868328,
-  "tokens_out": 620394,
-  "dollars": 0.50249,
-  "seconds": 1585.0
+  "calls": 488,
+  "cached": 381,
+  "tokens_in": 213288,
+  "tokens_out": 150430,
+  "dollars": 0.12225,
+  "seconds": 385.4
  },
  "trials": 5,
  "totals": {
@@ -37,12 +37,12 @@
   },
   "graph": {
    "boards": 75,
-   "caught": 28,
+   "caught": 27,
    "of": 65,
-   "recall": 0.431,
+   "recall": 0.415,
    "false_alarms_on_clean": 22,
-   "extra_findings_on_seeded": 156,
-   "refuted_proposed": 9,
+   "extra_findings_on_seeded": 157,
+   "refuted_proposed": 7,
    "refuted_reported": 0
   }
  },
@@ -102,11 +102,11 @@
   "graph": [
    {
     "boards": 15,
-    "caught": 3,
+    "caught": 4,
     "of": 13,
-    "recall": 0.231,
+    "recall": 0.308,
     "false_alarms_on_clean": 3,
-    "extra_findings_on_seeded": 25,
+    "extra_findings_on_seeded": 24,
     "refuted_proposed": 0,
     "refuted_reported": 0
    },
@@ -116,7 +116,7 @@
     "of": 13,
     "recall": 0.538,
     "false_alarms_on_clean": 3,
-    "extra_findings_on_seeded": 35,
+    "extra_findings_on_seeded": 36,
     "refuted_proposed": 2,
     "refuted_reported": 0
    },
@@ -127,17 +127,17 @@
     "recall": 0.385,
     "false_alarms_on_clean": 5,
     "extra_findings_on_seeded": 34,
-    "refuted_proposed": 2,
+    "refuted_proposed": 1,
     "refuted_reported": 0
    },
    {
     "boards": 15,
-    "caught": 8,
+    "caught": 6,
     "of": 13,
-    "recall": 0.615,
+    "recall": 0.462,
     "false_alarms_on_clean": 6,
-    "extra_findings_on_seeded": 35,
-    "refuted_proposed": 4,
+    "extra_findings_on_seeded": 36,
+    "refuted_proposed": 3,
     "refuted_reported": 0
    },
    {
@@ -218,14 +218,14 @@
   "graph": {
    "caught": {
     "median": 5,
-    "min": 3,
-    "max": 8,
+    "min": 4,
+    "max": 7,
     "values": [
-     3,
+     4,
      5,
      5,
-     7,
-     8
+     6,
+     7
     ]
    },
    "false_alarms_on_clean": {
@@ -242,26 +242,26 @@
    },
    "extra_findings_on_seeded": {
     "median": 34,
-    "min": 25,
-    "max": 35,
+    "min": 24,
+    "max": 36,
     "values": [
-     25,
+     24,
      27,
      34,
-     35,
-     35
+     36,
+     36
     ]
    },
    "refuted_proposed": {
-    "median": 2,
+    "median": 1,
     "min": 0,
-    "max": 4,
+    "max": 3,
     "values": [
      0,
      1,
+     1,
      2,
-     2,
-     4
+     3
     ]
    },
    "refuted_reported": {
@@ -285,9 +285,9 @@
    "mean": 3.46
   },
   "graph": {
-   "matches": 28,
-   "median": 3.0,
-   "mean": 2.68
+   "matches": 27,
+   "median": 3,
+   "mean": 2.67
   }
  },
  "rows": [
@@ -348,10 +348,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1395,
-   "seconds": 4.2,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -384,10 +384,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 1574,
-   "seconds": 3.5,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -448,10 +448,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3384,
    "tokens_out": 2023,
-   "seconds": 4.5,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -530,10 +530,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 1864,
-   "seconds": 4.3,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -627,10 +627,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3390,
    "tokens_out": 2461,
-   "seconds": 5.7,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -709,10 +709,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1099,
-   "seconds": 2.7,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -811,10 +811,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2743,
-   "seconds": 7.5,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -940,10 +940,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2100,
-   "seconds": 4.8,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -1007,10 +1007,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3391,
    "tokens_out": 2482,
-   "seconds": 6.9,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -1150,10 +1150,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3396,
    "tokens_out": 2576,
-   "seconds": 6.0,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -1249,10 +1249,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2258,
-   "seconds": 5.1,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -1359,10 +1359,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 2339,
-   "seconds": 5.2,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -1429,10 +1429,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 1505,
-   "seconds": 3.4,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -1479,10 +1479,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 974,
-   "seconds": 2.7,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -1524,10 +1524,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 1187,
-   "seconds": 2.6,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -1610,10 +1610,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 0,
+   "cached_calls": 6,
    "tokens_in": 12059,
    "tokens_out": 7718,
-   "seconds": 14.1,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
     "physical": "09f96c401fb63c80",
@@ -1892,21 +1892,19 @@
    "findings": [
     {
      "source": "circuit",
-     "severity": "major",
+     "severity": "minor",
      "refs": [
-      "S1",
-      "U2",
-      "J2"
+      "S1"
      ],
      "nets": [
-      "/ECHO"
+      "/IN"
      ],
-     "title": "S1 ground pin is connected to the /ECHO net instead of the GND net",
-     "why": "The regulator\u2019s ground reference is undefined, preventing proper operation",
-     "fix": "Reconnect S1.1 to the GND net and remove it from the /ECHO net",
-     "claim": "ground-miswire",
-     "subject": "S1",
-     "evidence": "/ECHO: J2.3 S1.1(GND,pwr-in) U2.39(PB3)",
+     "title": "EN pin of the step\u2011down regulator is tied to the VIN net instead of being pulled up",
+     "why": "The regulator\u2019s enable input may not be properly biased, leading to unpredictable startup behavior",
+     "fix": "Add a pull\u2011up resistor to the EN pin or move it to a dedicated enable net",
+     "claim": "enable_tied_to_input",
+     "subject": "/IN",
+     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
      "id": "F001"
     }
    ],
@@ -1917,15 +1915,15 @@
    ],
    "passes": 1,
    "stopped": "stop:rules-accounted-for",
-   "calls": 5,
-   "cached_calls": 0,
-   "tokens_in": 11161,
-   "tokens_out": 3202,
-   "seconds": 14.5,
+   "calls": 4,
+   "cached_calls": 2,
+   "tokens_in": 7823,
+   "tokens_out": 4794,
+   "seconds": 11.9,
    "pack_hashes": {
-    "circuit": "17f9b888a79e8b6a",
+    "circuit": "dca5f032524de2c5",
     "physical": "39949ad7ac16471b",
-    "thermal": "9efa8e0458ce2503"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -1954,40 +1952,19 @@
     "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
     "critic": "ran"
    },
-   "rejected": [],
+   "rejected": [
+    {
+     "stage": "critic",
+     "because": "The evidence shows EN is connected to VIN, but the claim that this is a defect is unsound; tying EN to VIN is typically acceptable.",
+     "title": "EN pin of the step\u2011down regulator is tied to the VIN net instead of being pulled up"
+    }
+   ],
    "report": {
-    "findings": [
-     {
-      "source": "circuit",
-      "severity": "critical",
-      "refs": [
-       "S1",
-       "U2",
-       "J2"
-      ],
-      "nets": [
-       "/ECHO"
-      ],
-      "title": "S1 ground pin is connected to the /ECHO net instead of the GND net",
-      "why": "The regulator\u2019s ground reference is undefined, preventing proper operation",
-      "fix": "Reconnect S1.1 to the GND net and remove it from the /ECHO net",
-      "claim": "ground-miswire",
-      "subject": "S1",
-      "evidence": "/ECHO: J2.3 S1.1(GND,pwr-in) U2.39(PB3)",
-      "id": "F001",
-      "verdict": "correct",
-      "confidence": "high",
-      "verdict_reason": "Supported and sound, but the mis\u2011connected ground can prevent the board from functioning, so severity should be critical",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     }
-    ],
+    "findings": [],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 5.0,
+     "probable": 0.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -2024,12 +2001,11 @@
     "caught": [
      {
       "defect": "stm32-good:supply-on-signal",
-      "finding": "S1 ground pin is connected to the /ECHO net instead of the GND net",
+      "finding": "EN pin of the step\u2011down regulator is tied to the VIN net instead of being pulled up",
       "via": [
-       "S1",
-       "ECHO"
+       "S1"
       ],
-      "breadth": 4
+      "breadth": 2
      }
     ],
     "missed": [],
@@ -2102,10 +2078,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 0,
+   "cached_calls": 6,
    "tokens_in": 11994,
    "tokens_out": 7277,
-   "seconds": 30.6,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "c4b3e4220ecead10",
     "physical": "5c28d168988abba0",
@@ -2306,10 +2282,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 5,
-   "cached_calls": 2,
+   "cached_calls": 5,
    "tokens_in": 11098,
    "tokens_out": 6697,
-   "seconds": 13.9,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "1a7368d944750bf5",
     "physical": "09f96c401fb63c80",
@@ -2501,10 +2477,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 5,
-   "cached_calls": 1,
+   "cached_calls": 4,
    "tokens_in": 11081,
    "tokens_out": 6510,
-   "seconds": 11.4,
+   "seconds": 9.0,
    "pack_hashes": {
     "circuit": "f3e935833951d662",
     "physical": "c5b438c6fd5fe53c",
@@ -2736,10 +2712,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12605,
    "tokens_out": 9289,
-   "seconds": 18.9,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "ceec52579aefc122",
     "physical": "09f96c401fb63c80",
@@ -3028,10 +3004,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12306,
    "tokens_out": 7474,
-   "seconds": 15.0,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "c8f9d988a6135ad6",
     "physical": "09f96c401fb63c80",
@@ -3256,10 +3232,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12290,
    "tokens_out": 8424,
-   "seconds": 15.6,
+   "seconds": 0.2,
    "pack_hashes": {
     "circuit": "997cc2778d9e4ac9",
     "physical": "09f96c401fb63c80",
@@ -3498,10 +3474,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12313,
    "tokens_out": 7619,
-   "seconds": 14.2,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "bd2af9be481598c2",
     "physical": "09f96c401fb63c80",
@@ -3711,22 +3687,26 @@
      "source": "physical",
      "severity": "major",
      "refs": [
-      "U3",
-      "C16"
+      "U3"
      ],
      "nets": [
       "GND"
      ],
-     "title": "decoupling capacitor placed too far from pin",
-     "why": "large loop inductance reduces high\u2011frequency decoupling effectiveness",
-     "fix": "move capacitor C16 within a few millimetres of pin U3.8",
-     "claim": "decoupling_far",
+     "title": "decoupling capacitor placed far from the GND pin",
+     "why": "the long distance increases loop inductance, reducing noise suppression",
+     "fix": "move the decoupling capacitor closer to the U3.8 pin",
+     "claim": "decoupling distance too long",
      "subject": "U3",
      "evidence": "U3.8(GND) GND C16 17.2",
      "id": "F002"
     }
    ],
-   "dropped": [],
+   "dropped": [
+    {
+     "title": "EN pin of the step\u2011down regulator is not pulled up",
+     "because": "its evidence is not a line in the board data: '+5V: C12.1 D2.2(A) J11.5 J2.1 J3.1 J4.2 J7.2 J8.2 L1.2 R2.1 '"
+    }
+   ],
    "rules": [
     "net-island",
     "net-island"
@@ -3734,14 +3714,14 @@
    "passes": 2,
    "stopped": "stop:passes-spent",
    "calls": 10,
-   "cached_calls": 1,
-   "tokens_in": 20387,
-   "tokens_out": 15030,
-   "seconds": 30.2,
+   "cached_calls": 2,
+   "tokens_in": 20031,
+   "tokens_out": 12904,
+   "seconds": 17.6,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
-    "physical": "69da77ac4b28cb40",
-    "thermal": "b3a2d82ea4529d95"
+    "physical": "2914ed2a6253a887",
+    "thermal": "11bfb282b9e799db"
    },
    "enabled_agents": [
     "circuit",
@@ -3773,36 +3753,57 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "The evidence only shows a capacitor connection to /NRST and does not demonstrate the absence of a pull\u2011up resistor.",
+     "because": "The evidence only shows a capacitor connection, not the absence of a pull\u2011up resistor.",
      "title": "reset pin has no pull\u2011up resistor"
     },
     {
      "stage": "critic",
-     "because": "The quoted evidence does not establish either the missing pull\u2011up or the distant decoupling, making the combined claim unsupported.",
-     "title": "floating reset pin becomes vulnerable to supply\u2011rail noise due to distant decoupling"
+     "because": "The evidence lists a ground connection but provides no measurement of distance to the capacitor.",
+     "title": "decoupling capacitor placed far from the GND pin"
     },
     {
      "stage": "critic",
-     "because": "The evidence only shows a capacitor on the reset net and does not demonstrate that a pull\u2011up resistor is missing.",
-     "title": "reset pin has no pull\u2011up resistor"
+     "because": "The cited statement is a generic claim and does not substantiate the combined effect described.",
+     "title": "floating reset pin becomes vulnerable to noise due to distant decoupling"
     },
     {
      "stage": "critic",
-     "because": "The distance value alone does not establish that the decoupling capacitor is placed too far without a defined acceptable limit.",
-     "title": "decoupling capacitor placed too far from pin"
-    },
-    {
-     "stage": "critic",
-     "because": "The provided evidence does not substantiate the claim that the floating reset pin and distant decoupling together cause vulnerability to supply noise.",
-     "title": "floating reset pin combined with distant decoupling makes the reset line vulnerable to supply noise"
+     "because": "the evidence only shows connectivity, not physical distance, so the claim of a far\u2011placed decoupling capacitor is unsupported",
+     "title": "decoupling capacitor placed far from the GND pin"
     }
    ],
    "report": {
-    "findings": [],
+    "findings": [
+     {
+      "source": "circuit",
+      "severity": "major",
+      "refs": [
+       "C6",
+       "U2"
+      ],
+      "nets": [
+       "/NRST"
+      ],
+      "title": "reset pin has no pull\u2011up resistor",
+      "why": "the MCU reset input may float, causing unintended resets or failure to start",
+      "fix": "add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from /NRST to +3.3\u202fV",
+      "claim": "missing_pullup_reset",
+      "subject": "/NRST",
+      "evidence": "/NRST: C6.1 U2.7(NRST,in)",
+      "id": "F001",
+      "verdict": "correct",
+      "confidence": "high",
+      "verdict_reason": "the severity is understated; a missing pull\u2011up on the reset pin can cause functional failure, so it should be major",
+      "found_by": [
+       "circuit"
+      ],
+      "class": "probable_issue"
+     }
+    ],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 0.0,
+     "probable": 2.5,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -3841,7 +3842,7 @@
     ],
     "other": [
      "reset pin has no pull\u2011up resistor",
-     "decoupling capacitor placed too far from pin"
+     "decoupling capacitor placed far from the GND pin"
     ],
     "recall": 0.0,
     "false_alarms": 2
@@ -3872,38 +3873,19 @@
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "S1",
-      "C3",
-      "J12"
-     ],
-     "nets": [
-      "/IN"
-     ],
-     "title": "EN pin of S1 lacks required pull\u2011up resistor",
-     "why": "The step\u2011down regulator will not enable, so no regulated output is produced",
-     "fix": "Add a pull\u2011up resistor (e.g., 10\u202fk) from the EN pin to a suitable supply such as VIN or 3.3\u202fV",
-     "claim": "missing_pullup_enable",
-     "subject": "/IN",
-     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-     "id": "F001"
-    },
-    {
-     "source": "circuit",
-     "severity": "major",
-     "refs": [
       "U2",
-      "C6"
+      "R4"
      ],
      "nets": [
-      "/NRST"
+      "/BOOT0"
      ],
-     "title": "NRST pin of the MCU has no pull\u2011up resistor",
-     "why": "The MCU may remain held in reset and fail to start",
-     "fix": "Add a pull\u2011up resistor (e.g., 10\u202fk) from NRST to the +3.3\u202fV rail",
-     "claim": "missing_pullup_nrst",
-     "subject": "/NRST",
-     "evidence": "/NRST: C6.1 U2.7(NRST,in)",
-     "id": "F002"
+     "title": "BOOT0 pin not tied to a defined level",
+     "why": "the MCU may start in an unintended boot mode",
+     "fix": "connect R4.2 to GND (or VDD) to define the BOOT0 level",
+     "claim": "boot0-floating",
+     "subject": "/BOOT0",
+     "evidence": "/BOOT0: R4.2 U2.44(BOOT0,in)",
+     "id": "F001"
     },
     {
      "source": "physical",
@@ -3920,7 +3902,7 @@
      "claim": "decoupling_distance",
      "subject": "U3",
      "evidence": "U3.8(GND) GND C16 17.2",
-     "id": "F003"
+     "id": "F002"
     },
     {
      "source": "physical",
@@ -3935,24 +3917,24 @@
      "claim": "missing_copper",
      "subject": "VBUS",
      "evidence": "VBUS 2 1 none - 0 F.Cu",
-     "id": "F004"
+     "id": "F003"
     },
     {
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "R3"
+      "U2"
      ],
      "nets": [
-      "FB"
+      "+3.3V"
      ],
-     "title": "feedback resistor R3 missing connection to output voltage",
-     "why": "regulator cannot regulate output voltage without full divider",
-     "fix": "connect the missing end of R3 (R3.2) to the regulator output (+5\u202fV)",
-     "claim": "incomplete_feedback_divider",
-     "subject": "FB",
-     "evidence": "FB: R2.2 R3.1 S1.4(VFB,in)",
-     "id": "F005"
+     "title": "VBAT pin is tied to the core 3.3\u202fV supply",
+     "why": "The backup battery voltage will not be retained when the main supply is removed, preventing RTC and backup register operation",
+     "fix": "Separate the VBAT pin onto its own dedicated supply net with appropriate decoupling and optional diode",
+     "claim": "vbatt_vdd_mix",
+     "subject": "+3.3V",
+     "evidence": "+3.3V: C11.1 C13.1 C16.1 C2.1 C5.1 C8.1 C9.1 D3.2(A) FB1.2 J5.1 J6.1 R6.2 R7.1 SW1.3(C) U1.2(VO,pwr-out) U2.1(VBAT,pwr-in) U2.24(VDD,pwr-in) U2.36(VDD,pwr-in) U2.48(VDD,pwr-in)",
+     "id": "F004"
     }
    ],
    "dropped": [],
@@ -3962,14 +3944,14 @@
    "passes": 2,
    "stopped": "stop:passes-spent",
    "calls": 10,
-   "cached_calls": 1,
-   "tokens_in": 20928,
-   "tokens_out": 14571,
-   "seconds": 35.0,
+   "cached_calls": 2,
+   "tokens_in": 20673,
+   "tokens_out": 14865,
+   "seconds": 32.6,
    "pack_hashes": {
-    "circuit": "fd31bd4039ffb92e",
+    "circuit": "433cc251e183d9ca",
     "physical": "09f96c401fb63c80",
-    "thermal": "597cfaed83736076"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -4001,38 +3983,18 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "the evidence only lists net connections and does not demonstrate that a pull\u2011up resistor is absent",
-     "title": "EN pin of S1 lacks required pull\u2011up resistor"
+     "because": "The evidence only shows a connection to resistor R4, not that BOOT0 is left floating or undefined.",
+     "title": "BOOT0 pin not tied to a defined level"
     },
     {
      "stage": "critic",
-     "because": "the evidence shows only the capacitor and MCU pin on the net, not the absence of a pull\u2011up resistor",
-     "title": "NRST pin of the MCU has no pull\u2011up resistor"
+     "because": "Evidence only shows a connection to BOOT0, not that the pin is left undefined",
+     "title": "BOOT0 pin not tied to a defined level"
     },
     {
      "stage": "critic",
-     "because": "the evidence only confirms missing VBUS copper and does not substantiate the claimed missing pull\u2011up resistor",
-     "title": "Regulator enable impossible due to missing pull\u2011up on EN and absent VBUS copper"
-    },
-    {
-     "stage": "critic",
-     "because": "the evidence supports the decoupling distance issue but provides no proof of a missing pull\u2011up resistor on NRST",
-     "title": "NRST may stay in reset due to insufficient decoupling combined with missing pull\u2011up"
-    },
-    {
-     "stage": "critic",
-     "because": "Evidence lists net connections but does not demonstrate the absence of a pull\u2011up resistor on EN.",
-     "title": "EN pin of S1 lacks required pull\u2011up resistor"
-    },
-    {
-     "stage": "critic",
-     "because": "Evidence shows only the capacitor and MCU pin on the NRST net and does not prove a pull\u2011up resistor is missing.",
-     "title": "NRST pin of the MCU has no pull\u2011up resistor"
-    },
-    {
-     "stage": "critic",
-     "because": "Evidence shows R3 on the feedback net but does not prove it lacks a connection to the output voltage.",
-     "title": "feedback resistor R3 missing connection to output voltage"
+     "because": "Evidence does not demonstrate a floating BOOT0 or missing VBUS copper",
+     "title": "floating BOOT0 combined with missing VBUS copper"
     }
    ],
    "report": {
@@ -4050,11 +4012,34 @@
       "claim": "missing_copper",
       "subject": "VBUS",
       "evidence": "VBUS 2 1 none - 0 F.Cu",
-      "id": "F004",
+      "id": "F003",
       "verdict": "accept",
       "confidence": "high",
       "found_by": [
        "physical"
+      ],
+      "class": "probable_issue"
+     },
+     {
+      "source": "circuit",
+      "severity": "major",
+      "refs": [
+       "U2"
+      ],
+      "nets": [
+       "+3.3V"
+      ],
+      "title": "VBAT pin is tied to the core 3.3\u202fV supply",
+      "why": "The backup battery voltage will not be retained when the main supply is removed, preventing RTC and backup register operation",
+      "fix": "Separate the VBAT pin onto its own dedicated supply net with appropriate decoupling and optional diode",
+      "claim": "vbatt_vdd_mix",
+      "subject": "+3.3V",
+      "evidence": "+3.3V: C11.1 C13.1 C16.1 C2.1 C5.1 C8.1 C9.1 D3.2(A) FB1.2 J5.1 J6.1 R6.2 R7.1 SW1.3(C) U1.2(VO,pwr-out) U2.1(VBAT,pwr-in) U2.24(VDD,pwr-in) U2.36(VDD,pwr-in) U2.48(VDD,pwr-in)",
+      "id": "F004",
+      "verdict": "accept",
+      "confidence": "high",
+      "found_by": [
+       "circuit"
       ],
       "class": "probable_issue"
      },
@@ -4073,7 +4058,7 @@
       "claim": "decoupling_distance",
       "subject": "U3",
       "evidence": "U3.8(GND) GND C16 17.2",
-      "id": "F003",
+      "id": "F002",
       "verdict": "accept",
       "confidence": "high",
       "found_by": [
@@ -4085,7 +4070,7 @@
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 7.5,
+     "probable": 10.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -4123,14 +4108,13 @@
      "stm32-good:value-unorderable"
     ],
     "other": [
-     "EN pin of S1 lacks required pull\u2011up resistor",
-     "NRST pin of the MCU has no pull\u2011up resistor",
+     "BOOT0 pin not tied to a defined level",
      "decoupling capacitor placed too far from pin",
      "power net has no copper trace or pour",
-     "feedback resistor R3 missing connection to output voltage"
+     "VBAT pin is tied to the core 3.3\u202fV supply"
     ],
     "recall": 0.0,
-    "false_alarms": 5
+    "false_alarms": 4
    },
    "refuted_proposed": [],
    "refuted_reported": [],
@@ -4162,10 +4146,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 2,
-   "cached_calls": 1,
+   "cached_calls": 2,
    "tokens_in": 2166,
    "tokens_out": 1997,
-   "seconds": 5.0,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "846e44f48ebe6faa",
     "physical": "326a3fb05396d1a6"
@@ -4277,10 +4261,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 2,
-   "cached_calls": 1,
+   "cached_calls": 2,
    "tokens_in": 2164,
    "tokens_out": 1879,
-   "seconds": 3.7,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "f49a76f9c3eadd6a",
     "physical": "326a3fb05396d1a6"
@@ -4383,20 +4367,39 @@
      "nets": []
     }
    ],
-   "findings": [],
+   "findings": [
+    {
+     "source": "circuit",
+     "severity": "major",
+     "refs": [
+      "R1"
+     ],
+     "nets": [
+      "/FB",
+      "GND"
+     ],
+     "title": "resistor R1 has no specified resistance value",
+     "why": "the feedback divider cannot set a defined output voltage, leading to undefined regulation",
+     "fix": "assign an appropriate resistance value to R1 based on the desired output voltage",
+     "claim": "missing-resistor-value",
+     "subject": "R1",
+     "evidence": "R1 R 1210",
+     "id": "F001"
+    }
+   ],
    "dropped": [],
    "rules": [
     "value-not-orderable"
    ],
-   "passes": 2,
-   "stopped": "stop:passes-spent",
+   "passes": 1,
+   "stopped": "stop:rules-accounted-for",
    "calls": 3,
    "cached_calls": 1,
-   "tokens_in": 3329,
-   "tokens_out": 2668,
-   "seconds": 5.8,
+   "tokens_in": 2845,
+   "tokens_out": 2145,
+   "seconds": 5.6,
    "pack_hashes": {
-    "circuit": "f4d45f19b691b45a",
+    "circuit": "7f0b4acd03653744",
     "physical": "326a3fb05396d1a6"
    },
    "enabled_agents": [
@@ -4422,16 +4425,42 @@
     "thermal": "skipped: no trustworthy junction-to-ambient resistance in the researched facts",
     "signal_integrity": "skipped: no stackup and no high speed nets",
     "power_integrity": "skipped: no stackup",
-    "cross_domain": "skipped: only 0 reviewer produced findings, so there is no interaction to look for",
-    "critic": "skipped: nothing survived"
+    "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
+    "critic": "ran"
    },
    "rejected": [],
    "report": {
-    "findings": [],
+    "findings": [
+     {
+      "source": "circuit",
+      "severity": "critical",
+      "refs": [
+       "R1"
+      ],
+      "nets": [
+       "/FB",
+       "GND"
+      ],
+      "title": "resistor R1 has no specified resistance value",
+      "why": "the feedback divider cannot set a defined output voltage, leading to undefined regulation",
+      "fix": "assign an appropriate resistance value to R1 based on the desired output voltage",
+      "claim": "missing-resistor-value",
+      "subject": "R1",
+      "evidence": "R1 R 1210",
+      "id": "F001",
+      "verdict": "correct",
+      "confidence": "high",
+      "verdict_reason": "The missing resistor value can prevent proper regulation, warranting a critical severity rather than major",
+      "found_by": [
+       "circuit"
+      ],
+      "class": "probable_issue"
+     }
+    ],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 0.0,
+     "probable": 5.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -4455,12 +4484,11 @@
      "thermal": "skipped: no trustworthy junction-to-ambient resistance in the researched facts",
      "signal_integrity": "skipped: no stackup and no high speed nets",
      "power_integrity": "skipped: no stackup",
-     "cross_domain": "skipped: only 0 reviewer produced findings, so there is no interaction to look for",
-     "critic": "skipped: nothing survived"
+     "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
+     "critic": "ran"
     },
     "unassessed": {
-     "critic": "nothing survived",
-     "cross_domain": "only 0 reviewer produced findings, so there is no interaction to look for",
+     "cross_domain": "only 1 reviewer produced findings, so there is no interaction to look for",
      "junction_temp": "no junction-to-ambient resistance in the researched facts",
      "power_integrity": "no stackup",
      "signal_integrity": "no stackup and no high speed nets",
@@ -4468,12 +4496,19 @@
     }
    },
    "grade": {
-    "caught": [],
-    "missed": [
-     "dcdcc:value-unorderable"
+    "caught": [
+     {
+      "defect": "dcdcc:value-unorderable",
+      "finding": "resistor R1 has no specified resistance value",
+      "via": [
+       "R1"
+      ],
+      "breadth": 3
+     }
     ],
+    "missed": [],
     "other": [],
-    "recall": 0.0,
+    "recall": 1.0,
     "false_alarms": 0
    },
    "refuted_proposed": [],
@@ -4567,10 +4602,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1661,
-   "seconds": 4.4,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -4622,10 +4657,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 1124,
-   "seconds": 2.9,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -4695,10 +4730,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3384,
    "tokens_out": 1461,
-   "seconds": 3.4,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -4844,10 +4879,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 2715,
-   "seconds": 6.0,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -4925,10 +4960,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3390,
    "tokens_out": 1995,
-   "seconds": 5.7,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5048,10 +5083,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1508,
-   "seconds": 4.4,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5177,10 +5212,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2068,
-   "seconds": 4.8,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5302,10 +5337,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 3134,
-   "seconds": 7.0,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5401,10 +5436,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3391,
    "tokens_out": 2153,
-   "seconds": 4.9,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5522,10 +5557,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3396,
    "tokens_out": 1472,
-   "seconds": 3.9,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5626,10 +5661,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1436,
-   "seconds": 3.5,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5732,10 +5767,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 1615,
-   "seconds": 3.8,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5784,10 +5819,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 1636,
-   "seconds": 3.8,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5871,10 +5906,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 1428,
-   "seconds": 4.1,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -5976,10 +6011,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 1711,
-   "seconds": 3.9,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -6063,10 +6098,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 0,
+   "cached_calls": 6,
    "tokens_in": 12103,
    "tokens_out": 7075,
-   "seconds": 12.7,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
     "physical": "09f96c401fb63c80",
@@ -6219,10 +6254,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 2,
-   "cached_calls": 0,
+   "cached_calls": 2,
    "tokens_in": 2166,
    "tokens_out": 1655,
-   "seconds": 3.4,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "5322061870dd941d",
     "physical": "326a3fb05396d1a6"
@@ -6331,39 +6366,55 @@
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "S1",
-      "U2",
-      "J2"
+      "R4",
+      "U2"
      ],
      "nets": [
-      "/ECHO"
+      "/BOOT0"
      ],
-     "title": "S1 ground pin is connected to the /ECHO signal net instead of GND",
-     "why": "The regulator's reference will be tied to a GPIO pin, causing unstable operation and possible MCU interference",
-     "fix": "Reconnect S1.1 to the GND net and route /ECHO to a proper signal pin",
-     "claim": "ground-miswire",
-     "subject": "/ECHO",
-     "evidence": "/ECHO: J2.3 S1.1(GND,pwr-in) U2.39(PB3)",
+     "title": "BOOT0 pin is not pulled down to ground",
+     "why": "The MCU may start in bootloader mode unpredictably because BOOT0 floats",
+     "fix": "Add a pull\u2011down resistor from BOOT0 to GND",
+     "claim": "boot0-floating",
+     "subject": "/BOOT0",
+     "evidence": "/BOOT0: R4.2 U2.44(BOOT0,in)",
      "id": "F001"
     },
     {
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "S1",
-      "J12",
-      "C3"
+      "C6",
+      "U2"
      ],
      "nets": [
-      "/IN"
+      "NRST"
      ],
-     "title": "S1 EN pin is tied to the input voltage net instead of a defined high-level pull\u2011up",
-     "why": "The enable input will follow the input voltage, preventing proper startup control of the regulator",
-     "fix": "Add a pull\u2011up resistor to a stable VCC (or appropriate logic level) and connect S1.5 to that pull\u2011up",
-     "claim": "enable-miswire",
-     "subject": "/IN",
-     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
+     "title": "NRST pin lacks a pull\u2011up resistor",
+     "why": "The reset line may be held low or float, causing unintended resets or failure to start",
+     "fix": "Add a pull\u2011up resistor from NRST to the appropriate VDD rail",
+     "claim": "nreset-no-pullup",
+     "subject": "NRST",
+     "evidence": "NRST: C6.1 U2.7(NRST,in)",
      "id": "F002"
+    },
+    {
+     "source": "circuit",
+     "severity": "minor",
+     "refs": [
+      "J11",
+      "U3"
+     ],
+     "nets": [
+      "/O1"
+     ],
+     "title": "ULN2003 open\u2011collector output O1 is not pulled up",
+     "why": "When the driver is off the line will float, leading to undefined logic levels",
+     "fix": "Add a pull\u2011up resistor from O1 to the appropriate supply voltage",
+     "claim": "uln2003-output-no-pullup",
+     "subject": "/O1",
+     "evidence": "/O1: J11.1 U3.16(O1,oc)",
+     "id": "F003"
     },
     {
      "source": "physical",
@@ -6380,7 +6431,7 @@
      "claim": "decoupling distance too large",
      "subject": "+3.3V",
      "evidence": "U1.2(VO) +3.3V C2 7.4",
-     "id": "F003"
+     "id": "F004"
     },
     {
      "source": "physical",
@@ -6397,7 +6448,7 @@
      "claim": "decoupling distance too large",
      "subject": "/VIN_LDO",
      "evidence": "U1.3(VI) /VIN_LDO C1 8.2",
-     "id": "F004"
+     "id": "F005"
     },
     {
      "source": "physical",
@@ -6414,7 +6465,7 @@
      "claim": "decoupling distance too large",
      "subject": "GND",
      "evidence": "U3.8(GND) GND C16 17.2",
-     "id": "F005"
+     "id": "F006"
     }
    ],
    "dropped": [],
@@ -6425,14 +6476,14 @@
    "passes": 1,
    "stopped": "stop:rules-accounted-for",
    "calls": 6,
-   "cached_calls": 0,
-   "tokens_in": 12991,
-   "tokens_out": 10060,
-   "seconds": 32.5,
+   "cached_calls": 2,
+   "tokens_in": 13038,
+   "tokens_out": 10006,
+   "seconds": 21.0,
    "pack_hashes": {
-    "circuit": "17f9b888a79e8b6a",
+    "circuit": "dca5f032524de2c5",
     "physical": "39949ad7ac16471b",
-    "thermal": "9efa8e0458ce2503"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -6464,95 +6515,32 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "evidence only shows miswired ground, not that the capacitor cannot suppress transients",
-     "title": "decoupling capacitor cannot suppress transients"
+     "because": "The evidence only shows a connection to resistor R4, not that BOOT0 lacks a pull\u2011down to ground.",
+     "title": "BOOT0 pin is not pulled down to ground"
     },
     {
      "stage": "critic",
-     "because": "evidence covers EN pin tie but not the decoupling capacitor distance claimed",
-     "title": "LDO enable timing is unreliable"
+     "because": "The evidence links a capacitor (C6) to NRST, but provides no proof that a pull\u2011up resistor is missing.",
+     "title": "NRST pin lacks a pull\u2011up resistor"
     },
     {
      "stage": "critic",
-     "because": "evidence shows capacitor distance but not the ground pin miswire, so claim unsupported",
-     "title": "excessive ground impedance introduces noise"
+     "because": "The evidence shows the open\u2011collector output connection but does not demonstrate the absence of a pull\u2011up resistor.",
+     "title": "ULN2003 open\u2011collector output O1 is not pulled up"
+    },
+    {
+     "stage": "critic",
+     "because": "The evidence does not substantiate the combined effect of voltage droop and missing pull\u2011down causing bootloader entry.",
+     "title": "Unintended entry into bootloader mode due to voltage droop on BOOT0"
+    },
+    {
+     "stage": "critic",
+     "because": "The evidence does not link the distant ground capacitor and missing pull\u2011up to spurious resets.",
+     "title": "Spurious resets caused by insufficient ground decoupling combined with missing NRST pull\u2011up"
     }
    ],
    "report": {
     "findings": [
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "S1",
-       "J12",
-       "C3"
-      ],
-      "nets": [
-       "/IN"
-      ],
-      "title": "S1 EN pin is tied to the input voltage net instead of a defined high-level pull\u2011up",
-      "why": "The enable input will follow the input voltage, preventing proper startup control of the regulator",
-      "fix": "Add a pull\u2011up resistor to a stable VCC (or appropriate logic level) and connect S1.5 to that pull\u2011up",
-      "claim": "enable-miswire",
-      "subject": "/IN",
-      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-      "id": "F002",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "S1",
-       "U2",
-       "J2"
-      ],
-      "nets": [
-       "/ECHO"
-      ],
-      "title": "S1 ground pin is connected to the /ECHO signal net instead of GND",
-      "why": "The regulator's reference will be tied to a GPIO pin, causing unstable operation and possible MCU interference",
-      "fix": "Reconnect S1.1 to the GND net and route /ECHO to a proper signal pin",
-      "claim": "ground-miswire",
-      "subject": "/ECHO",
-      "evidence": "/ECHO: J2.3 S1.1(GND,pwr-in) U2.39(PB3)",
-      "id": "F001",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "physical",
-      "severity": "major",
-      "refs": [
-       "U3"
-      ],
-      "nets": [
-       "GND"
-      ],
-      "title": "ground decoupling capacitor located 17.2\u202fmm from the U3.8 pin",
-      "why": "such a long return path raises impedance, affecting noise suppression",
-      "fix": "add a nearby ground capacitor or move C16 closer to the U3.8 pin",
-      "claim": "decoupling distance too large",
-      "subject": "GND",
-      "evidence": "U3.8(GND) GND C16 17.2",
-      "id": "F005",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "physical"
-      ],
-      "class": "probable_issue"
-     },
      {
       "source": "physical",
       "severity": "minor",
@@ -6568,10 +6556,10 @@
       "claim": "decoupling distance too large",
       "subject": "/VIN_LDO",
       "evidence": "U1.3(VI) /VIN_LDO C1 8.2",
-      "id": "F004",
+      "id": "F005",
       "verdict": "correct",
       "confidence": "high",
-      "verdict_reason": "distance is a concern but does not rise to major severity",
+      "verdict_reason": "The 8.2\u202fmm distance is undesirable yet not a critical defect; downgrade severity to minor.",
       "found_by": [
        "physical"
       ],
@@ -6592,10 +6580,34 @@
       "claim": "decoupling distance too large",
       "subject": "+3.3V",
       "evidence": "U1.2(VO) +3.3V C2 7.4",
-      "id": "F003",
+      "id": "F004",
       "verdict": "correct",
       "confidence": "high",
-      "verdict_reason": "distance is a concern but does not rise to major severity",
+      "verdict_reason": "The capacitor is 7.4\u202fmm from the supply pin, which is sub\u2011optimal but not critical; severity should be minor.",
+      "found_by": [
+       "physical"
+      ],
+      "class": "probable_issue"
+     },
+     {
+      "source": "physical",
+      "severity": "minor",
+      "refs": [
+       "U3"
+      ],
+      "nets": [
+       "GND"
+      ],
+      "title": "ground decoupling capacitor located 17.2\u202fmm from the U3.8 pin",
+      "why": "such a long return path raises impedance, affecting noise suppression",
+      "fix": "add a nearby ground capacitor or move C16 closer to the U3.8 pin",
+      "claim": "decoupling distance too large",
+      "subject": "GND",
+      "evidence": "U3.8(GND) GND C16 17.2",
+      "id": "F006",
+      "verdict": "correct",
+      "confidence": "high",
+      "verdict_reason": "A 17.2\u202fmm ground\u2011decoupling path is poor practice but does not constitute a major defect; severity should be minor.",
       "found_by": [
        "physical"
       ],
@@ -6605,7 +6617,7 @@
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 8.5,
+     "probable": 1.5,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -6641,23 +6653,23 @@
     "caught": [
      {
       "defect": "stm32-good:supply-on-signal",
-      "finding": "S1 ground pin is connected to the /ECHO signal net instead of GND",
+      "finding": "ground decoupling capacitor located 17.2\u202fmm from the U3.8 pin",
       "via": [
-       "S1",
-       "ECHO"
+       "GND"
       ],
-      "breadth": 4
+      "breadth": 2
      }
     ],
     "missed": [],
     "other": [
-     "S1 EN pin is tied to the input voltage net instead of a defined high-level pull\u2011up",
+     "BOOT0 pin is not pulled down to ground",
+     "NRST pin lacks a pull\u2011up resistor",
+     "ULN2003 open\u2011collector output O1 is not pulled up",
      "decoupling capacitor placed 7.4\u202fmm from the +3.3\u202fV supply pin",
-     "decoupling capacitor 8.2\u202fmm away from the VIN_LDO pin",
-     "ground decoupling capacitor located 17.2\u202fmm from the U3.8 pin"
+     "decoupling capacitor 8.2\u202fmm away from the VIN_LDO pin"
     ],
     "recall": 1.0,
-    "false_alarms": 4
+    "false_alarms": 5
    },
    "refuted_proposed": [],
    "refuted_reported": [],
@@ -6791,10 +6803,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 0,
+   "cached_calls": 6,
    "tokens_in": 12872,
    "tokens_out": 10035,
-   "seconds": 23.9,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "c4b3e4220ecead10",
     "physical": "5c28d168988abba0",
@@ -7183,10 +7195,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12108,
    "tokens_out": 5769,
-   "seconds": 10.3,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "1a7368d944750bf5",
     "physical": "09f96c401fb63c80",
@@ -7425,10 +7437,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 1,
+   "cached_calls": 6,
    "tokens_in": 12392,
    "tokens_out": 9529,
-   "seconds": 19.4,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "f3e935833951d662",
     "physical": "c5b438c6fd5fe53c",
@@ -7685,10 +7697,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12410,
    "tokens_out": 8087,
-   "seconds": 14.4,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "ceec52579aefc122",
     "physical": "09f96c401fb63c80",
@@ -7941,10 +7953,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12073,
    "tokens_out": 6810,
-   "seconds": 12.5,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "c8f9d988a6135ad6",
     "physical": "09f96c401fb63c80",
@@ -8161,10 +8173,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 5,
-   "cached_calls": 2,
+   "cached_calls": 5,
    "tokens_in": 11250,
    "tokens_out": 8125,
-   "seconds": 18.3,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "997cc2778d9e4ac9",
     "physical": "09f96c401fb63c80",
@@ -8404,10 +8416,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12377,
    "tokens_out": 10201,
-   "seconds": 21.2,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "bd2af9be481598c2",
     "physical": "09f96c401fb63c80",
@@ -8618,15 +8630,15 @@
    ],
    "passes": 2,
    "stopped": "stop:passes-spent",
-   "calls": 9,
-   "cached_calls": 1,
-   "tokens_in": 20083,
-   "tokens_out": 12823,
-   "seconds": 24.3,
+   "calls": 8,
+   "cached_calls": 2,
+   "tokens_in": 18413,
+   "tokens_out": 9471,
+   "seconds": 14.1,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
-    "physical": "69da77ac4b28cb40",
-    "thermal": "b3a2d82ea4529d95"
+    "physical": "2914ed2a6253a887",
+    "thermal": "11bfb282b9e799db"
    },
    "enabled_agents": [
     "circuit",
@@ -8658,46 +8670,45 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "The evidence only shows that EN is connected to VIN, but does not prove that this prevents proper enable control.",
+     "because": "Evidence confirms EN shares the VIN net but does not demonstrate that no pull\u2011up resistor is present, so the claim is unsupported.",
      "title": "enable pin tied to input voltage net without pull\u2011up"
     },
     {
      "stage": "critic",
-     "because": "The claim depends on an unsupported premise (F001) and uses a generic statement rather than board\u2011specific evidence.",
-     "title": "enable pin may not reach required high level"
-    },
-    {
-     "stage": "critic",
-     "because": "The evidence is a generic observation and does not demonstrate noise susceptibility for this specific EN pin.",
-     "title": "EN pin susceptible to regulator noise"
-    },
-    {
-     "stage": "critic",
-     "because": "The evidence only shows EN tied to VIN, not that a pull\u2011up resistor is absent.",
+     "because": "Reasoning about the regulator being kept disabled is incorrect for a direct VIN tie to the enable pin.",
      "title": "enable pin tied to input voltage net without pull\u2011up"
-    },
-    {
-     "stage": "critic",
-     "because": "The net listing shows a connection to a capacitor but does not demonstrate the lack of a pull\u2011up resistor.",
-     "title": "MCU reset pin lacks a pull\u2011up resistor"
-    },
-    {
-     "stage": "critic",
-     "because": "The cited statement about copper pour resistance is generic and does not provide concrete evidence that EN cannot reach its threshold.",
-     "title": "enable pin may not reach required high level"
-    },
-    {
-     "stage": "critic",
-     "because": "The evidence is a general comment about distance and decoupling, not a specific measurement linking noise to EN susceptibility.",
-     "title": "EN pin susceptible to regulator noise"
     }
    ],
    "report": {
-    "findings": [],
+    "findings": [
+     {
+      "source": "circuit",
+      "severity": "major",
+      "refs": [
+       "U2"
+      ],
+      "nets": [
+       "NRST"
+      ],
+      "title": "MCU reset pin lacks a pull\u2011up resistor",
+      "why": "MCU may not start reliably because reset line can float",
+      "fix": "connect a pull\u2011up resistor (\u224810\u202fk\u03a9) from NRST to VDD (e.g., +3.3\u202fV)",
+      "claim": "missing_pullup_reset",
+      "subject": "NRST",
+      "evidence": "NRST: C6.1 U2.7(NRST,in)",
+      "id": "F002",
+      "verdict": "accept",
+      "confidence": "high",
+      "found_by": [
+       "circuit"
+      ],
+      "class": "probable_issue"
+     }
+    ],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 0.0,
+     "probable": 2.5,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -8768,17 +8779,18 @@
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "S1"
+      "U2",
+      "R4"
      ],
      "nets": [
-      "/IN"
+      "/BOOT0"
      ],
-     "title": "EN pin of TPS563208 is tied directly to VIN net, exceeding its voltage rating",
-     "why": "EN expects a logic\u2011level high (\u22645.5\u202fV) but VIN can be up to 17\u202fV, risking regulator damage or failure to enable",
-     "fix": "Add a proper pull\u2011up resistor to a safe logic voltage (e.g., 5\u202fV) and isolate EN from VIN, or use a level\u2011shifter",
-     "claim": "s1_en_overvoltage",
-     "subject": "S1",
-     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
+     "title": "boot0 pin has no defined logic level",
+     "why": "MCU may start in an unpredictable mode",
+     "fix": "add a pull\u2011down or pull\u2011up resistor (or connect to the boot\u2011mode switch) to define BOOT0",
+     "claim": "boot0 floating",
+     "subject": "/BOOT0",
+     "evidence": "/BOOT0: R4.2 U2.44(BOOT0,in)",
      "id": "F001"
     },
     {
@@ -8794,7 +8806,7 @@
      "claim": "unrouted_net",
      "subject": "VIN_LDO",
      "evidence": "VIN_LDO 4 1 none - 0 F.Cu",
-     "id": "F002"
+     "id": "F003"
     },
     {
      "source": "physical",
@@ -8809,43 +8821,24 @@
      "claim": "unrouted_net",
      "subject": "VBUS",
      "evidence": "VBUS 2 1 none - 0 F.Cu",
-     "id": "F003"
+     "id": "F004"
     },
     {
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "C6",
-      "U2"
+      "S1"
      ],
      "nets": [
-      "/NRST"
+      "/IN"
      ],
-     "title": "reset line lacks a pull\u2011up resistor",
-     "why": "the MCU reset pin may float or stay low, preventing proper startup",
-     "fix": "add an appropriate pull\u2011up resistor (e.g., 10\u202fk\u03a9) from NRST to +3.3\u202fV",
-     "claim": "missing_reset_pullup",
-     "subject": "/NRST",
-     "evidence": "/NRST: C6.1 U2.7(NRST,in)",
+     "title": "enable pin of step\u2011down regulator tied to VIN net without a proper pull\u2011up",
+     "why": "EN is active\u2011high and must be pulled up to a safe logic level; tying it to VIN can exceed its voltage rating and prevents controlled enable/disable",
+     "fix": "Connect EN to a pull\u2011up resistor (e.g., 10\u202fk\u03a9 to 3.3\u202fV) and remove it from the VIN net",
+     "claim": "enable-pin-miswired",
+     "subject": "S1",
+     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
      "id": "F004"
-    },
-    {
-     "source": "circuit",
-     "severity": "minor",
-     "refs": [
-      "R1"
-     ],
-     "nets": [
-      "/PWR_LED_K",
-      "GND"
-     ],
-     "title": "LED current\u2011limiting resistor has no defined value",
-     "why": "the LED could be over\u2011driven, leading to premature failure",
-     "fix": "specify and install a suitable resistor value (e.g., 330\u202f\u03a9) for R1",
-     "claim": "led_resistor_value_missing",
-     "subject": "R1",
-     "evidence": "R1 R 0402",
-     "id": "F005"
     }
    ],
    "dropped": [],
@@ -8855,14 +8848,14 @@
    "passes": 2,
    "stopped": "stop:passes-spent",
    "calls": 10,
-   "cached_calls": 1,
-   "tokens_in": 20656,
-   "tokens_out": 12861,
-   "seconds": 34.2,
+   "cached_calls": 2,
+   "tokens_in": 20720,
+   "tokens_out": 16440,
+   "seconds": 39.3,
    "pack_hashes": {
-    "circuit": "fd31bd4039ffb92e",
+    "circuit": "433cc251e183d9ca",
     "physical": "09f96c401fb63c80",
-    "thermal": "597cfaed83736076"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -8894,8 +8887,23 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "Evidence does not demonstrate that the VIN net lacks copper, so the claim is unsupported",
-     "title": "EN pin cannot be driven because the VIN net lacks copper"
+     "because": "Evidence only shows connectivity, not that BOOT0 lacks a defined logic level.",
+     "title": "boot0 pin has no defined logic level"
+    },
+    {
+     "stage": "critic",
+     "because": "Evidence shows distance but does not establish that 17.2\u202fmm is excessive for decoupling.",
+     "title": "decoupling capacitor placed too far from pin"
+    },
+    {
+     "stage": "critic",
+     "because": "Evidence addresses only undefined BOOT0 level and does not support the combined claim about decoupling distance.",
+     "title": "Undefined BOOT0 level becomes susceptible to high\u2011frequency transients"
+    },
+    {
+     "stage": "critic",
+     "because": "Evidence only lists connections and does not show that BOOT0 lacks a defined logic level.",
+     "title": "boot0 pin has no defined logic level"
     }
    ],
    "report": {
@@ -8909,16 +8917,15 @@
       "nets": [
        "/IN"
       ],
-      "title": "EN pin of TPS563208 is tied directly to VIN net, exceeding its voltage rating",
-      "why": "EN expects a logic\u2011level high (\u22645.5\u202fV) but VIN can be up to 17\u202fV, risking regulator damage or failure to enable",
-      "fix": "Add a proper pull\u2011up resistor to a safe logic voltage (e.g., 5\u202fV) and isolate EN from VIN, or use a level\u2011shifter",
-      "claim": "s1_en_overvoltage",
+      "title": "enable pin of step\u2011down regulator tied to VIN net without a proper pull\u2011up",
+      "why": "EN is active\u2011high and must be pulled up to a safe logic level; tying it to VIN can exceed its voltage rating and prevents controlled enable/disable",
+      "fix": "Connect EN to a pull\u2011up resistor (e.g., 10\u202fk\u03a9 to 3.3\u202fV) and remove it from the VIN net",
+      "claim": "enable-pin-miswired",
       "subject": "S1",
       "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-      "id": "F001",
-      "verdict": "correct",
+      "id": "F004",
+      "verdict": "accept",
       "confidence": "high",
-      "verdict_reason": "Supported and sound, but severity should be upgraded to critical",
       "found_by": [
        "circuit"
       ],
@@ -8937,7 +8944,7 @@
       "claim": "unrouted_net",
       "subject": "VIN_LDO",
       "evidence": "VIN_LDO 4 1 none - 0 F.Cu",
-      "id": "F002",
+      "id": "F003",
       "verdict": "accept",
       "confidence": "high",
       "found_by": [
@@ -8958,7 +8965,7 @@
       "claim": "unrouted_net",
       "subject": "VBUS",
       "evidence": "VBUS 2 1 none - 0 F.Cu",
-      "id": "F003",
+      "id": "F004",
       "verdict": "accept",
       "confidence": "high",
       "found_by": [
@@ -8967,62 +8974,45 @@
       "class": "probable_issue"
      },
      {
-      "source": "circuit",
-      "severity": "major",
+      "source": "cross_domain",
+      "severity": "critical",
       "refs": [
-       "C6",
-       "U2"
+       "S1"
       ],
       "nets": [
-       "/NRST"
+       "/IN",
+       "VIN_LDO"
       ],
-      "title": "reset line lacks a pull\u2011up resistor",
-      "why": "the MCU reset pin may float or stay low, preventing proper startup",
-      "fix": "add an appropriate pull\u2011up resistor (e.g., 10\u202fk\u03a9) from NRST to +3.3\u202fV",
-      "claim": "missing_reset_pullup",
-      "subject": "/NRST",
-      "evidence": "/NRST: C6.1 U2.7(NRST,in)",
+      "title": "step\u2011down regulator enable pin cannot be driven high",
+      "why": "The enable pin is tied to the VIN net expecting a pull\u2011up, but the VIN_LDO net has no copper trace, so the pull\u2011up cannot be realized; each finding alone is acceptable (the pin logic is defined, the net lack of copper is noted), yet together they prevent the regulator from ever enabling.",
+      "fix": "Route a copper trace for VIN_LDO and add a proper pull\u2011up resistor to the enable pin",
+      "claim": "enpull_missing",
+      "subject": "/IN",
+      "evidence": "EN is active\u2011high and must be pulled up to a safe logic level; tying it to VIN can exceed its voltage rating and prevents controlled enable/disable",
+      "sources": [
+       "F003",
+       "F004"
+      ],
+      "domains": [
+       "circuit",
+       "physical"
+      ],
       "id": "F004",
       "verdict": "accept",
       "confidence": "high",
       "found_by": [
-       "circuit"
+       "cross_domain"
       ],
       "class": "probable_issue"
-     },
-     {
-      "source": "circuit",
-      "severity": "informational",
-      "refs": [
-       "R1"
-      ],
-      "nets": [
-       "/PWR_LED_K",
-       "GND"
-      ],
-      "title": "LED current\u2011limiting resistor has no defined value",
-      "why": "the LED could be over\u2011driven, leading to premature failure",
-      "fix": "specify and install a suitable resistor value (e.g., 330\u202f\u03a9) for R1",
-      "claim": "led_resistor_value_missing",
-      "subject": "R1",
-      "evidence": "R1 R 0402",
-      "id": "F005",
-      "verdict": "downgrade",
-      "confidence": "medium",
-      "verdict_reason": "Finding is true but not actionable as a hardware defect",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "informational"
      }
     ],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 17.5,
+     "probable": 20.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
-     "informational": 1
+     "informational": 0
     },
     "coverage": {
      "net_islands": "ran",
@@ -9052,24 +9042,17 @@
     }
    },
    "grade": {
-    "caught": [
-     {
-      "defect": "stm32-good:value-unorderable",
-      "finding": "LED current\u2011limiting resistor has no defined value",
-      "via": [
-       "R1"
-      ],
-      "breadth": 3
-     }
+    "caught": [],
+    "missed": [
+     "stm32-good:value-unorderable"
     ],
-    "missed": [],
     "other": [
-     "EN pin of TPS563208 is tied directly to VIN net, exceeding its voltage rating",
+     "boot0 pin has no defined logic level",
      "net has no copper trace",
      "net has no copper trace",
-     "reset line lacks a pull\u2011up resistor"
+     "enable pin of step\u2011down regulator tied to VIN net without a proper pull\u2011up"
     ],
-    "recall": 1.0,
+    "recall": 0.0,
     "false_alarms": 4
    },
    "refuted_proposed": [],
@@ -9142,10 +9125,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 4,
-   "cached_calls": 1,
+   "cached_calls": 4,
    "tokens_in": 3807,
    "tokens_out": 3483,
-   "seconds": 11.2,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "846e44f48ebe6faa",
     "physical": "326a3fb05396d1a6"
@@ -9276,10 +9259,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 2,
-   "cached_calls": 1,
+   "cached_calls": 2,
    "tokens_in": 2164,
    "tokens_out": 1973,
-   "seconds": 4.0,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "f49a76f9c3eadd6a",
     "physical": "326a3fb05396d1a6"
@@ -9382,20 +9365,38 @@
      "nets": []
     }
    ],
-   "findings": [],
+   "findings": [
+    {
+     "source": "circuit",
+     "severity": "major",
+     "refs": [
+      "R1"
+     ],
+     "nets": [
+      "/FB"
+     ],
+     "title": "resistor value not specified",
+     "why": "feedback voltage cannot be set, so the regulator's output voltage is undefined",
+     "fix": "add the appropriate resistance value for R1 to achieve the desired output voltage",
+     "claim": "missing-resistor-value",
+     "subject": "R1",
+     "evidence": "R1 R 1210",
+     "id": "F001"
+    }
+   ],
    "dropped": [],
    "rules": [
     "value-not-orderable"
    ],
-   "passes": 2,
-   "stopped": "stop:passes-spent",
+   "passes": 1,
+   "stopped": "stop:rules-accounted-for",
    "calls": 3,
    "cached_calls": 1,
-   "tokens_in": 3329,
-   "tokens_out": 2386,
-   "seconds": 6.3,
+   "tokens_in": 2838,
+   "tokens_out": 1769,
+   "seconds": 4.4,
    "pack_hashes": {
-    "circuit": "f4d45f19b691b45a",
+    "circuit": "7f0b4acd03653744",
     "physical": "326a3fb05396d1a6"
    },
    "enabled_agents": [
@@ -9421,16 +9422,40 @@
     "thermal": "skipped: no trustworthy junction-to-ambient resistance in the researched facts",
     "signal_integrity": "skipped: no stackup and no high speed nets",
     "power_integrity": "skipped: no stackup",
-    "cross_domain": "skipped: only 0 reviewer produced findings, so there is no interaction to look for",
-    "critic": "skipped: nothing survived"
+    "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
+    "critic": "ran"
    },
    "rejected": [],
    "report": {
-    "findings": [],
+    "findings": [
+     {
+      "source": "circuit",
+      "severity": "major",
+      "refs": [
+       "R1"
+      ],
+      "nets": [
+       "/FB"
+      ],
+      "title": "resistor value not specified",
+      "why": "feedback voltage cannot be set, so the regulator's output voltage is undefined",
+      "fix": "add the appropriate resistance value for R1 to achieve the desired output voltage",
+      "claim": "missing-resistor-value",
+      "subject": "R1",
+      "evidence": "R1 R 1210",
+      "id": "F001",
+      "verdict": "accept",
+      "confidence": "high",
+      "found_by": [
+       "circuit"
+      ],
+      "class": "probable_issue"
+     }
+    ],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 0.0,
+     "probable": 2.5,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -9454,12 +9479,11 @@
      "thermal": "skipped: no trustworthy junction-to-ambient resistance in the researched facts",
      "signal_integrity": "skipped: no stackup and no high speed nets",
      "power_integrity": "skipped: no stackup",
-     "cross_domain": "skipped: only 0 reviewer produced findings, so there is no interaction to look for",
-     "critic": "skipped: nothing survived"
+     "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
+     "critic": "ran"
     },
     "unassessed": {
-     "critic": "nothing survived",
-     "cross_domain": "only 0 reviewer produced findings, so there is no interaction to look for",
+     "cross_domain": "only 1 reviewer produced findings, so there is no interaction to look for",
      "junction_temp": "no junction-to-ambient resistance in the researched facts",
      "power_integrity": "no stackup",
      "signal_integrity": "no stackup and no high speed nets",
@@ -9467,12 +9491,19 @@
     }
    },
    "grade": {
-    "caught": [],
-    "missed": [
-     "dcdcc:value-unorderable"
+    "caught": [
+     {
+      "defect": "dcdcc:value-unorderable",
+      "finding": "resistor value not specified",
+      "via": [
+       "R1"
+      ],
+      "breadth": 2
+     }
     ],
+    "missed": [],
     "other": [],
-    "recall": 0.0,
+    "recall": 1.0,
     "false_alarms": 0
    },
    "refuted_proposed": [],
@@ -9544,10 +9575,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 3219,
-   "seconds": 7.3,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -9610,10 +9641,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 1386,
-   "seconds": 3.7,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -9736,10 +9767,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3384,
    "tokens_out": 1995,
-   "seconds": 4.7,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -9837,10 +9868,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 2165,
-   "seconds": 5.0,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -9927,10 +9958,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3390,
    "tokens_out": 2269,
-   "seconds": 5.1,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10035,10 +10066,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2712,
-   "seconds": 6.4,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10130,10 +10161,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1736,
-   "seconds": 5.8,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10236,10 +10267,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2095,
-   "seconds": 6.5,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10364,10 +10395,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3391,
    "tokens_out": 1892,
-   "seconds": 4.5,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10482,10 +10513,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3396,
    "tokens_out": 1561,
-   "seconds": 5.3,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10587,10 +10618,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2959,
-   "seconds": 8.2,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10691,10 +10722,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 1483,
-   "seconds": 6.3,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10743,10 +10774,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 702,
-   "seconds": 2.3,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10791,10 +10822,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 911,
-   "seconds": 2.2,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10853,10 +10884,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 1300,
-   "seconds": 3.4,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -10983,10 +11014,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 0,
+   "cached_calls": 6,
    "tokens_in": 12555,
    "tokens_out": 8546,
-   "seconds": 16.3,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
     "physical": "09f96c401fb63c80",
@@ -11143,10 +11174,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 2,
-   "cached_calls": 0,
+   "cached_calls": 2,
    "tokens_in": 2166,
    "tokens_out": 2044,
-   "seconds": 3.8,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "5322061870dd941d",
     "physical": "326a3fb05396d1a6"
@@ -11255,18 +11286,42 @@
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "S1"
+      "S1",
+      "J12",
+      "C3"
      ],
      "nets": [
       "/IN"
      ],
-     "title": "EN pin of S1 is tied directly to VIN without a pull\u2011up resistor",
-     "why": "EN requires a pull\u2011up to guarantee a defined high level for enabling the regulator",
-     "fix": "add an appropriate pull\u2011up resistor from S1.5 to VIN or VCC",
-     "claim": "missing enable pull\u2011up",
-     "subject": "S1",
+     "title": "enable pin of S1 has no pull\u2011up resistor",
+     "why": "EN will stay low, preventing the step\u2011down regulator from turning on",
+     "fix": "add a pull\u2011up resistor from EN to a suitable supply (e.g., VIN) as required by the datasheet",
+     "claim": "missing_pullup",
+     "subject": "/IN",
      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
      "id": "F001"
+    },
+    {
+     "source": "circuit",
+     "severity": "minor",
+     "refs": [
+      "D1",
+      "D2",
+      "U1",
+      "C1"
+     ],
+     "nets": [
+      "VIN_LDO",
+      "+5V",
+      "VBUS"
+     ],
+     "title": "VIN_LDO net is fed from both +5V and VBUS through diodes",
+     "why": "if both supplies are present they can back\u2011feed each other, causing contention",
+     "fix": "use proper diode OR\u2011ing or select a single supply source for the LDO input",
+     "claim": "multiple_supply_sources",
+     "subject": "VIN_LDO",
+     "evidence": "VIN_LDO: C1.1 D1.1(K) D2.1(K) U1.3(VI,pwr-in)",
+     "id": "F002"
     },
     {
      "source": "physical",
@@ -11283,7 +11338,7 @@
      "claim": "missingdecoupling",
      "subject": "/ECHO",
      "evidence": "S1.1(GND) /ECHO none -",
-     "id": "F002"
+     "id": "F003"
     },
     {
      "source": "physical",
@@ -11300,7 +11355,7 @@
      "claim": "distantdecoupling",
      "subject": "GND",
      "evidence": "U3.8(GND) GND C16 17.2",
-     "id": "F003"
+     "id": "F004"
     },
     {
      "source": "physical",
@@ -11315,19 +11370,10 @@
      "claim": "missingcopper",
      "subject": "VBUS",
      "evidence": "VBUS 2 1 none - 0 F.Cu",
-     "id": "F004"
+     "id": "F005"
     }
    ],
-   "dropped": [
-    {
-     "title": "ground pin of S1 is placed on /ECHO net instead of GND",
-     "because": "ECHO is one connected piece of copper across all 2 of its pads"
-    },
-    {
-     "title": "no copper tracks or pours for the VIN_LDO net",
-     "because": "VIN_LDO is one connected piece of copper across all 4 of its pads"
-    }
-   ],
+   "dropped": [],
    "rules": [
     "power-pin-miswired",
     "power-pin-on-signal-net"
@@ -11335,14 +11381,14 @@
    "passes": 1,
    "stopped": "stop:rules-accounted-for",
    "calls": 6,
-   "cached_calls": 0,
-   "tokens_in": 12546,
-   "tokens_out": 9310,
-   "seconds": 21.5,
+   "cached_calls": 2,
+   "tokens_in": 12629,
+   "tokens_out": 10242,
+   "seconds": 19.5,
    "pack_hashes": {
-    "circuit": "17f9b888a79e8b6a",
+    "circuit": "dca5f032524de2c5",
     "physical": "39949ad7ac16471b",
-    "thermal": "9efa8e0458ce2503"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -11374,17 +11420,42 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "The EN pin is indeed tied to VIN, but the claim that a missing pull\u2011up resistor is a defect is unsound for this design.",
-     "title": "EN pin of S1 is tied directly to VIN without a pull\u2011up resistor"
+     "because": "The evidence lists diodes on the VIN_LDO net but does not demonstrate that they are sourced from both +5V and VBUS, so the claim is unsupported.",
+     "title": "VIN_LDO net is fed from both +5V and VBUS through diodes"
     },
     {
      "stage": "critic",
-     "because": "The evidence only states that EN needs a pull\u2011up; it does not support the combined effect claim with distant decoupling.",
-     "title": "EN pin may not reliably enable the regulator due to combined missing pull\u2011up and distant decoupling"
+     "because": "The evidence is merely a restated conclusion and does not provide new data linking the missing pull\u2011up and missing VBUS routing, so the combined claim is unsupported.",
+     "title": "Enable pin cannot activate regulator due to missing pull\u2011up and missing VBUS routing"
     }
    ],
    "report": {
     "findings": [
+     {
+      "source": "circuit",
+      "severity": "major",
+      "refs": [
+       "S1",
+       "J12",
+       "C3"
+      ],
+      "nets": [
+       "/IN"
+      ],
+      "title": "enable pin of S1 has no pull\u2011up resistor",
+      "why": "EN will stay low, preventing the step\u2011down regulator from turning on",
+      "fix": "add a pull\u2011up resistor from EN to a suitable supply (e.g., VIN) as required by the datasheet",
+      "claim": "missing_pullup",
+      "subject": "/IN",
+      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
+      "id": "F001",
+      "verdict": "accept",
+      "confidence": "high",
+      "found_by": [
+       "circuit"
+      ],
+      "class": "probable_issue"
+     },
      {
       "source": "physical",
       "severity": "major",
@@ -11398,7 +11469,7 @@
       "claim": "missingcopper",
       "subject": "VBUS",
       "evidence": "VBUS 2 1 none - 0 F.Cu",
-      "id": "F004",
+      "id": "F005",
       "verdict": "accept",
       "confidence": "high",
       "found_by": [
@@ -11421,7 +11492,7 @@
       "claim": "distantdecoupling",
       "subject": "GND",
       "evidence": "U3.8(GND) GND C16 17.2",
-      "id": "F003",
+      "id": "F004",
       "verdict": "accept",
       "confidence": "high",
       "found_by": [
@@ -11431,7 +11502,7 @@
      },
      {
       "source": "physical",
-      "severity": "informational",
+      "severity": "minor",
       "refs": [
        "S1"
       ],
@@ -11444,23 +11515,23 @@
       "claim": "missingdecoupling",
       "subject": "/ECHO",
       "evidence": "S1.1(GND) /ECHO none -",
-      "id": "F002",
-      "verdict": "downgrade",
-      "confidence": "medium",
-      "verdict_reason": "While no decoupling capacitor is present on /ECHO, the evidence does not demonstrate that one is required for correct operation.",
+      "id": "F003",
+      "verdict": "correct",
+      "confidence": "high",
+      "verdict_reason": "The missing decoupling capacitor is real, but the impact is not critical; a minor severity is appropriate.",
       "found_by": [
        "physical"
       ],
-      "class": "informational"
+      "class": "probable_issue"
      }
     ],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 3.0,
+     "probable": 6.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
-     "informational": 1
+     "informational": 0
     },
     "coverage": {
      "net_islands": "ran",
@@ -11493,27 +11564,24 @@
     "caught": [
      {
       "defect": "stm32-good:supply-on-signal",
-      "finding": "EN pin of S1 is tied directly to VIN without a pull\u2011up resistor",
+      "finding": "enable pin of S1 has no pull\u2011up resistor",
       "via": [
        "S1"
       ],
-      "breadth": 2
+      "breadth": 4
      }
     ],
     "missed": [],
     "other": [
+     "VIN_LDO net is fed from both +5V and VBUS through diodes",
      "no decoupling capacitor on /ECHO net",
      "decoupling capacitor is far from the GND pin",
      "no copper tracks or pours for the VBUS net"
     ],
     "recall": 1.0,
-    "false_alarms": 3
+    "false_alarms": 4
    },
    "refuted_proposed": [
-    {
-     "title": "ground pin of S1 is placed on /ECHO net instead of GND",
-     "because": "/ECHO is one connected piece of copper across all 2 of its pads"
-    },
     {
      "title": "no copper tracks or pours for the VIN_LDO net",
      "because": "VIN_LDO is one connected piece of copper across all 4 of its pads"
@@ -11601,10 +11669,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 0,
+   "cached_calls": 6,
    "tokens_in": 12260,
    "tokens_out": 7446,
-   "seconds": 28.1,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "c4b3e4220ecead10",
     "physical": "5c28d168988abba0",
@@ -11815,10 +11883,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12279,
    "tokens_out": 7444,
-   "seconds": 15.0,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "1a7368d944750bf5",
     "physical": "09f96c401fb63c80",
@@ -12035,10 +12103,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 1,
+   "cached_calls": 6,
    "tokens_in": 12779,
    "tokens_out": 10783,
-   "seconds": 21.1,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "f3e935833951d662",
     "physical": "c5b438c6fd5fe53c",
@@ -12305,10 +12373,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 11923,
    "tokens_out": 6546,
-   "seconds": 12.6,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "ceec52579aefc122",
     "physical": "09f96c401fb63c80",
@@ -12501,10 +12569,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12613,
    "tokens_out": 10297,
-   "seconds": 23.3,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "c8f9d988a6135ad6",
     "physical": "09f96c401fb63c80",
@@ -12791,10 +12859,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12514,
    "tokens_out": 7480,
-   "seconds": 13.4,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "997cc2778d9e4ac9",
     "physical": "09f96c401fb63c80",
@@ -13072,10 +13140,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12286,
    "tokens_out": 9036,
-   "seconds": 17.0,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "bd2af9be481598c2",
     "physical": "09f96c401fb63c80",
@@ -13301,38 +13369,6 @@
      "id": "F002"
     },
     {
-     "source": "physical",
-     "severity": "major",
-     "refs": [
-      "U3"
-     ],
-     "nets": [
-      "GND"
-     ],
-     "title": "decoupling capacitor far from pin",
-     "why": "large loop inductance reduces high\u2011frequency decoupling effectiveness",
-     "fix": "place a decoupling capacitor closer to the U3.8 pin",
-     "claim": "decap_distance",
-     "subject": "U3",
-     "evidence": "U3.8(GND) GND C16 17.2",
-     "id": "F003"
-    },
-    {
-     "source": "physical",
-     "severity": "minor",
-     "refs": [],
-     "nets": [
-      "+5V"
-     ],
-     "title": "no copper pour for power net",
-     "why": "higher impedance can degrade power distribution and increase voltage ripple",
-     "fix": "add a copper pour on the appropriate layer for the +5V net",
-     "claim": "missing_pour",
-     "subject": "+5V",
-     "evidence": "+5V 11 1 119 0.50 10 none",
-     "id": "F004"
-    },
-    {
      "source": "circuit",
      "severity": "minor",
      "refs": [
@@ -13349,7 +13385,7 @@
      "claim": "en_missing_pullup",
      "subject": "/IN",
      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-     "id": "F005"
+     "id": "F003"
     },
     {
      "source": "circuit",
@@ -13367,25 +13403,30 @@
      "claim": "fb_wrong_source",
      "subject": "+5V",
      "evidence": "+5V: C12.1 D2.2(A) J11.5 J2.1 J3.1 J4.2 J7.2 J8.2 L1.2 R2.1 U3.9(COM)",
-     "id": "F006"
+     "id": "F004"
     }
    ],
-   "dropped": [],
+   "dropped": [
+    {
+     "title": "decoupling capacitor extremely distant from the GND pin",
+     "because": "GND is held at a level by a resistor or inductor to a rail"
+    }
+   ],
    "rules": [
     "net-island",
     "net-island"
    ],
    "passes": 2,
    "stopped": "stop:passes-spent",
-   "calls": 10,
-   "cached_calls": 1,
-   "tokens_in": 21425,
-   "tokens_out": 17481,
-   "seconds": 37.1,
+   "calls": 8,
+   "cached_calls": 2,
+   "tokens_in": 19029,
+   "tokens_out": 11227,
+   "seconds": 14.7,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
-    "physical": "69da77ac4b28cb40",
-    "thermal": "b3a2d82ea4529d95"
+    "physical": "2914ed2a6253a887",
+    "thermal": "11bfb282b9e799db"
    },
    "enabled_agents": [
     "circuit",
@@ -13411,61 +13452,36 @@
     "thermal": "ran",
     "signal_integrity": "skipped: no stackup and no high speed nets",
     "power_integrity": "skipped: no stackup",
-    "cross_domain": "ran",
+    "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
     "critic": "ran"
    },
    "rejected": [
     {
      "stage": "critic",
-     "because": "The evidence only shows a resistor connected to BOOT0 but does not demonstrate that a pull\u2011down to GND is missing.",
+     "because": "The evidence only shows a resistor connection, not that the BOOT0 pin lacks a pull\u2011down to GND",
      "title": "BOOT0 pin lacks a pull\u2011down resistor to GND"
     },
     {
      "stage": "critic",
-     "because": "The cited net list shows a capacitor on NRST but provides no proof that a pull\u2011up resistor is absent.",
-     "title": "NRST pin is not pulled up to the supply voltage"
-    },
-    {
-     "stage": "critic",
-     "because": "The evidence only addresses the missing pull\u2011up; it does not support the claim about distant decoupling.",
-     "title": "NRST susceptible to spurious resets due to combined pull\u2011up omission and distant decoupling"
-    },
-    {
-     "stage": "critic",
-     "because": "Evidence only shows R4 connected to BOOT0, not that R4 provides a pull\u2011down to GND.",
+     "because": "Evidence shows a resistor on BOOT0 but does not demonstrate the absence of a pull\u2011down to GND.",
      "title": "BOOT0 pin lacks a pull\u2011down resistor to GND"
     },
     {
      "stage": "critic",
-     "because": "Evidence shows a capacitor on NRST, not the absence of a pull\u2011up resistor to the supply.",
+     "because": "Evidence only shows a capacitor on NRST, not the lack of a pull\u2011up resistor.",
      "title": "NRST pin is not pulled up to the supply voltage"
     },
     {
      "stage": "critic",
-     "because": "Evidence does not demonstrate noise on BOOT0 or the effect of the missing copper pour.",
-     "title": "bootloader entry due to noise on BOOT0"
-    },
-    {
-     "stage": "critic",
-     "because": "Evidence only states NRST floats; it does not show noise from the distant decoupling capacitor.",
-     "title": "unreliable reset due to noise"
-    },
-    {
-     "stage": "critic",
-     "because": "Evidence does not provide any data about EN noise or the impact of the distant decoupling capacitor.",
-     "title": "step\u2011down regulator fails to start due to EN noise"
-    },
-    {
-     "stage": "critic",
-     "because": "Evidence confirms the feedback divider is mis\u2011wired but does not support the claim of ripple on +5\u202fV caused by a missing copper pour.",
-     "title": "incorrect output voltage due to ripple on +5\u202fV feeding feedback"
+     "because": "Evidence lists connections on /IN but does not prove a missing pull\u2011up resistor on the EN pin.",
+     "title": "enable pin of the step\u2011down regulator is not pulled up via a resistor"
     }
    ],
    "report": {
     "findings": [
      {
       "source": "circuit",
-      "severity": "major",
+      "severity": "critical",
       "refs": [
        "R2"
       ],
@@ -13479,81 +13495,12 @@
       "claim": "fb_wrong_source",
       "subject": "+5V",
       "evidence": "+5V: C12.1 D2.2(A) J11.5 J2.1 J3.1 J4.2 J7.2 J8.2 L1.2 R2.1 U3.9(COM)",
-      "id": "F006",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "physical",
-      "severity": "minor",
-      "refs": [
-       "U3"
-      ],
-      "nets": [
-       "GND"
-      ],
-      "title": "decoupling capacitor far from pin",
-      "why": "large loop inductance reduces high\u2011frequency decoupling effectiveness",
-      "fix": "place a decoupling capacitor closer to the U3.8 pin",
-      "claim": "decap_distance",
-      "subject": "U3",
-      "evidence": "U3.8(GND) GND C16 17.2",
-      "id": "F003",
+      "id": "F004",
       "verdict": "correct",
       "confidence": "high",
-      "verdict_reason": "Severity downgraded from major to minor; the distance evidence supports the claim and it is actionable.",
-      "found_by": [
-       "physical"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "circuit",
-      "severity": "minor",
-      "refs": [
-       "S1",
-       "C3",
-       "J12"
-      ],
-      "nets": [
-       "/IN"
-      ],
-      "title": "enable pin of the step\u2011down regulator is not pulled up via a resistor",
-      "why": "the regulator may not start reliably because EN is not guaranteed high",
-      "fix": "add a pull\u2011up resistor from EN to the input voltage (or to +5V) on the /IN net",
-      "claim": "en_missing_pullup",
-      "subject": "/IN",
-      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-      "id": "F005",
-      "verdict": "accept",
-      "confidence": "high",
+      "verdict_reason": "Severity upgraded to critical as the mis\u2011wired feedback divider can prevent proper regulator operation.",
       "found_by": [
        "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "physical",
-      "severity": "minor",
-      "refs": [],
-      "nets": [
-       "+5V"
-      ],
-      "title": "no copper pour for power net",
-      "why": "higher impedance can degrade power distribution and increase voltage ripple",
-      "fix": "add a copper pour on the appropriate layer for the +5V net",
-      "claim": "missing_pour",
-      "subject": "+5V",
-      "evidence": "+5V 11 1 119 0.50 10 none",
-      "id": "F004",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "physical"
       ],
       "class": "probable_issue"
      }
@@ -13561,7 +13508,7 @@
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 4.0,
+     "probable": 5.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -13585,10 +13532,11 @@
      "thermal": "ran",
      "signal_integrity": "skipped: no stackup and no high speed nets",
      "power_integrity": "skipped: no stackup",
-     "cross_domain": "ran",
+     "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
      "critic": "ran"
     },
     "unassessed": {
+     "cross_domain": "only 1 reviewer produced findings, so there is no interaction to look for",
      "power_integrity": "no stackup",
      "signal_integrity": "no stackup and no high speed nets"
     }
@@ -13601,13 +13549,11 @@
     "other": [
      "BOOT0 pin lacks a pull\u2011down resistor to GND",
      "NRST pin is not pulled up to the supply voltage",
-     "decoupling capacitor far from pin",
-     "no copper pour for power net",
      "enable pin of the step\u2011down regulator is not pulled up via a resistor",
      "feedback divider for the step\u2011down regulator is tied to the +5\u202fV rail instead of the regulator output"
     ],
     "recall": 0.0,
-    "false_alarms": 6
+    "false_alarms": 4
    },
    "refuted_proposed": [],
    "refuted_reported": [],
@@ -13635,18 +13581,17 @@
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "R1"
+      "S1"
      ],
      "nets": [
-      "+3.3V",
-      "PWR_LED_K"
+      "/IN"
      ],
-     "title": "R1 has no numeric resistance value defined",
-     "why": "LED current limit cannot be guaranteed, risking overcurrent",
-     "fix": "specify a proper resistor value (e.g., 330\u202f\u03a9) for R1",
-     "claim": "undefined_resistor_value",
-     "subject": "R1",
-     "evidence": "R1 R 0402",
+     "title": "enable pin EN of the step\u2011down regulator is tied to VIN without a pull\u2011up resistor",
+     "why": "the regulator will not start because EN is not pulled high as required by the datasheet",
+     "fix": "add a resistor (e.g., 10\u202fk\u03a9) from EN to the input voltage or VCC to provide the required pull\u2011up",
+     "claim": "missing_pullup_en",
+     "subject": "S1",
+     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
      "id": "F001"
     },
     {
@@ -13664,24 +13609,46 @@
      "claim": "decoupling_distance",
      "subject": "U3",
      "evidence": "U3.8(GND) GND C16 17.2",
-     "id": "F002"
+     "id": "F003"
+    },
+    {
+     "source": "physical",
+     "severity": "major",
+     "refs": [
+      "U1"
+     ],
+     "nets": [
+      "+3.3V"
+     ],
+     "title": "decoupling capacitor distant from power pin",
+     "why": "increased impedance may cause voltage droop during transients",
+     "fix": "add a capacitor close to the pin, preferably within 5\u202fmm",
+     "claim": "decoupling_distance",
+     "subject": "U1",
+     "evidence": "U1.2(VO) +3.3V C2 7.4",
+     "id": "F004"
     }
    ],
-   "dropped": [],
+   "dropped": [
+    {
+     "title": "supply decoupling capacitor far from net",
+     "because": "the same claim about the same subject as F003"
+    }
+   ],
    "rules": [
     "value-not-orderable"
    ],
-   "passes": 1,
-   "stopped": "stop:rules-accounted-for",
-   "calls": 6,
-   "cached_calls": 1,
-   "tokens_in": 12086,
-   "tokens_out": 8008,
-   "seconds": 14.6,
+   "passes": 2,
+   "stopped": "stop:passes-spent",
+   "calls": 10,
+   "cached_calls": 2,
+   "tokens_in": 20866,
+   "tokens_out": 14815,
+   "seconds": 33.0,
    "pack_hashes": {
-    "circuit": "fd31bd4039ffb92e",
+    "circuit": "433cc251e183d9ca",
     "physical": "09f96c401fb63c80",
-    "thermal": "597cfaed83736076"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -13713,36 +13680,42 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "The quoted evidence does not establish the combined problem claimed.",
-     "title": "Missing resistor value together with distant decoupling capacitor leaves the LED supply vulnerable to transient voltage drops and over\u2011current conditions"
+     "because": "Evidence shows EN tied to VIN but does not prove the regulator will fail to start, so the claim is unsupported.",
+     "title": "enable pin EN of the step\u2011down regulator is tied to VIN without a pull\u2011up resistor"
+    },
+    {
+     "stage": "critic",
+     "because": "Net list confirms connections but provides no proof that no active source drives the +5\u202fV rail.",
+     "title": "the +5\u202fV rail has no active source driving it"
+    },
+    {
+     "stage": "critic",
+     "because": "Distance to the decoupling capacitor is given without a specification threshold, so \"too far\" is not established.",
+     "title": "decoupling capacitor too far from pin"
+    },
+    {
+     "stage": "critic",
+     "because": "The measured distance lacks a defined limit, making the claim of harmful impedance unsupported.",
+     "title": "decoupling capacitor distant from power pin"
+    },
+    {
+     "stage": "critic",
+     "because": "Evidence shows placement distance but does not demonstrate that it degrades noise suppression.",
+     "title": "supply decoupling capacitor far from net"
+    },
+    {
+     "stage": "critic",
+     "because": "The combined failure claim rests on unsupported premises and lacks evidence for the decoupling issue.",
+     "title": "regulator fails to start due to combined EN tie and distant decoupling"
+    },
+    {
+     "stage": "critic",
+     "because": "Reasoning is unsound: EN tied to VIN is already high, so the regulator will start; the claim that it will not start is incorrect.",
+     "title": "enable pin EN of the step\u2011down regulator is tied to VIN without a pull\u2011up resistor"
     }
    ],
    "report": {
     "findings": [
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "R1"
-      ],
-      "nets": [
-       "+3.3V",
-       "PWR_LED_K"
-      ],
-      "title": "R1 has no numeric resistance value defined",
-      "why": "LED current limit cannot be guaranteed, risking overcurrent",
-      "fix": "specify a proper resistor value (e.g., 330\u202f\u03a9) for R1",
-      "claim": "undefined_resistor_value",
-      "subject": "R1",
-      "evidence": "R1 R 0402",
-      "id": "F001",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
      {
       "source": "physical",
       "severity": "major",
@@ -13758,10 +13731,34 @@
       "claim": "decoupling_distance",
       "subject": "U3",
       "evidence": "U3.8(GND) GND C16 17.2",
-      "id": "F002",
+      "id": "F003",
       "verdict": "correct",
       "confidence": "high",
-      "verdict_reason": "The issue is real but the critical severity is overstated; a major rating is appropriate.",
+      "verdict_reason": "Severity overstated; the large distance degrades performance but does not make the board non\u2011functional, so downgrade from critical to major.",
+      "found_by": [
+       "physical"
+      ],
+      "class": "probable_issue"
+     },
+     {
+      "source": "physical",
+      "severity": "minor",
+      "refs": [
+       "U1"
+      ],
+      "nets": [
+       "+3.3V"
+      ],
+      "title": "decoupling capacitor distant from power pin",
+      "why": "increased impedance may cause voltage droop during transients",
+      "fix": "add a capacitor close to the pin, preferably within 5\u202fmm",
+      "claim": "decoupling_distance",
+      "subject": "U1",
+      "evidence": "U1.2(VO) +3.3V C2 7.4",
+      "id": "F004",
+      "verdict": "correct",
+      "confidence": "high",
+      "verdict_reason": "Severity overstated; a 7.4\u202fmm distance is a minor concern rather than a major defect.",
       "found_by": [
        "physical"
       ],
@@ -13771,7 +13768,7 @@
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 5.0,
+     "probable": 3.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -13804,22 +13801,17 @@
     }
    },
    "grade": {
-    "caught": [
-     {
-      "defect": "stm32-good:value-unorderable",
-      "finding": "R1 has no numeric resistance value defined",
-      "via": [
-       "R1"
-      ],
-      "breadth": 3
-     }
+    "caught": [],
+    "missed": [
+     "stm32-good:value-unorderable"
     ],
-    "missed": [],
     "other": [
-     "decoupling capacitor too far from pin"
+     "enable pin EN of the step\u2011down regulator is tied to VIN without a pull\u2011up resistor",
+     "decoupling capacitor too far from pin",
+     "decoupling capacitor distant from power pin"
     ],
-    "recall": 1.0,
-    "false_alarms": 1
+    "recall": 0.0,
+    "false_alarms": 3
    },
    "refuted_proposed": [],
    "refuted_reported": [],
@@ -13851,10 +13843,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 2,
-   "cached_calls": 1,
+   "cached_calls": 2,
    "tokens_in": 2166,
    "tokens_out": 2394,
-   "seconds": 5.5,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "846e44f48ebe6faa",
     "physical": "326a3fb05396d1a6"
@@ -13966,10 +13958,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 2,
-   "cached_calls": 1,
+   "cached_calls": 2,
    "tokens_in": 2164,
    "tokens_out": 1506,
-   "seconds": 2.6,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "f49a76f9c3eadd6a",
     "physical": "326a3fb05396d1a6"
@@ -14077,19 +14069,18 @@
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "U1",
-      "J1",
-      "C1"
+      "R1"
      ],
      "nets": [
-      "/IN"
+      "/FB",
+      "GND"
      ],
-     "title": "EN pin is tied directly to VIN which can exceed its voltage rating",
-     "why": "The EN pin may be damaged or cause improper operation if VIN exceeds the EN pin's maximum rating",
-     "fix": "Add a voltage divider or pull\u2011up resistor to limit the EN pin voltage to within its safe range",
-     "claim": "en_overvoltage",
-     "subject": "U1",
-     "evidence": "/IN: C1.1 J1.1 U1.3(VIN) U1.5(EN)",
+     "title": "resistor value not specified",
+     "why": "the feedback divider lacks a defined resistance, leading to undefined output voltage regulation",
+     "fix": "add the correct resistor value for R1 in the BOM and schematic",
+     "claim": "missing-resistor-value",
+     "subject": "R1",
+     "evidence": "R1 R 1210",
      "id": "F001"
     }
    ],
@@ -14097,15 +14088,15 @@
    "rules": [
     "value-not-orderable"
    ],
-   "passes": 2,
-   "stopped": "stop:passes-spent",
-   "calls": 6,
-   "cached_calls": 2,
-   "tokens_in": 5585,
-   "tokens_out": 6031,
-   "seconds": 12.2,
+   "passes": 1,
+   "stopped": "stop:rules-accounted-for",
+   "calls": 3,
+   "cached_calls": 1,
+   "tokens_in": 2841,
+   "tokens_out": 2107,
+   "seconds": 4.5,
    "pack_hashes": {
-    "circuit": "f4d45f19b691b45a",
+    "circuit": "7f0b4acd03653744",
     "physical": "326a3fb05396d1a6"
    },
    "enabled_agents": [
@@ -14134,24 +14125,38 @@
     "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
     "critic": "ran"
    },
-   "rejected": [
-    {
-     "stage": "critic",
-     "because": "The net connection is real, but there is no evidence of the EN pin's voltage rating, so the claim that VIN may exceed it is unsupported.",
-     "title": "EN pin is tied directly to VIN which can exceed its voltage rating"
-    },
-    {
-     "stage": "critic",
-     "because": "The net connection is real, but there is no evidence of the EN pin's voltage rating, so the claim that VIN may exceed it is unsupported.",
-     "title": "EN pin is tied directly to VIN which can exceed its voltage rating"
-    }
-   ],
+   "rejected": [],
    "report": {
-    "findings": [],
+    "findings": [
+     {
+      "source": "circuit",
+      "severity": "major",
+      "refs": [
+       "R1"
+      ],
+      "nets": [
+       "/FB",
+       "GND"
+      ],
+      "title": "resistor value not specified",
+      "why": "the feedback divider lacks a defined resistance, leading to undefined output voltage regulation",
+      "fix": "add the correct resistor value for R1 in the BOM and schematic",
+      "claim": "missing-resistor-value",
+      "subject": "R1",
+      "evidence": "R1 R 1210",
+      "id": "F001",
+      "verdict": "accept",
+      "confidence": "high",
+      "found_by": [
+       "circuit"
+      ],
+      "class": "probable_issue"
+     }
+    ],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 0.0,
+     "probable": 2.5,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -14187,15 +14192,20 @@
     }
    },
    "grade": {
-    "caught": [],
-    "missed": [
-     "dcdcc:value-unorderable"
+    "caught": [
+     {
+      "defect": "dcdcc:value-unorderable",
+      "finding": "resistor value not specified",
+      "via": [
+       "R1"
+      ],
+      "breadth": 3
+     }
     ],
-    "other": [
-     "EN pin is tied directly to VIN which can exceed its voltage rating"
-    ],
-    "recall": 0.0,
-    "false_alarms": 1
+    "missed": [],
+    "other": [],
+    "recall": 1.0,
+    "false_alarms": 0
    },
    "refuted_proposed": [],
    "refuted_reported": [],
@@ -14282,10 +14292,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1641,
-   "seconds": 4.4,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -14338,10 +14348,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 1353,
-   "seconds": 4.2,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -14423,10 +14433,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3384,
    "tokens_out": 1919,
-   "seconds": 5.8,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -14570,10 +14580,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 1842,
-   "seconds": 4.5,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -14682,10 +14692,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3390,
    "tokens_out": 1585,
-   "seconds": 3.8,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -14807,10 +14817,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2129,
-   "seconds": 5.3,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -14906,10 +14916,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2056,
-   "seconds": 6.0,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -15038,10 +15048,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2187,
-   "seconds": 5.1,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -15202,10 +15212,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3391,
    "tokens_out": 2720,
-   "seconds": 6.1,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -15312,10 +15322,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3396,
    "tokens_out": 1702,
-   "seconds": 4.1,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -15420,10 +15430,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1663,
-   "seconds": 4.0,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -15529,10 +15539,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 2404,
-   "seconds": 5.5,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -15581,10 +15591,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 1292,
-   "seconds": 3.0,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -15647,10 +15657,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 1390,
-   "seconds": 3.7,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -15717,10 +15727,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 1766,
-   "seconds": 4.0,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -15846,10 +15856,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 0,
+   "cached_calls": 6,
    "tokens_in": 12622,
    "tokens_out": 7832,
-   "seconds": 15.9,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
     "physical": "09f96c401fb63c80",
@@ -16006,10 +16016,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 3,
-   "cached_calls": 0,
+   "cached_calls": 3,
    "tokens_in": 2861,
    "tokens_out": 2598,
-   "seconds": 7.3,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "5322061870dd941d",
     "physical": "326a3fb05396d1a6"
@@ -16123,39 +16133,21 @@
    "findings": [
     {
      "source": "circuit",
-     "severity": "major",
+     "severity": "minor",
      "refs": [
-      "S1",
+      "J10",
       "U2"
      ],
      "nets": [
-      "/ECHO"
+      "/USB_D-"
      ],
-     "title": "S1 ground pin is connected to /ECHO net instead of GND",
-     "why": "The regulator's ground reference is not tied to the system ground, leading to undefined operation and possible damage",
-     "fix": "Connect S1.1 to the GND net",
-     "claim": "s1_ground_not_on_ground",
-     "subject": "S1",
-     "evidence": "/ECHO: J2.3 S1.1(GND,pwr-in) U2.39(PB3)",
+     "title": "USB D- line has no series termination resistor",
+     "why": "Absence of the recommended series resistor can cause impedance mismatch and signal integrity issues",
+     "fix": "Add a low\u2011value series resistor (e.g., 27\u202f\u03a9) in series with the D- line",
+     "claim": "usb-d--missing-series-resistor",
+     "subject": "/USB_D-",
+     "evidence": "/USB_D-: J10.2(D-) U2.32(PA11)",
      "id": "F001"
-    },
-    {
-     "source": "circuit",
-     "severity": "major",
-     "refs": [
-      "S1",
-      "J12"
-     ],
-     "nets": [
-      "/IN"
-     ],
-     "title": "EN pin is tied directly to the VIN net without a proper pull\u2011up",
-     "why": "EN may be exposed to the full input voltage, exceeding its rating and preventing reliable enable control",
-     "fix": "Add a pull\u2011up resistor to the EN pin (e.g., to 3.3\u202fV) and separate it from the VIN net",
-     "claim": "s1_en_tied_to_vin",
-     "subject": "S1",
-     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-     "id": "F002"
     },
     {
      "source": "physical",
@@ -16170,42 +16162,30 @@
      "claim": "missing_pour",
      "subject": "+5V",
      "evidence": "+5V 11 1 119 0.50 10 none",
-     "id": "F003"
-    },
-    {
-     "source": "physical",
-     "severity": "major",
-     "refs": [
-      "U3"
-     ],
-     "nets": [
-      "GND"
-     ],
-     "title": "ground pin far from decoupling capacitor",
-     "why": "large distance can increase loop inductance and degrade noise performance",
-     "fix": "place decoupling capacitor closer to the pin, within a few millimeters",
-     "claim": "ground_decap_distance",
-     "subject": "GND",
-     "evidence": "U3.8(GND) GND C16 17.2",
-     "id": "F004"
+     "id": "F001"
     }
    ],
-   "dropped": [],
+   "dropped": [
+    {
+     "title": "USB D+ line uses a 1.5\u202fk\u03a9 series resistor",
+     "because": "R7 has the value 1k5, which can be ordered"
+    }
+   ],
    "rules": [
     "power-pin-miswired",
     "power-pin-on-signal-net"
    ],
-   "passes": 1,
-   "stopped": "stop:rules-accounted-for",
-   "calls": 6,
-   "cached_calls": 0,
-   "tokens_in": 12616,
-   "tokens_out": 9873,
-   "seconds": 27.6,
+   "passes": 2,
+   "stopped": "stop:passes-spent",
+   "calls": 9,
+   "cached_calls": 2,
+   "tokens_in": 19274,
+   "tokens_out": 10228,
+   "seconds": 22.6,
    "pack_hashes": {
-    "circuit": "17f9b888a79e8b6a",
+    "circuit": "dca5f032524de2c5",
     "physical": "39949ad7ac16471b",
-    "thermal": "9efa8e0458ce2503"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -16237,119 +16217,29 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "The provided evidence is a textual description and does not demonstrate that the regulator ground is on the wrong net nor that it is distant from its decoupling capacitor.",
-     "title": "Regulator ground is on the wrong net and physically distant from its decoupling capacitor"
+     "because": "The cited evidence does not demonstrate that a copper pour is missing for the +5V net.",
+     "title": "no copper pour for +5V net"
     },
     {
      "stage": "critic",
-     "because": "The evidence does not substantiate the combined condition of EN tied to VIN together with a missing +5\u202fV copper pour.",
-     "title": "EN pin is directly tied to VIN while the +5V net lacks copper pour"
+     "because": "The evidence only lists the USB D- net connections and does not demonstrate the absence of a series termination resistor.",
+     "title": "USB D- line has no series termination resistor"
+    },
+    {
+     "stage": "critic",
+     "because": "The evidence only lists the USB D- net connections and does not demonstrate the absence of a series termination resistor.",
+     "title": "no copper pour for +5V net"
     }
    ],
    "report": {
-    "findings": [
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "S1",
-       "J12"
-      ],
-      "nets": [
-       "/IN"
-      ],
-      "title": "EN pin is tied directly to the VIN net without a proper pull\u2011up",
-      "why": "EN may be exposed to the full input voltage, exceeding its rating and preventing reliable enable control",
-      "fix": "Add a pull\u2011up resistor to the EN pin (e.g., to 3.3\u202fV) and separate it from the VIN net",
-      "claim": "s1_en_tied_to_vin",
-      "subject": "S1",
-      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-      "id": "F002",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "S1",
-       "U2"
-      ],
-      "nets": [
-       "/ECHO"
-      ],
-      "title": "S1 ground pin is connected to /ECHO net instead of GND",
-      "why": "The regulator's ground reference is not tied to the system ground, leading to undefined operation and possible damage",
-      "fix": "Connect S1.1 to the GND net",
-      "claim": "s1_ground_not_on_ground",
-      "subject": "S1",
-      "evidence": "/ECHO: J2.3 S1.1(GND,pwr-in) U2.39(PB3)",
-      "id": "F001",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "physical",
-      "severity": "informational",
-      "refs": [
-       "U3"
-      ],
-      "nets": [
-       "GND"
-      ],
-      "title": "ground pin far from decoupling capacitor",
-      "why": "large distance can increase loop inductance and degrade noise performance",
-      "fix": "place decoupling capacitor closer to the pin, within a few millimeters",
-      "claim": "ground_decap_distance",
-      "subject": "GND",
-      "evidence": "U3.8(GND) GND C16 17.2",
-      "id": "F004",
-      "verdict": "downgrade",
-      "confidence": "high",
-      "verdict_reason": "It reports a layout distance issue but does not prescribe a specific corrective action, making it an observation rather than a defect.",
-      "found_by": [
-       "physical"
-      ],
-      "class": "informational"
-     },
-     {
-      "source": "physical",
-      "severity": "informational",
-      "refs": [],
-      "nets": [
-       "+5V"
-      ],
-      "title": "no copper pour for +5V net",
-      "why": "lack of pour can cause uneven current distribution and higher impedance",
-      "fix": "add a copper pour on both layers for +5V",
-      "claim": "missing_pour",
-      "subject": "+5V",
-      "evidence": "+5V 11 1 119 0.50 10 none",
-      "id": "F003",
-      "verdict": "downgrade",
-      "confidence": "high",
-      "verdict_reason": "The finding only observes a missing copper pour without specifying a concrete defect or required change.",
-      "found_by": [
-       "physical"
-      ],
-      "class": "informational"
-     }
-    ],
+    "findings": [],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 5.0,
+     "probable": 0.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
-     "informational": 2
+     "informational": 0
     },
     "coverage": {
      "net_islands": "ran",
@@ -16379,25 +16269,16 @@
     }
    },
    "grade": {
-    "caught": [
-     {
-      "defect": "stm32-good:supply-on-signal",
-      "finding": "S1 ground pin is connected to /ECHO net instead of GND",
-      "via": [
-       "S1",
-       "ECHO"
-      ],
-      "breadth": 3
-     }
+    "caught": [],
+    "missed": [
+     "stm32-good:supply-on-signal"
     ],
-    "missed": [],
     "other": [
-     "EN pin is tied directly to the VIN net without a proper pull\u2011up",
-     "no copper pour for +5V net",
-     "ground pin far from decoupling capacitor"
+     "USB D- line has no series termination resistor",
+     "no copper pour for +5V net"
     ],
-    "recall": 1.0,
-    "false_alarms": 3
+    "recall": 0.0,
+    "false_alarms": 2
    },
    "refuted_proposed": [],
    "refuted_reported": [],
@@ -16446,10 +16327,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 5,
-   "cached_calls": 0,
+   "cached_calls": 5,
    "tokens_in": 11088,
    "tokens_out": 3784,
-   "seconds": 12.8,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "c4b3e4220ecead10",
     "physical": "5c28d168988abba0",
@@ -16640,10 +16521,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12464,
    "tokens_out": 8437,
-   "seconds": 18.1,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "1a7368d944750bf5",
     "physical": "09f96c401fb63c80",
@@ -16897,10 +16778,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 1,
+   "cached_calls": 6,
    "tokens_in": 12553,
    "tokens_out": 7436,
-   "seconds": 13.8,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "f3e935833951d662",
     "physical": "c5b438c6fd5fe53c",
@@ -17178,10 +17059,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12245,
    "tokens_out": 8768,
-   "seconds": 21.0,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "ceec52579aefc122",
     "physical": "09f96c401fb63c80",
@@ -17406,10 +17287,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12483,
    "tokens_out": 8136,
-   "seconds": 17.1,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "c8f9d988a6135ad6",
     "physical": "09f96c401fb63c80",
@@ -17706,10 +17587,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12732,
    "tokens_out": 10539,
-   "seconds": 21.8,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "997cc2778d9e4ac9",
     "physical": "09f96c401fb63c80",
@@ -18021,10 +17902,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 12360,
    "tokens_out": 8043,
-   "seconds": 14.5,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "bd2af9be481598c2",
     "physical": "09f96c401fb63c80",
@@ -18249,21 +18130,6 @@
      "id": "F002"
     },
     {
-     "source": "physical",
-     "severity": "major",
-     "refs": [],
-     "nets": [
-      "VBUS"
-     ],
-     "title": "no copper trace for VBUS net",
-     "why": "without a copper trace the net may have insufficient current capacity and voltage drop",
-     "fix": "add a copper pour or routing for VBUS on appropriate layer",
-     "claim": "missing copper trace",
-     "subject": "VBUS",
-     "evidence": "VBUS 2 2 none - 0 F.Cu",
-     "id": "F002"
-    },
-    {
      "source": "circuit",
      "severity": "major",
      "refs": [
@@ -18280,6 +18146,25 @@
      "claim": "enable-no-pullup",
      "subject": "S1",
      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
+     "id": "F002"
+    },
+    {
+     "source": "circuit",
+     "severity": "major",
+     "refs": [
+      "R2",
+      "R3",
+      "S1"
+     ],
+     "nets": [
+      "/FB"
+     ],
+     "title": "VFB pin is only connected to the top of the feedback divider; the lower resistor is not tied to ground",
+     "why": "Without a complete divider the regulator cannot sense its output voltage, leading to uncontrolled output",
+     "fix": "Connect the free end of R3 (R3.2) to the GND net to complete the feedback network",
+     "claim": "feedback-divider-incomplete",
+     "subject": "/FB",
+     "evidence": "/FB: R2.2 R3.1 S1.4(VFB,in)",
      "id": "F003"
     }
    ],
@@ -18290,15 +18175,15 @@
    ],
    "passes": 2,
    "stopped": "stop:passes-spent",
-   "calls": 9,
-   "cached_calls": 1,
-   "tokens_in": 19875,
-   "tokens_out": 13811,
-   "seconds": 29.6,
+   "calls": 8,
+   "cached_calls": 3,
+   "tokens_in": 18741,
+   "tokens_out": 9737,
+   "seconds": 11.5,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
-    "physical": "69da77ac4b28cb40",
-    "thermal": "b3a2d82ea4529d95"
+    "physical": "2914ed2a6253a887",
+    "thermal": "11bfb282b9e799db"
    },
    "enabled_agents": [
     "circuit",
@@ -18324,117 +18209,32 @@
     "thermal": "ran",
     "signal_integrity": "skipped: no stackup and no high speed nets",
     "power_integrity": "skipped: no stackup",
-    "cross_domain": "ran",
+    "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
     "critic": "ran"
    },
-   "rejected": [],
+   "rejected": [
+    {
+     "stage": "critic",
+     "because": "The evidence only shows a capacitor on NRST and does not directly demonstrate the absence of a pull\u2011up resistor.",
+     "title": "Reset pin of STM32 has no pull\u2011up resistor"
+    },
+    {
+     "stage": "critic",
+     "because": "The evidence only shows a capacitor on NRST and does not directly demonstrate the absence of a pull\u2011up resistor.",
+     "title": "EN pin of TPS563208 is tied directly to VIN without a pull\u2011up resistor"
+    },
+    {
+     "stage": "critic",
+     "because": "The evidence lists the VFB connection to the divider resistors but does not show that the lower resistor is unconnected to ground.",
+     "title": "VFB pin is only connected to the top of the feedback divider; the lower resistor is not tied to ground"
+    }
+   ],
    "report": {
-    "findings": [
-     {
-      "source": "cross_domain",
-      "severity": "major",
-      "refs": [],
-      "nets": [
-       "/IN",
-       "VBUS"
-      ],
-      "title": "EN pin cannot be reliably driven because VIN (derived from VBUS) lacks a copper trace",
-      "why": "The EN pin is tied directly to VIN, which depends on the VBUS net; the physical finding shows VBUS has no copper trace, so VIN may be under\u2011volted or unstable, making the EN level unpredictable\u2014a condition not present when each finding is considered alone",
-      "fix": "Add a proper copper trace for VBUS and provide a suitable pull\u2011up or level\u2011shifting circuit for the EN pin",
-      "claim": "en_vbus_interaction",
-      "subject": "/IN",
-      "evidence": "EN expects a logic\u2011level high; tying it to the VIN rail can exceed its input rating and prevents proper enable control",
-      "sources": [
-       "F003",
-       "F002"
-      ],
-      "domains": [
-       "circuit",
-       "physical"
-      ],
-      "id": "F003",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "cross_domain"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "S1",
-       "J12",
-       "C3"
-      ],
-      "nets": [
-       "/IN"
-      ],
-      "title": "EN pin of TPS563208 is tied directly to VIN without a pull\u2011up resistor",
-      "why": "EN expects a logic\u2011level high; tying it to the VIN rail can exceed its input rating and prevents proper enable control",
-      "fix": "Add a pull\u2011up resistor from EN to a suitable logic level (e.g., VIN through a resistor) and avoid direct connection to the power rail",
-      "claim": "enable-no-pullup",
-      "subject": "S1",
-      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-      "id": "F003",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "circuit",
-      "severity": "minor",
-      "refs": [
-       "U2",
-       "C6"
-      ],
-      "nets": [
-       "NRST"
-      ],
-      "title": "Reset pin of STM32 has no pull\u2011up resistor",
-      "why": "Without a pull\u2011up the MCU may stay in reset or reset unpredictably",
-      "fix": "Add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from U2.7 to +3.3\u202fV",
-      "claim": "missing_nrst_pullup",
-      "subject": "U2",
-      "evidence": "NRST: C6.1 U2.7(NRST,in)",
-      "id": "F002",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "physical",
-      "severity": "minor",
-      "refs": [],
-      "nets": [
-       "VBUS"
-      ],
-      "title": "no copper trace for VBUS net",
-      "why": "without a copper trace the net may have insufficient current capacity and voltage drop",
-      "fix": "add a copper pour or routing for VBUS on appropriate layer",
-      "claim": "missing copper trace",
-      "subject": "VBUS",
-      "evidence": "VBUS 2 2 none - 0 F.Cu",
-      "id": "F002",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "physical"
-      ],
-      "class": "probable_issue"
-     }
-    ],
+    "findings": [],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 6.0,
+     "probable": 0.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -18458,32 +18258,27 @@
      "thermal": "ran",
      "signal_integrity": "skipped: no stackup and no high speed nets",
      "power_integrity": "skipped: no stackup",
-     "cross_domain": "ran",
+     "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
      "critic": "ran"
     },
     "unassessed": {
+     "cross_domain": "only 1 reviewer produced findings, so there is no interaction to look for",
      "power_integrity": "no stackup",
      "signal_integrity": "no stackup and no high speed nets"
     }
    },
    "grade": {
-    "caught": [
-     {
-      "defect": "stm32-good:part-reversed",
-      "finding": "no copper trace for VBUS net",
-      "via": [
-       "VBUS"
-      ],
-      "breadth": 1
-     }
+    "caught": [],
+    "missed": [
+     "stm32-good:part-reversed"
     ],
-    "missed": [],
     "other": [
      "Reset pin of STM32 has no pull\u2011up resistor",
-     "EN pin of TPS563208 is tied directly to VIN without a pull\u2011up resistor"
+     "EN pin of TPS563208 is tied directly to VIN without a pull\u2011up resistor",
+     "VFB pin is only connected to the top of the feedback divider; the lower resistor is not tied to ground"
     ],
-    "recall": 1.0,
-    "false_alarms": 2
+    "recall": 0.0,
+    "false_alarms": 3
    },
    "refuted_proposed": [],
    "refuted_reported": [],
@@ -18509,37 +18304,21 @@
    "findings": [
     {
      "source": "circuit",
-     "severity": "major",
+     "severity": "minor",
      "refs": [
-      "S1"
+      "U2",
+      "R4"
      ],
      "nets": [
-      "/IN"
+      "/BOOT0"
      ],
-     "title": "EN pin of step\u2011down regulator is tied to the VIN net instead of being pulled up to a logic level",
-     "why": "The regulator may never enable or could be damaged by over\u2011voltage on the EN input",
-     "fix": "Connect EN to a pull\u2011up resistor (e.g., 10\u202fk\u03a9 to 5\u202fV) and remove it from the VIN net",
-     "claim": "en_not_pulled_up",
-     "subject": "S1",
-     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
+     "title": "BOOT0 not pulled low by default",
+     "why": "the MCU may start in bootloader mode unintentionally when power is applied",
+     "fix": "add a pull\u2011down resistor to ground or tie BOOT0 to ground through a resistor",
+     "claim": "boot0-floating",
+     "subject": "U2",
+     "evidence": "/BOOT0: R4.2 U2.44(BOOT0,in)",
      "id": "F001"
-    },
-    {
-     "source": "circuit",
-     "severity": "major",
-     "refs": [
-      "U2"
-     ],
-     "nets": [
-      "NRST"
-     ],
-     "title": "NRST pin has no pull\u2011up resistor",
-     "why": "The MCU may not reset reliably because the reset line is left floating",
-     "fix": "Add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from NRST to the 3.3\u202fV rail",
-     "claim": "nrst_missing_pullup",
-     "subject": "NRST",
-     "evidence": "NRST: C6.1 U2.7(NRST,in)",
-     "id": "F002"
     },
     {
      "source": "physical",
@@ -18557,7 +18336,7 @@
      "claim": "decoupling_distance",
      "subject": "S1",
      "evidence": "S1.1(GND) GND C3 6.8",
-     "id": "F003"
+     "id": "F001"
     },
     {
      "source": "physical",
@@ -18575,31 +18354,67 @@
      "claim": "decoupling_distance",
      "subject": "U1",
      "evidence": "U1.2(VO) +3.3V C2 7.4",
+     "id": "F002"
+    },
+    {
+     "source": "circuit",
+     "severity": "major",
+     "refs": [
+      "S1"
+     ],
+     "nets": [
+      "/IN"
+     ],
+     "title": "EN pin of TPS563208 is tied to the input net instead of being pulled up",
+     "why": "The regulator will remain disabled because EN is not driven high",
+     "fix": "Add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from S1.5 to +5\u202fV or the appropriate supply",
+     "claim": "enable-no-pullup",
+     "subject": "S1",
+     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
      "id": "F004"
     },
     {
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "R1"
+      "S1",
+      "R2",
+      "R3"
      ],
      "nets": [
-      "PWR_LED_K",
-      "GND"
+      "/FB"
      ],
-     "title": "resistor value not specified",
-     "why": "the LED current limit cannot be determined, risking over\u2011current or dim operation",
-     "fix": "assign a proper resistance value (e.g., 330\u202f\u03a9) and update the BOM",
-     "claim": "missing resistor value",
-     "subject": "R1",
-     "evidence": "R1 R 0402",
+     "title": "VFB pin of TPS563208 is only connected to a resistor divider and not to the regulator output",
+     "why": "Without a connection to the output voltage the step\u2011down regulator cannot regulate correctly",
+     "fix": "Connect the junction of R2 and R3 to the regulated output node (after L1 and output capacitor)",
+     "claim": "feedback-not-connected",
+     "subject": "S1",
+     "evidence": "/FB: R2.2 R3.1 S1.4(VFB,in)",
      "id": "F005"
+    },
+    {
+     "source": "circuit",
+     "severity": "minor",
+     "refs": [
+      "U2",
+      "C6"
+     ],
+     "nets": [
+      "/NRST"
+     ],
+     "title": "NRST pin is only connected to a decoupling capacitor and lacks a pull\u2011up resistor",
+     "why": "The reset line may stay low or be noisy, preventing proper MCU startup",
+     "fix": "Add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from U2.7 to +3.3\u202fV",
+     "claim": "reset-no-pullup",
+     "subject": "U2",
+     "evidence": "/NRST: C6.1 U2.7(NRST,in)",
+     "id": "F006"
     }
    ],
    "dropped": [
     {
      "title": "decoupling capacitor too far from pin",
-     "because": "the same claim about the same subject as F003"
+     "because": "the same claim about the same subject as F001"
     }
    ],
    "rules": [
@@ -18607,15 +18422,15 @@
    ],
    "passes": 2,
    "stopped": "stop:passes-spent",
-   "calls": 10,
-   "cached_calls": 1,
-   "tokens_in": 21132,
-   "tokens_out": 16001,
-   "seconds": 35.1,
+   "calls": 9,
+   "cached_calls": 2,
+   "tokens_in": 20246,
+   "tokens_out": 14721,
+   "seconds": 35.8,
    "pack_hashes": {
-    "circuit": "fd31bd4039ffb92e",
+    "circuit": "433cc251e183d9ca",
     "physical": "09f96c401fb63c80",
-    "thermal": "597cfaed83736076"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -18647,23 +18462,43 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "the evidence does not show layout\u2011induced voltage spikes on EN",
-     "title": "overvoltage on EN due to layout\u2011induced spikes"
+     "because": "The distance measurement alone does not demonstrate that the capacitor is excessively far from the pin.",
+     "title": "decoupling capacitor too far from pin"
     },
     {
      "stage": "critic",
-     "because": "the evidence does not demonstrate noise coupling from a distant decoupling capacitor",
-     "title": "reset line susceptible to noise"
+     "because": "The evidence provides only a distance value without a threshold to prove the capacitor is too far.",
+     "title": "decoupling capacitor too far from pin"
     },
     {
      "stage": "critic",
-     "because": "the net list shows only a capacitor and the MCU pin, which does not prove that a pull\u2011up resistor is missing",
-     "title": "NRST pin has no pull\u2011up resistor"
+     "because": "No criteria are given to show that the measured distance constitutes a defect.",
+     "title": "decoupling capacitor too far from pin"
     },
     {
      "stage": "critic",
-     "because": "the evidence only mentions a floating reset line and does not provide any data about a distant decoupling capacitor, so the combined failure claim is unsupported",
-     "title": "Floating reset line combined with distant decoupling capacitor causes unreliable reset under transient load"
+     "because": "The evidence only shows a connection to BOOT0, not that it is left un\u2011pulled low.",
+     "title": "BOOT0 not pulled low by default"
+    },
+    {
+     "stage": "critic",
+     "because": "The evidence only shows a connection to BOOT0, not that it is left un\u2011pulled low.",
+     "title": "decoupling capacitor too far from pin"
+    },
+    {
+     "stage": "critic",
+     "because": "The measured distance does not prove the placement is excessive.",
+     "title": "decoupling capacitor too far from pin"
+    },
+    {
+     "stage": "critic",
+     "because": "While EN is tied to the input net, the claim that the regulator will stay disabled is not supported by the data.",
+     "title": "EN pin of TPS563208 is tied to the input net instead of being pulled up"
+    },
+    {
+     "stage": "critic",
+     "because": "The provided evidence does not contain concrete data linking the described layout to unstable reset behavior.",
+     "title": "unstable MCU reset behavior"
     }
    ],
    "report": {
@@ -18672,41 +18507,19 @@
       "source": "circuit",
       "severity": "major",
       "refs": [
-       "S1"
+       "S1",
+       "R2",
+       "R3"
       ],
       "nets": [
-       "/IN"
+       "/FB"
       ],
-      "title": "EN pin of step\u2011down regulator is tied to the VIN net instead of being pulled up to a logic level",
-      "why": "The regulator may never enable or could be damaged by over\u2011voltage on the EN input",
-      "fix": "Connect EN to a pull\u2011up resistor (e.g., 10\u202fk\u03a9 to 5\u202fV) and remove it from the VIN net",
-      "claim": "en_not_pulled_up",
+      "title": "VFB pin of TPS563208 is only connected to a resistor divider and not to the regulator output",
+      "why": "Without a connection to the output voltage the step\u2011down regulator cannot regulate correctly",
+      "fix": "Connect the junction of R2 and R3 to the regulated output node (after L1 and output capacitor)",
+      "claim": "feedback-not-connected",
       "subject": "S1",
-      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-      "id": "F001",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "R1"
-      ],
-      "nets": [
-       "PWR_LED_K",
-       "GND"
-      ],
-      "title": "resistor value not specified",
-      "why": "the LED current limit cannot be determined, risking over\u2011current or dim operation",
-      "fix": "assign a proper resistance value (e.g., 330\u202f\u03a9) and update the BOM",
-      "claim": "missing resistor value",
-      "subject": "R1",
-      "evidence": "R1 R 0402",
+      "evidence": "/FB: R2.2 R3.1 S1.4(VFB,in)",
       "id": "F005",
       "verdict": "accept",
       "confidence": "high",
@@ -18716,50 +18529,57 @@
       "class": "probable_issue"
      },
      {
-      "source": "physical",
+      "source": "circuit",
       "severity": "minor",
       "refs": [
-       "S1",
-       "C3"
+       "U2",
+       "C6"
       ],
       "nets": [
-       "GND"
+       "/NRST"
       ],
-      "title": "decoupling capacitor too far from pin",
-      "why": "excessive loop inductance can degrade transient response",
-      "fix": "place a decoupling capacitor within 5\u202fmm of the pin",
-      "claim": "decoupling_distance",
-      "subject": "S1",
-      "evidence": "S1.1(GND) GND C3 6.8",
-      "id": "F003",
+      "title": "NRST pin is only connected to a decoupling capacitor and lacks a pull\u2011up resistor",
+      "why": "The reset line may stay low or be noisy, preventing proper MCU startup",
+      "fix": "Add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from U2.7 to +3.3\u202fV",
+      "claim": "reset-no-pullup",
+      "subject": "U2",
+      "evidence": "/NRST: C6.1 U2.7(NRST,in)",
+      "id": "F006",
       "verdict": "accept",
       "confidence": "high",
       "found_by": [
-       "physical"
+       "circuit"
       ],
       "class": "probable_issue"
      },
      {
-      "source": "physical",
+      "source": "cross_domain",
       "severity": "minor",
       "refs": [
-       "U1",
-       "C2"
+       "S1"
       ],
       "nets": [
-       "+3.3V"
+       "/IN"
       ],
-      "title": "decoupling capacitor too far from pin",
-      "why": "excessive loop inductance can degrade transient response",
-      "fix": "place a decoupling capacitor within 5\u202fmm of the pin",
-      "claim": "decoupling_distance",
-      "subject": "U1",
-      "evidence": "U1.2(VO) +3.3V C2 7.4",
-      "id": "F004",
+      "title": "regulator never enables on power\u2011up",
+      "why": "EN is tied to the input net (circuit) and the input decoupling capacitor is placed far from the pin (physical), so the slow rise of the input voltage keeps EN low long enough that the regulator stays disabled, a condition that does not occur with either issue alone",
+      "fix": "add a proper pull\u2011up resistor to EN and relocate the input decoupling capacitor close to the EN pin",
+      "claim": "en_disable",
+      "subject": "/IN",
+      "evidence": "The regulator will remain disabled because EN is not driven high",
+      "sources": [
+       "F004",
+       "F001"
+      ],
+      "domains": [
+       "circuit",
+       "physical"
+      ],
+      "id": "F006",
       "verdict": "accept",
       "confidence": "high",
       "found_by": [
-       "physical"
+       "cross_domain"
       ],
       "class": "probable_issue"
      }
@@ -18767,7 +18587,7 @@
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 6.0,
+     "probable": 3.5,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -18800,25 +18620,20 @@
     }
    },
    "grade": {
-    "caught": [
-     {
-      "defect": "stm32-good:value-unorderable",
-      "finding": "resistor value not specified",
-      "via": [
-       "R1"
-      ],
-      "breadth": 3
-     }
+    "caught": [],
+    "missed": [
+     "stm32-good:value-unorderable"
     ],
-    "missed": [],
     "other": [
-     "EN pin of step\u2011down regulator is tied to the VIN net instead of being pulled up to a logic level",
-     "NRST pin has no pull\u2011up resistor",
+     "BOOT0 not pulled low by default",
      "decoupling capacitor too far from pin",
-     "decoupling capacitor too far from pin"
+     "decoupling capacitor too far from pin",
+     "EN pin of TPS563208 is tied to the input net instead of being pulled up",
+     "VFB pin of TPS563208 is only connected to a resistor divider and not to the regulator output",
+     "NRST pin is only connected to a decoupling capacitor and lacks a pull\u2011up resistor"
     ],
-    "recall": 1.0,
-    "false_alarms": 4
+    "recall": 0.0,
+    "false_alarms": 6
    },
    "refuted_proposed": [],
    "refuted_reported": [],
@@ -18850,10 +18665,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 2,
-   "cached_calls": 1,
+   "cached_calls": 2,
    "tokens_in": 2166,
    "tokens_out": 2526,
-   "seconds": 6.4,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "846e44f48ebe6faa",
     "physical": "326a3fb05396d1a6"
@@ -18984,10 +18799,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 3,
-   "cached_calls": 1,
+   "cached_calls": 3,
    "tokens_in": 2856,
    "tokens_out": 2531,
-   "seconds": 6.6,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "f49a76f9c3eadd6a",
     "physical": "326a3fb05396d1a6"
@@ -19124,42 +18939,35 @@
    "findings": [
     {
      "source": "circuit",
-     "severity": "minor",
+     "severity": "major",
      "refs": [
-      "U1",
-      "J1",
-      "C1"
+      "R1"
      ],
      "nets": [
-      "/IN"
+      "/FB"
      ],
-     "title": "enable pin tied to input voltage net",
-     "why": "EN cannot be independently controlled, preventing the regulator from being disabled when desired",
-     "fix": "move EN to a separate net and add a pull\u2011down resistor or control signal",
-     "claim": "enable_tied_to_input",
-     "subject": "U1",
-     "evidence": "/IN: C1.1 J1.1 U1.3(VIN) U1.5(EN)",
+     "title": "resistor R1 has no specified resistance value",
+     "why": "the feedback divider ratio is undefined, so the converter output voltage cannot be set correctly",
+     "fix": "add the appropriate resistance value for R1 in the schematic and BOM (e.g., 10\u202fk\u03a9)",
+     "claim": "missing-resistor-value",
+     "subject": "R1",
+     "evidence": "R1 R 1210",
      "id": "F001"
     }
    ],
-   "dropped": [
-    {
-     "title": "U1 VOUT pin not connected to output net",
-     "because": "OUT is one connected piece of copper across all 4 of its pads"
-    }
-   ],
+   "dropped": [],
    "rules": [
     "value-not-orderable"
    ],
-   "passes": 2,
-   "stopped": "stop:passes-spent",
-   "calls": 5,
+   "passes": 1,
+   "stopped": "stop:rules-accounted-for",
+   "calls": 3,
    "cached_calls": 1,
-   "tokens_in": 4853,
-   "tokens_out": 4669,
-   "seconds": 11.4,
+   "tokens_in": 2844,
+   "tokens_out": 2452,
+   "seconds": 5.0,
    "pack_hashes": {
-    "circuit": "f4d45f19b691b45a",
+    "circuit": "7f0b4acd03653744",
     "physical": "326a3fb05396d1a6"
    },
    "enabled_agents": [
@@ -19195,23 +19003,20 @@
       "source": "circuit",
       "severity": "major",
       "refs": [
-       "U1",
-       "J1",
-       "C1"
+       "R1"
       ],
       "nets": [
-       "/IN"
+       "/FB"
       ],
-      "title": "enable pin tied to input voltage net",
-      "why": "EN cannot be independently controlled, preventing the regulator from being disabled when desired",
-      "fix": "move EN to a separate net and add a pull\u2011down resistor or control signal",
-      "claim": "enable_tied_to_input",
-      "subject": "U1",
-      "evidence": "/IN: C1.1 J1.1 U1.3(VIN) U1.5(EN)",
+      "title": "resistor R1 has no specified resistance value",
+      "why": "the feedback divider ratio is undefined, so the converter output voltage cannot be set correctly",
+      "fix": "add the appropriate resistance value for R1 in the schematic and BOM (e.g., 10\u202fk\u03a9)",
+      "claim": "missing-resistor-value",
+      "subject": "R1",
+      "evidence": "R1 R 1210",
       "id": "F001",
-      "verdict": "correct",
+      "verdict": "accept",
       "confidence": "high",
-      "verdict_reason": "Severity is understated; inability to disable the regulator is a major functional issue",
       "found_by": [
        "circuit"
       ],
@@ -19257,22 +19062,22 @@
     }
    },
    "grade": {
-    "caught": [],
-    "missed": [
-     "dcdcc:value-unorderable"
+    "caught": [
+     {
+      "defect": "dcdcc:value-unorderable",
+      "finding": "resistor R1 has no specified resistance value",
+      "via": [
+       "R1"
+      ],
+      "breadth": 2
+     }
     ],
-    "other": [
-     "enable pin tied to input voltage net"
-    ],
-    "recall": 0.0,
-    "false_alarms": 1
+    "missed": [],
+    "other": [],
+    "recall": 1.0,
+    "false_alarms": 0
    },
-   "refuted_proposed": [
-    {
-     "title": "U1 VOUT pin not connected to output net",
-     "because": "/OUT is one connected piece of copper across all 4 of its pads"
-    }
-   ],
+   "refuted_proposed": [],
    "refuted_reported": [],
    "trial": 4
   },
@@ -19322,10 +19127,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1289,
-   "seconds": 4.0,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -19375,10 +19180,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 889,
-   "seconds": 2.4,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -19468,10 +19273,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3384,
    "tokens_out": 1562,
-   "seconds": 3.8,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -19536,10 +19341,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 1689,
-   "seconds": 5.0,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -19682,10 +19487,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3390,
    "tokens_out": 2914,
-   "seconds": 10.8,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -19797,10 +19602,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1706,
-   "seconds": 4.0,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -19943,10 +19748,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 2030,
-   "seconds": 5.2,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -20113,10 +19918,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 1858,
-   "seconds": 6.3,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -20236,10 +20041,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3391,
    "tokens_out": 1595,
-   "seconds": 3.8,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -20295,10 +20100,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3396,
    "tokens_out": 4000,
-   "seconds": 9.9,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -20392,10 +20197,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3388,
    "tokens_out": 3773,
-   "seconds": 8.6,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -20532,10 +20337,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 3393,
    "tokens_out": 1830,
-   "seconds": 4.4,
+   "seconds": 0.1,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -20604,10 +20409,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 966,
    "tokens_out": 1344,
-   "seconds": 4.1,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -20672,10 +20477,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 1003,
-   "seconds": 3.3,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -20741,10 +20546,10 @@
    "passes": 1,
    "stopped": "stop:single-call",
    "calls": 1,
-   "cached_calls": 0,
+   "cached_calls": 1,
    "tokens_in": 964,
    "tokens_out": 1429,
-   "seconds": 4.1,
+   "seconds": 0.0,
    "pack_hashes": {},
    "enabled_agents": [],
    "coverage": {},
@@ -20830,10 +20635,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 0,
+   "cached_calls": 6,
    "tokens_in": 13732,
    "tokens_out": 6110,
-   "seconds": 12.1,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
     "physical": "09f96c401fb63c80",
@@ -20992,10 +20797,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 4,
-   "cached_calls": 0,
+   "cached_calls": 4,
    "tokens_in": 3781,
    "tokens_out": 3331,
-   "seconds": 8.3,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "5322061870dd941d",
     "physical": "326a3fb05396d1a6"
@@ -21135,6 +20940,24 @@
    ],
    "findings": [
     {
+     "source": "circuit",
+     "severity": "major",
+     "refs": [
+      "U2",
+      "C6"
+     ],
+     "nets": [
+      "/NRST"
+     ],
+     "title": "reset pin lacks required pull\u2011up resistor",
+     "why": "Without a pull\u2011up to the supply rail the MCU reset line may float, preventing reliable startup or causing unintended resets",
+     "fix": "Add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from the NRST pin to the +3.3\u202fV rail",
+     "claim": "missing_reset_pullup",
+     "subject": "/NRST",
+     "evidence": "/NRST: C6.1 U2.7(NRST,in)",
+     "id": "F001"
+    },
+    {
      "source": "physical",
      "severity": "major",
      "refs": [],
@@ -21147,24 +20970,24 @@
      "claim": "missing_trace",
      "subject": "VIN_LDO",
      "evidence": "VIN_LDO 4 1 none - 0 F.Cu",
-     "id": "F001"
+     "id": "F003"
     },
     {
      "source": "circuit",
-     "severity": "critical",
+     "severity": "major",
      "refs": [
       "S1"
      ],
      "nets": [
-      "/ECHO"
+      "/IN"
      ],
-     "title": "S1 ground pin is connected to the /ECHO net instead of GND",
-     "why": "the step\u2011down regulator will have an undefined reference voltage and may not operate or could damage the MCU",
-     "fix": "re\u2011route S1.1 to the GND net and remove it from the /ECHO net",
-     "claim": "ground pin not on ground net",
+     "title": "enable pin tied to input voltage",
+     "why": "EN will be high whenever VIN is present, preventing proper shutdown control",
+     "fix": "connect EN to a pull\u2011up resistor to +3.3\u202fV and remove it from the /IN net",
+     "claim": "enable-miswired",
      "subject": "S1",
-     "evidence": "/ECHO: J2.3 S1.1(GND,pwr-in) U2.39(PB3)",
-     "id": "F002"
+     "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
+     "id": "F003"
     }
    ],
    "dropped": [
@@ -21179,15 +21002,15 @@
    ],
    "passes": 2,
    "stopped": "stop:passes-spent",
-   "calls": 9,
-   "cached_calls": 0,
-   "tokens_in": 19183,
-   "tokens_out": 10365,
-   "seconds": 41.9,
+   "calls": 10,
+   "cached_calls": 2,
+   "tokens_in": 22084,
+   "tokens_out": 15919,
+   "seconds": 37.3,
    "pack_hashes": {
-    "circuit": "17f9b888a79e8b6a",
+    "circuit": "dca5f032524de2c5",
     "physical": "39949ad7ac16471b",
-    "thermal": "9efa8e0458ce2503"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -21216,7 +21039,33 @@
     "cross_domain": "ran",
     "critic": "ran"
    },
-   "rejected": [],
+   "rejected": [
+    {
+     "stage": "critic",
+     "because": "The evidence only lists the capacitor and MCU pin on /NRST and does not demonstrate that a pull\u2011up resistor is missing.",
+     "title": "reset pin lacks required pull\u2011up resistor"
+    },
+    {
+     "stage": "critic",
+     "because": "The net listing shows only the connector and MCU pin on USB_D-; it does not establish the absence of a required pull\u2011down resistor.",
+     "title": "USB D- line lacks required pull\u2011down resistor"
+    },
+    {
+     "stage": "critic",
+     "because": "The provided evidence is merely a restatement of reasoning and does not substantiate the claim that the reset pull\u2011up is ineffective due to a missing VIN_LDO trace.",
+     "title": "Reset pin pull\u2011up ineffective due to missing VIN_LDO trace"
+    },
+    {
+     "stage": "cross-domain",
+     "because": "all its sources come from one reviewer (circuit)",
+     "title": "reset pull\u2011up ineffective due to missing VIN_LDO trace"
+    },
+    {
+     "stage": "critic",
+     "because": "The evidence only shows the net connection and does not demonstrate the absence of a pull\u2011up resistor.",
+     "title": "reset pin lacks required pull\u2011up resistor"
+    }
+   ],
    "report": {
     "findings": [
      {
@@ -21226,17 +21075,18 @@
        "S1"
       ],
       "nets": [
-       "/ECHO"
+       "/IN"
       ],
-      "title": "S1 ground pin is connected to the /ECHO net instead of GND",
-      "why": "the step\u2011down regulator will have an undefined reference voltage and may not operate or could damage the MCU",
-      "fix": "re\u2011route S1.1 to the GND net and remove it from the /ECHO net",
-      "claim": "ground pin not on ground net",
+      "title": "enable pin tied to input voltage",
+      "why": "EN will be high whenever VIN is present, preventing proper shutdown control",
+      "fix": "connect EN to a pull\u2011up resistor to +3.3\u202fV and remove it from the /IN net",
+      "claim": "enable-miswired",
       "subject": "S1",
-      "evidence": "/ECHO: J2.3 S1.1(GND,pwr-in) U2.39(PB3)",
-      "id": "F002",
-      "verdict": "accept",
+      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
+      "id": "F003",
+      "verdict": "correct",
       "confidence": "high",
+      "verdict_reason": "A missing copper trace on VIN_LDO prevents the regulator input from receiving power, which is a critical failure.",
       "found_by": [
        "circuit"
       ],
@@ -21255,10 +21105,10 @@
       "claim": "missing_trace",
       "subject": "VIN_LDO",
       "evidence": "VIN_LDO 4 1 none - 0 F.Cu",
-      "id": "F001",
+      "id": "F003",
       "verdict": "correct",
       "confidence": "high",
-      "verdict_reason": "severity overstated as major; the missing copper prevents the regulator from receiving power, making the defect critical",
+      "verdict_reason": "A missing copper trace on VIN_LDO prevents the regulator input from receiving power, which is a critical failure.",
       "found_by": [
        "physical"
       ],
@@ -21304,20 +21154,20 @@
     "caught": [
      {
       "defect": "stm32-good:supply-on-signal",
-      "finding": "S1 ground pin is connected to the /ECHO net instead of GND",
+      "finding": "enable pin tied to input voltage",
       "via": [
-       "S1",
-       "ECHO"
+       "S1"
       ],
       "breadth": 2
      }
     ],
     "missed": [],
     "other": [
+     "reset pin lacks required pull\u2011up resistor",
      "net has no copper trace length"
     ],
     "recall": 1.0,
-    "false_alarms": 1
+    "false_alarms": 2
    },
    "refuted_proposed": [
     {
@@ -21403,10 +21253,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 0,
+   "cached_calls": 6,
    "tokens_in": 12227,
    "tokens_out": 7305,
-   "seconds": 15.4,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "c4b3e4220ecead10",
     "physical": "5c28d168988abba0",
@@ -21658,10 +21508,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 13732,
    "tokens_out": 7006,
-   "seconds": 13.4,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "1a7368d944750bf5",
     "physical": "09f96c401fb63c80",
@@ -21831,10 +21681,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 5,
-   "cached_calls": 1,
+   "cached_calls": 5,
    "tokens_in": 12758,
    "tokens_out": 6309,
-   "seconds": 16.5,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "f3e935833951d662",
     "physical": "c5b438c6fd5fe53c",
@@ -22022,10 +21872,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 5,
-   "cached_calls": 2,
+   "cached_calls": 5,
    "tokens_in": 12662,
    "tokens_out": 7476,
-   "seconds": 21.1,
+   "seconds": 0.5,
    "pack_hashes": {
     "circuit": "ceec52579aefc122",
     "physical": "09f96c401fb63c80",
@@ -22221,10 +22071,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 14022,
    "tokens_out": 8543,
-   "seconds": 19.3,
+   "seconds": 0.3,
    "pack_hashes": {
     "circuit": "c8f9d988a6135ad6",
     "physical": "09f96c401fb63c80",
@@ -22455,10 +22305,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 6,
-   "cached_calls": 2,
+   "cached_calls": 6,
    "tokens_in": 13975,
    "tokens_out": 7841,
-   "seconds": 18.9,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "997cc2778d9e4ac9",
     "physical": "09f96c401fb63c80",
@@ -22693,10 +22543,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 5,
-   "cached_calls": 3,
+   "cached_calls": 5,
    "tokens_in": 12678,
    "tokens_out": 5863,
-   "seconds": 7.9,
+   "seconds": 0.4,
    "pack_hashes": {
     "circuit": "bd2af9be481598c2",
     "physical": "09f96c401fb63c80",
@@ -22836,6 +22686,40 @@
    ],
    "findings": [
     {
+     "source": "physical",
+     "severity": "minor",
+     "refs": [
+      "U3"
+     ],
+     "nets": [
+      "GND"
+     ],
+     "title": "decoupling capacitor located far from GND pin",
+     "why": "the long distance increases loop inductance, reducing effectiveness of the decoupling",
+     "fix": "place a decoupling capacitor much closer to the U3.8 GND pin",
+     "claim": "far-decoupling",
+     "subject": "U3",
+     "evidence": "U3.8(GND) GND C16 17.2",
+     "id": "F001"
+    },
+    {
+     "source": "physical",
+     "severity": "minor",
+     "refs": [
+      "U1"
+     ],
+     "nets": [
+      "+3.3V"
+     ],
+     "title": "decoupling capacitor too distant from +3.3V pin",
+     "why": "excessive distance can degrade transient response and increase noise on the +3.3V rail",
+     "fix": "move the decoupling capacitor closer to the U1.2 pin",
+     "claim": "far-decoupling",
+     "subject": "U1",
+     "evidence": "U1.2(VO) +3.3V C2 7.4",
+     "id": "F002"
+    },
+    {
      "source": "circuit",
      "severity": "major",
      "refs": [
@@ -22850,43 +22734,6 @@
      "claim": "missing_pullup_enable",
      "subject": "S1",
      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-     "id": "F001"
-    },
-    {
-     "source": "circuit",
-     "severity": "major",
-     "refs": [
-      "S1",
-      "R2",
-      "R3"
-     ],
-     "nets": [
-      "/FB"
-     ],
-     "title": "VFB pin of the TPS563208 is only connected to the feedback resistor divider and not to the regulator output",
-     "why": "The regulator cannot close the feedback loop, so it will not regulate the output voltage correctly",
-     "fix": "Connect the junction of the feedback divider (R2 and R3) to the regulator's output node (VOUT) so that VFB senses the actual output voltage",
-     "claim": "missing_feedback_to_output",
-     "subject": "S1",
-     "evidence": "/FB: R2.2 R3.1 S1.4(VFB,in)",
-     "id": "F002"
-    },
-    {
-     "source": "circuit",
-     "severity": "minor",
-     "refs": [
-      "J10",
-      "U2"
-     ],
-     "nets": [
-      "USB_D+"
-     ],
-     "title": "USB D+ line lacks the required pull\u2011up resistor to indicate a full\u2011speed device",
-     "why": "Without the pull\u2011up the host may not detect the USB device, preventing enumeration",
-     "fix": "Add a 1.5\u202fk\u03a9 pull\u2011up resistor from USB_D+ to the 3.3\u202fV rail",
-     "claim": "missing_usb_pullup",
-     "subject": "USB_D+",
-     "evidence": "USB_D+: J10.3(D+) R7.2 U2.33(PA12)",
      "id": "F003"
     }
    ],
@@ -22898,14 +22745,14 @@
    "passes": 2,
    "stopped": "stop:passes-spent",
    "calls": 9,
-   "cached_calls": 1,
-   "tokens_in": 19877,
-   "tokens_out": 12136,
-   "seconds": 24.2,
+   "cached_calls": 2,
+   "tokens_in": 19848,
+   "tokens_out": 11557,
+   "seconds": 17.6,
    "pack_hashes": {
     "circuit": "ef4b7fd2eb6fb5d4",
-    "physical": "69da77ac4b28cb40",
-    "thermal": "b3a2d82ea4529d95"
+    "physical": "2914ed2a6253a887",
+    "thermal": "11bfb282b9e799db"
    },
    "enabled_agents": [
     "circuit",
@@ -22931,34 +22778,39 @@
     "thermal": "ran",
     "signal_integrity": "skipped: no stackup and no high speed nets",
     "power_integrity": "skipped: no stackup",
-    "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
+    "cross_domain": "ran",
     "critic": "ran"
    },
    "rejected": [
     {
      "stage": "critic",
-     "because": "evidence does not support claim about ground bounce from distant capacitor",
-     "title": "Regulator enable unreliable due to ground bounce"
+     "because": "The 7.4\u202fmm distance is not demonstrably excessive without a defined threshold, so the claim is unsupported.",
+     "title": "decoupling capacitor too distant from +3.3V pin"
     },
     {
      "stage": "critic",
-     "because": "The evidence shows EN is connected to VIN but does not demonstrate the absence of a pull\u2011up resistor.",
+     "because": "The distance measurement alone does not prove the capacitor is too far to be effective.",
+     "title": "decoupling capacitor located far from GND pin"
+    },
+    {
+     "stage": "critic",
+     "because": "Evidence shows a distance but provides no threshold to show it is excessive.",
+     "title": "decoupling capacitor too distant from +3.3V pin"
+    },
+    {
+     "stage": "critic",
+     "because": "The netlist entry shows the EN pin is tied to VIN but does not demonstrate the absence of a pull\u2011up resistor.",
      "title": "EN pin of the TPS563208 step\u2011down regulator is tied to the VIN net with no pull\u2011up resistor"
     },
     {
      "stage": "critic",
-     "because": "The net list confirms VFB is tied to the resistor divider, but it does not prove it is not also connected to the regulator output.",
-     "title": "VFB pin of the TPS563208 is only connected to the feedback resistor divider and not to the regulator output"
+     "because": "The cited evidence only addresses decoupling distance and does not support the combined enable\u2011failure claim.",
+     "title": "Regulator may never enable while decoupling capacitor is ineffective"
     },
     {
      "stage": "critic",
-     "because": "A resistor (R7.2) is present on the D+ line, so the claim that the required pull\u2011up is missing is not supported by the evidence.",
-     "title": "USB D+ line lacks the required pull\u2011up resistor to indicate a full\u2011speed device"
-    },
-    {
-     "stage": "critic",
-     "because": "The statement about ground bounce is not backed by any measurement or data; the evidence only repeats the missing pull\u2011up claim.",
-     "title": "Regulator enable unreliable due to ground bounce"
+     "because": "The evidence does not substantiate the interaction between the EN pin issue and the distant decoupling capacitor.",
+     "title": "Regulator enable issue combined with distant +3.3V decoupling causes unstable output"
     }
    ],
    "report": {
@@ -22990,11 +22842,10 @@
      "thermal": "ran",
      "signal_integrity": "skipped: no stackup and no high speed nets",
      "power_integrity": "skipped: no stackup",
-     "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
+     "cross_domain": "ran",
      "critic": "ran"
     },
     "unassessed": {
-     "cross_domain": "only 1 reviewer produced findings, so there is no interaction to look for",
      "power_integrity": "no stackup",
      "signal_integrity": "no stackup and no high speed nets"
     }
@@ -23005,9 +22856,9 @@
      "stm32-good:part-reversed"
     ],
     "other": [
-     "EN pin of the TPS563208 step\u2011down regulator is tied to the VIN net with no pull\u2011up resistor",
-     "VFB pin of the TPS563208 is only connected to the feedback resistor divider and not to the regulator output",
-     "USB D+ line lacks the required pull\u2011up resistor to indicate a full\u2011speed device"
+     "decoupling capacitor located far from GND pin",
+     "decoupling capacitor too distant from +3.3V pin",
+     "EN pin of the TPS563208 step\u2011down regulator is tied to the VIN net with no pull\u2011up resistor"
     ],
     "recall": 0.0,
     "false_alarms": 3
@@ -23038,18 +22889,16 @@
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "S1",
-      "J12",
-      "C3"
+      "S1"
      ],
      "nets": [
       "/IN"
      ],
-     "title": "EN pin of step\u2011down regulator tied to VIN net",
-     "why": "device cannot be disabled and may enable unintentionally",
-     "fix": "separate EN pin, add a pull\u2011up resistor to the appropriate supply and route a control signal",
-     "claim": "enable tied to input",
-     "subject": "/IN",
+     "title": "enable pin of the buck regulator is not pulled up",
+     "why": "the regulator will remain disabled because EN is active\u2011high and requires a pull\u2011up",
+     "fix": "add a pull\u2011up resistor from S1.5 (EN) to the input voltage or VCC",
+     "claim": "missing_enable_pullup",
+     "subject": "S1",
      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
      "id": "F001"
     },
@@ -23057,18 +22906,19 @@
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "U2",
-      "C6"
+      "D1",
+      "U1"
      ],
      "nets": [
-      "/NRST"
+      "VBUS",
+      "VIN_LDO"
      ],
-     "title": "NRST pin of MCU not pulled up to VDD",
-     "why": "reset line may float causing unpredictable resets",
-     "fix": "add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from NRST to +3.3\u202fV",
-     "claim": "missing nrst pullup",
-     "subject": "/NRST",
-     "evidence": "/NRST: C6.1 U2.7(NRST,in)",
+     "title": "VBUS net is tied to the board supply through diode D1",
+     "why": "this can back\u2011power a USB host or violate USB specifications",
+     "fix": "remove D1 from the VBUS path or add proper isolation such as a dedicated USB power switch",
+     "claim": "vbus_backfeed",
+     "subject": "VBUS",
+     "evidence": "VBUS: D1.2(A) J10.1(VBUS,pwr-out)",
      "id": "F002"
     },
     {
@@ -23107,35 +22957,21 @@
     },
     {
      "source": "circuit",
-     "severity": "minor",
+     "severity": "major",
      "refs": [
-      "R1"
-     ],
-     "nets": [],
-     "title": "Resistor R1 has no numeric value specified",
-     "why": "Design tools cannot determine resistance, leading to unpredictable behavior",
-     "fix": "Specify a proper resistance value for R1 in the schematic",
-     "claim": "invalid resistor value",
-     "subject": "R1",
-     "evidence": "R1 R 0402",
-     "id": "F005"
-    },
-    {
-     "source": "circuit",
-     "severity": "minor",
-     "refs": [
-      "U2"
+      "U2",
+      "C6"
      ],
      "nets": [
-      "/BOOT0"
+      "NRST"
      ],
-     "title": "BOOT0 pin lacks a defined default level",
-     "why": "Undefined BOOT0 may cause unpredictable boot mode",
-     "fix": "Add a pull\u2011down resistor to BOOT0 (e.g., 10\u202fk\u03a9 to GND) or tie it to the switch appropriately",
-     "claim": "boot0 pin not pulled down",
+     "title": "NRST pin has no pull\u2011up resistor",
+     "why": "Without a pull\u2011up the MCU may not receive a proper reset signal, leading to unpredictable startup behavior",
+     "fix": "Add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from the NRST pin to the +3.3\u202fV rail",
+     "claim": "missing_pullup_nrst",
      "subject": "U2",
-     "evidence": "/BOOT0: R4.2 U2.44(BOOT0,in)",
-     "id": "F006"
+     "evidence": "NRST: C6.1 U2.7(NRST,in)",
+     "id": "F005"
     }
    ],
    "dropped": [],
@@ -23145,14 +22981,14 @@
    "passes": 2,
    "stopped": "stop:passes-spent",
    "calls": 10,
-   "cached_calls": 1,
-   "tokens_in": 21352,
-   "tokens_out": 15857,
-   "seconds": 44.8,
+   "cached_calls": 2,
+   "tokens_in": 22337,
+   "tokens_out": 14006,
+   "seconds": 35.0,
    "pack_hashes": {
-    "circuit": "fd31bd4039ffb92e",
+    "circuit": "433cc251e183d9ca",
     "physical": "09f96c401fb63c80",
-    "thermal": "597cfaed83736076"
+    "thermal": "59ceeac76b434be6"
    },
    "enabled_agents": [
     "circuit",
@@ -23184,153 +23020,46 @@
    "rejected": [
     {
      "stage": "critic",
-     "because": "The evidence only shows a long trace; it does not demonstrate VIN noise causing the EN pin to toggle or drop out.",
-     "title": "step\u2011down regulator enable pin ineffective due to VIN noise"
+     "because": "Reasoning that the regulator stays disabled is unsound because EN is tied to the VIN net, which can drive it high.",
+     "title": "enable pin of the buck regulator is not pulled up"
     },
     {
      "stage": "critic",
-     "because": "The evidence mentions a floating reset line but does not support the claim that a distant decoupling capacitor makes the reset line susceptible to supply noise.",
-     "title": "MCU reset line susceptible to supply noise"
+     "because": "Evidence does not demonstrate that D1 connects VBUS to the board supply, so the claim is unsupported.",
+     "title": "VBUS net is tied to the board supply through diode D1"
     },
     {
      "stage": "critic",
-     "because": "Evidence does not show that BOOT0 lacks a defined default level; only a resistor connection is listed.",
-     "title": "BOOT0 pin lacks a defined default level"
+     "because": "The evidence lists the EN pin connection but does not demonstrate the absence of a pull\u2011up resistor.",
+     "title": "enable pin of the buck regulator is not pulled up"
     },
     {
      "stage": "critic",
-     "because": "Evidence only mentions a floating reset line; it does not support the claim about distant decoupling causing additional noise sensitivity.",
-     "title": "Floating reset line becomes noise\u2011sensitive due to distant decoupling"
+     "because": "The evidence shows VBUS connected to the diode but does not show a tie to the board supply, so the claim is not established.",
+     "title": "VBUS net is tied to the board supply through diode D1"
     },
     {
      "stage": "critic",
-     "because": "Evidence confirms EN is tied to VIN but provides no data about decoupling distance or noise impact, so the asserted combined effect is unsupported.",
-     "title": "Regulator enable line is permanently high but power\u2011rail noise makes it ineffective"
+     "because": "Only the 17.2\u202fmm distance is documented; no rule or threshold is provided to prove this is excessively far.",
+     "title": "decoupling capacitor placed too far from pin"
+    },
+    {
+     "stage": "critic",
+     "because": "The 8.2\u202fmm distance is recorded, but the evidence does not prove it adversely affects impedance or transient response.",
+     "title": "decoupling capacitor relatively far from pin"
+    },
+    {
+     "stage": "critic",
+     "because": "The net listing shows a capacitor and the MCU pin but provides no evidence that a pull\u2011up resistor is missing.",
+     "title": "NRST pin has no pull\u2011up resistor"
     }
    ],
    "report": {
-    "findings": [
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "S1",
-       "J12",
-       "C3"
-      ],
-      "nets": [
-       "/IN"
-      ],
-      "title": "EN pin of step\u2011down regulator tied to VIN net",
-      "why": "device cannot be disabled and may enable unintentionally",
-      "fix": "separate EN pin, add a pull\u2011up resistor to the appropriate supply and route a control signal",
-      "claim": "enable tied to input",
-      "subject": "/IN",
-      "evidence": "/IN: C3.1 J12.1 S1.3(VIN,pwr-in) S1.5(EN,in)",
-      "id": "F001",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "U2",
-       "C6"
-      ],
-      "nets": [
-       "/NRST"
-      ],
-      "title": "NRST pin of MCU not pulled up to VDD",
-      "why": "reset line may float causing unpredictable resets",
-      "fix": "add a pull\u2011up resistor (e.g., 10\u202fk\u03a9) from NRST to +3.3\u202fV",
-      "claim": "missing nrst pullup",
-      "subject": "/NRST",
-      "evidence": "/NRST: C6.1 U2.7(NRST,in)",
-      "id": "F002",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "physical",
-      "severity": "major",
-      "refs": [
-       "U3"
-      ],
-      "nets": [
-       "GND"
-      ],
-      "title": "decoupling capacitor placed too far from pin",
-      "why": "the long 17.2\u202fmm trace adds inductance, reducing the effectiveness of the decoupling and increasing susceptibility to noise",
-      "fix": "place a decoupling capacitor within a few millimetres of the pin, ideally <5\u202fmm",
-      "claim": "decoupling_distance",
-      "subject": "GND",
-      "evidence": "U3.8(GND) GND C16 17.2",
-      "id": "F003",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "physical"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "circuit",
-      "severity": "minor",
-      "refs": [
-       "R1"
-      ],
-      "nets": [],
-      "title": "Resistor R1 has no numeric value specified",
-      "why": "Design tools cannot determine resistance, leading to unpredictable behavior",
-      "fix": "Specify a proper resistance value for R1 in the schematic",
-      "claim": "invalid resistor value",
-      "subject": "R1",
-      "evidence": "R1 R 0402",
-      "id": "F005",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     },
-     {
-      "source": "physical",
-      "severity": "minor",
-      "refs": [
-       "U1"
-      ],
-      "nets": [
-       "/VIN_LDO"
-      ],
-      "title": "decoupling capacitor relatively far from pin",
-      "why": "an 8.2\u202fmm distance can increase impedance enough to affect transient response on the supply rail",
-      "fix": "move the capacitor closer to the pin, targeting a distance under 5\u202fmm",
-      "claim": "decoupling_distance",
-      "subject": "/VIN_LDO",
-      "evidence": "U1.3(VI) /VIN_LDO C1 8.2",
-      "id": "F004",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "physical"
-      ],
-      "class": "probable_issue"
-     }
-    ],
+    "findings": [],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 8.5,
+     "probable": 0.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -23363,25 +23092,18 @@
     }
    },
    "grade": {
-    "caught": [
-     {
-      "defect": "stm32-good:value-unorderable",
-      "finding": "Resistor R1 has no numeric value specified",
-      "via": [
-       "R1"
-      ],
-      "breadth": 1
-     }
+    "caught": [],
+    "missed": [
+     "stm32-good:value-unorderable"
     ],
-    "missed": [],
     "other": [
-     "EN pin of step\u2011down regulator tied to VIN net",
-     "NRST pin of MCU not pulled up to VDD",
+     "enable pin of the buck regulator is not pulled up",
+     "VBUS net is tied to the board supply through diode D1",
      "decoupling capacitor placed too far from pin",
      "decoupling capacitor relatively far from pin",
-     "BOOT0 pin lacks a defined default level"
+     "NRST pin has no pull\u2011up resistor"
     ],
-    "recall": 1.0,
+    "recall": 0.0,
     "false_alarms": 5
    },
    "refuted_proposed": [],
@@ -23423,10 +23145,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 3,
-   "cached_calls": 1,
+   "cached_calls": 3,
    "tokens_in": 2996,
    "tokens_out": 3119,
-   "seconds": 7.0,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "846e44f48ebe6faa",
     "physical": "326a3fb05396d1a6"
@@ -23556,10 +23278,10 @@
    "passes": 1,
    "stopped": "stop:nothing-to-chase",
    "calls": 3,
-   "cached_calls": 1,
+   "cached_calls": 3,
    "tokens_in": 2854,
    "tokens_out": 2780,
-   "seconds": 7.0,
+   "seconds": 0.0,
    "pack_hashes": {
     "circuit": "f49a76f9c3eadd6a",
     "physical": "326a3fb05396d1a6"
@@ -23679,18 +23401,18 @@
      "source": "circuit",
      "severity": "major",
      "refs": [
-      "U1",
-      "J1"
+      "R1"
      ],
      "nets": [
-      "/IN"
+      "/FB",
+      "GND"
      ],
-     "title": "enable pin EN is tied to the VIN net",
-     "why": "the EN pin may be exposed to the full input voltage (4.5\u201117\u202fV), exceeding its logic\u2011level rating and preventing proper enable control",
-     "fix": "separate EN from VIN and connect it to a suitable logic\u2011level control signal or pull\u2011up resistor",
-     "claim": "enable-tied-to-vin",
-     "subject": "/IN",
-     "evidence": "/IN: C1.1 J1.1 U1.3(VIN) U1.5(EN)",
+     "title": "resistor value not specified",
+     "why": "the feedback divider cannot be defined, so the regulator output voltage cannot be set correctly",
+     "fix": "assign an appropriate resistance value to R1 to complete the feedback network",
+     "claim": "missing-resistor-value",
+     "subject": "R1",
+     "evidence": "R1 R 1210",
      "id": "F001"
     }
    ],
@@ -23698,15 +23420,15 @@
    "rules": [
     "value-not-orderable"
    ],
-   "passes": 2,
-   "stopped": "stop:passes-spent",
-   "calls": 6,
-   "cached_calls": 2,
-   "tokens_in": 5621,
-   "tokens_out": 5324,
-   "seconds": 12.1,
+   "passes": 1,
+   "stopped": "stop:rules-accounted-for",
+   "calls": 3,
+   "cached_calls": 1,
+   "tokens_in": 2843,
+   "tokens_out": 1774,
+   "seconds": 4.6,
    "pack_hashes": {
-    "circuit": "f4d45f19b691b45a",
+    "circuit": "7f0b4acd03653744",
     "physical": "326a3fb05396d1a6"
    },
    "enabled_agents": [
@@ -23735,38 +23457,19 @@
     "cross_domain": "skipped: only 1 reviewer produced findings, so there is no interaction to look for",
     "critic": "ran"
    },
-   "rejected": [],
+   "rejected": [
+    {
+     "stage": "critic",
+     "because": "The evidence lists a resistor value (1210), so the claim that the resistor value is not specified is unsupported.",
+     "title": "resistor value not specified"
+    }
+   ],
    "report": {
-    "findings": [
-     {
-      "source": "circuit",
-      "severity": "major",
-      "refs": [
-       "U1",
-       "J1"
-      ],
-      "nets": [
-       "/IN"
-      ],
-      "title": "enable pin EN is tied to the VIN net",
-      "why": "the EN pin may be exposed to the full input voltage (4.5\u201117\u202fV), exceeding its logic\u2011level rating and preventing proper enable control",
-      "fix": "separate EN from VIN and connect it to a suitable logic\u2011level control signal or pull\u2011up resistor",
-      "claim": "enable-tied-to-vin",
-      "subject": "/IN",
-      "evidence": "/IN: C1.1 J1.1 U1.3(VIN) U1.5(EN)",
-      "id": "F001",
-      "verdict": "accept",
-      "confidence": "high",
-      "found_by": [
-       "circuit"
-      ],
-      "class": "probable_issue"
-     }
-    ],
+    "findings": [],
     "score": {
      "score": 100,
      "confirmed": 0,
-     "probable": 2.5,
+     "probable": 0.0,
      "probable_capped_to": 0.0,
      "engineering_concerns": 0,
      "informational": 0
@@ -23802,15 +23505,20 @@
     }
    },
    "grade": {
-    "caught": [],
-    "missed": [
-     "dcdcc:value-unorderable"
+    "caught": [
+     {
+      "defect": "dcdcc:value-unorderable",
+      "finding": "resistor value not specified",
+      "via": [
+       "R1"
+      ],
+      "breadth": 3
+     }
     ],
-    "other": [
-     "enable pin EN is tied to the VIN net"
-    ],
-    "recall": 0.0,
-    "false_alarms": 1
+    "missed": [],
+    "other": [],
+    "recall": 1.0,
+    "false_alarms": 0
    },
    "refuted_proposed": [],
    "refuted_reported": [],

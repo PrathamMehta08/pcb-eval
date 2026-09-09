@@ -1139,6 +1139,12 @@ def check_evidence_boundary(c: Check) -> None:
         )
         c.note(f"enabled with assumptions: {sorted(with_thermal)}")
 
+    # The page has the same boundary and no research layer, so it asks a person
+    # for the facts instead. Its triage has to pick the same parts this one
+    # would research, or the badges on the board describe a review that would
+    # never have happened.
+    run_node(c, "datasheets.mjs")
+
 
 # -------------------------------------------------------------------------- 16
 

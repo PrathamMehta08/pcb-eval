@@ -116,9 +116,11 @@ check it stays quiet. Three rules failed exactly that test the first time.
 .venv/Scripts/python.exe -m http.server 8731 --directory dist
 ```
 
-then open `http://localhost:8731/preview.html`, which is the built page inside
-the same skeleton the Artifact host wraps it in. `pcb-eval.html` is the file to
-publish; it must carry no `<html>`, `<head>` or `<body>` tag of its own.
+then open `http://localhost:8731/pcb-eval.html`. That is the file that ships:
+the page is hosted now rather than published as an Artifact, so the build
+supplies its own document shell. `preview.html` beside it is the bare fragment
+without that shell — useful for diffing the body, but it declares no charset, so
+every arrow and middle dot in it reads as mojibake. Do not judge the page by it.
 
 ## Costs
 

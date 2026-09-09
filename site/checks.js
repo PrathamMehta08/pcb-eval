@@ -37,7 +37,7 @@ function finding(rule, title, why, { refs = [], nets = [], severity = "major", f
 }
 
 /** ref -> [{net, node}], every pin of every part. */
-function pinsByRef(board) {
+export function pinsByRef(board) {
   const out = new Map();
   for (const net of board.nets) {
     for (const node of net.nodes) {

@@ -25,10 +25,12 @@ from harness.checks import run_checks  # noqa: E402
 from harness.distill import approx_tokens, distill  # noqa: E402
 from harness.ops import apply_edits, board_hash, undo  # noqa: E402
 from harness.generators import defects_for  # noqa: E402
+from harness.research import triage  # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "ops.json"
 DISTILL_OUT = ROOT / "tests" / "fixtures" / "distill.json"
 CHECKS_OUT = ROOT / "tests" / "fixtures" / "checks.json"
+DATASHEETS_OUT = ROOT / "tests" / "fixtures" / "datasheets.json"
 
 
 def _edit(op: str, **args) -> dict:
@@ -94,9 +96,13 @@ def direct_cases(board: dict) -> list[dict]:
     ]
 
 
+def load(name: str) -> dict:
+    return json.loads((ROOT / "boards" / f"{name}.json").read_text(encoding="utf-8"))
+
+
 def main() -> int:
     utf8()
-    board = json.loads((ROOT / "boards" / "stm32-good.json").read_text(encoding="utf-8"))
+    board = load("stm32-good")
     clean = board_hash(board)
 
     cases = direct_cases(board)
@@ -160,6 +166,29 @@ def main() -> int:
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     CHECKS_OUT.write_text(json.dumps({"cases": rules}, indent=1), encoding="utf-8")
+
+    # Which parts the harness would research, so the page's badges can be held
+    # to it. The page draws a warning on exactly these and a tick on the ones
+    # someone has filled in; if the two triages drift, the board is marking
+    # parts no review would ever have looked up.
+    DATASHEETS_OUT.write_text(
+        json.dumps(
+            {
+                "triage": {
+                    name: sorted(c["ref"] for c in triage(load(name)))
+                    for name in ("stm32-good", "dcdcc")
+                }
+            },
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
+    print(
+        f"wrote {DATASHEETS_OUT.relative_to(ROOT)}: "
+        + ", ".join(
+            f"{n} {len(triage(load(n)))} parts" for n in ("stm32-good", "dcdcc")
+        )
+    )
     print(
         f"wrote {CHECKS_OUT.relative_to(ROOT)}: {len(rules)} boards, "
         f"{sum(len(r['rules']) for r in rules)} rule findings"
