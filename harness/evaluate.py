@@ -129,10 +129,24 @@ def junction_temp(board: dict, research: dict, inputs: dict | None) -> tuple[lis
     # Having ambient and a dissipation is not enough: the thermal resistance
     # comes from a datasheet, and reporting "ran" when no part has one would
     # read as "checked and fine" for a check that had nothing to compute with.
-    with_theta = {
-        ref: ((research.get(ref) or {}).get("facts") or {}).get("thermal")
-        for ref in loads
-    }
+    # A thermal figure read out of a multi-column package table is a column
+    # chosen, not a value measured. The extractor labels those `low`, and a
+    # junction temperature computed from one would look exactly like a real
+    # measurement in the report.
+    with_theta = {}
+    low_confidence = []
+    for ref in loads:
+        fact = ((research.get(ref) or {}).get("facts") or {}).get("thermal")
+        if fact and fact.get("confidence") == "low":
+            low_confidence.append(ref)
+            continue
+        with_theta[ref] = fact
+    if not any(with_theta.values()):
+        if low_confidence:
+            return [], (
+                "the only junction-to-ambient figures were read from multi-column "
+                f"tables and are not trustworthy ({', '.join(sorted(low_confidence))})"
+            )
     if not any(with_theta.values()):
         return [], "no junction-to-ambient resistance in the researched facts"
 

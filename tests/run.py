@@ -1012,12 +1012,46 @@ def check_evidence_boundary(c: Check) -> None:
         "rail_within_input_range" not in unassessed(supplied["coverage"]),
         "supplying rail voltages lets the rail check run",
     )
-    # Ambient and a dissipation are still not enough without a thermal
-    # resistance from a datasheet; reporting "ran" there would read as a pass.
-    c.that(
-        "junction_temp" in unassessed(supplied["coverage"]),
-        "the thermal check still skips when no datasheet gives a theta_JA",
+    # Ambient and a dissipation are not enough on their own: the thermal
+    # resistance comes from a datasheet, and reporting "ran" with nothing to
+    # compute from would read as a pass.
+    no_theta = evaluate(
+        board,
+        brief(board, offline=True),
+        {"ambient_c": 25.0, "dissipation_w": {"R1": 0.1}},
     )
+    c.that(
+        "junction_temp" in unassessed(no_theta["coverage"]),
+        "the thermal check skips for a part no datasheet gives a theta_JA for",
+    )
+
+    # And a figure read out of a multi-column package table is a column chosen
+    # rather than a value measured, so it is refused rather than computed from.
+    low = evaluate(
+        board,
+        brief(board, offline=True),
+        {"ambient_c": 25.0, "dissipation_w": {"U3": 1.0}},
+    )
+    reason = unassessed(low["coverage"]).get("junction_temp", "")
+    c.that(
+        "multi-column" in reason,
+        f"a low-confidence thermal reading is refused, not computed from: {reason!r}",
+    )
+
+    # With a trustworthy figure it does compute, and the finding carries the
+    # inputs it used so the number can be checked.
+    hot = evaluate(
+        board,
+        brief(board, offline=True),
+        {"ambient_c": 25.0, "dissipation_w": {"S1": 1.7}},
+    )
+    tj = [f for f in hot["measured"] if f["rule"] == "junction_temp"]
+    c.that(tj, "a trustworthy theta_JA and a dissipation give a junction temperature")
+    if tj:
+        c.that(
+            "92.6" in tj[0]["why"] and "25.0" in tj[0]["why"],
+            f"the estimate states its inputs: {tj[0]['why'][:70]}",
+        )
     c.note(f"unassessed on a bare board: {sorted(missing)}")
 
 

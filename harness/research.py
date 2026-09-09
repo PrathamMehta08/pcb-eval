@@ -47,6 +47,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 CACHE = ROOT / ".cache" / "datasheets"
+#: Marks a page boundary inside the extracted text.
+_PAGE_BREAK = "\x0c<<PAGE>>"
+#: Bumped when the shape of a cached fact changes, so records written by an
+#: earlier extractor are re-read instead of served without provenance.
+FACTS_FORMAT = "2"
 TIMEOUT = 30
 #: Plain urllib gets 403 from several vendor CDNs; this is the smallest header
 #: set that gets a PDF back from TI and ST.
@@ -100,17 +105,25 @@ def text_of(pdf: bytes, pages: int = 12) -> str:
             out.append(page.extract_text() or "")
         except Exception:
             continue
-    return "\n".join(out)
+    # A sentinel rather than a page number, so a page break cannot be confused
+    # with a line of the document.
+    return f"\n{_PAGE_BREAK}\n".join(out)
 
 
-#: Each extractor is (name, pattern, how to read the match). A parameter appears
-#: in the facts only when its pattern matches, and the line it matched is kept
-#: beside it so any number here can be traced back to the document.
+#: Each extractor is (name, pattern, reader, the evaluator it enables). A
+#: parameter appears in the facts only when its pattern matches, and the line it
+#: matched is kept beside it, so every number here can be traced to the page it
+#: came from.
+#:
+#: `enables` is what makes research worth doing. A fact that no check can consume
+#: is prose, and prose in a prompt is surface to invent against; a fact that
+#: names its evaluator becomes a yes-or-no question about this netlist.
 EXTRACTORS = (
     (
         "vin_range_v",
         re.compile(r"Supply input voltage range\s+([\d.]+)\s+([\d.]+)\s*V", re.I),
         lambda m: {"min": float(m.group(1)), "max": float(m.group(2))},
+        "rail_within_input_range",
     ),
     (
         "bootstrap_cap",
@@ -118,38 +131,89 @@ EXTRACTORS = (
             r"(VBST|BOOT)\b[^\n]*?Connect\s+([\d.]+)\s*[µu]F\s+capacitor between", re.I
         ),
         lambda m: {"value_uf": float(m.group(2)), "pin": m.group(1).upper()},
+        "required_external_part",
     ),
     (
         "enable_needs_pullup",
         re.compile(r"\bEN\b[^\n]*?must be pulled up", re.I),
         lambda m: True,
+        None,
     ),
     (
         "output_current_a",
         re.compile(r"\b([\d.]+)\s*A\s+(?:Synchronous )?Step-Down", re.I),
         lambda m: float(m.group(1)),
+        None,
+    ),
+    (
+        "thermal",
+        re.compile(
+            r"(?:R\s*th\s*JA|RthJA|Theta\s*JA|Junction-to-ambient[^\n]*?)\D{0,40}?([\d.]+)\s*(?:C|\u00b0C)\s*/\s*W",
+            re.I,
+        ),
+        lambda m: {"theta_ja_c_per_w": float(m.group(1))},
+        "junction_temp",
     ),
 )
 
 
-def _search_lines(pattern: re.Pattern, text: str):
-    """Match inside a single line, or a line joined with the one after it.
+def _confidence(line: str, match: re.Match, wrapped: bool) -> str:
+    """How much the quote actually pins the number down.
 
-    Datasheet tables wrap, so a pin description regularly runs onto the next
-    line - "Connect 0.1 uF capacitor between" ends one line and "VBST and SW"
-    begins the next. Two lines is enough for that and still narrow enough that
-    the quote genuinely contains the number.
+    Datasheet thermal tables put one row across several package columns -
+    "RthJA 88.6 66.7 95.2 123.1" - and a regex that takes a number from such a
+    row has picked a column, not a value. The quote is real and the reading is a
+    guess, which is the shape of error this project rejects everywhere else, so
+    it is labelled rather than hidden: a line carrying three or more numbers
+    where one was wanted is `low`, and `junction_temp` refuses to compute from
+    a low-confidence thermal figure.
     """
-    lines = [l for l in text.split("\n") if l.strip()]
-    for i, line in enumerate(lines):
+    numbers = re.findall(r"\d+\.\d+|\d{2,}", line)
+    if len(numbers) >= 3:
+        return "low"
+    return "medium" if wrapped else "high"
+
+
+#: A heading in a datasheet: short, mostly capitals or numbered like "5.3".
+_HEADING = re.compile(r"^(?:\d+(?:\.\d+)*\s+)?[A-Z][A-Za-z /()-]{4,60}$")
+
+
+def _search_lines(pattern: re.Pattern, text: str):
+    """Where a pattern matches: the line, its page, and the heading above it.
+
+    Matching is scoped to one line, or a line joined with the one after it.
+    Datasheet tables wrap - "Connect 0.1 uF capacitor between" ends one line and
+    "VBST and SW" begins the next - and two lines is enough for that while still
+    narrow enough that the quote genuinely contains the number. The first
+    version of this searched the whole document flattened to one string, matched
+    across unrelated paragraphs, and produced values whose quotes did not
+    support them: fabricated evidence, from the component whose purpose is to
+    stop that.
+
+    Page and section come from walking the text in order, so a fact can be
+    traced to a place in the document rather than merely to a sentence.
+    """
+    page = 1
+    section = ""
+    lines = text.split("\n")
+    for i, raw in enumerate(lines):
+        if raw == _PAGE_BREAK:
+            page += 1
+            continue
+        line = raw.strip()
+        if not line:
+            continue
+        if _HEADING.match(line):
+            section = line
         match = pattern.search(line)
         if match:
-            return match, line
-        if i + 1 < len(lines):
-            joined = line + " " + lines[i + 1]
+            return match, line, page, section, False
+        nxt = next((l.strip() for l in lines[i + 1 : i + 3] if l.strip() and l != _PAGE_BREAK), "")
+        if nxt:
+            joined = line + " " + nxt
             match = pattern.search(joined)
             if match:
-                return match, joined
+                return match, joined, page, section, True
     return None
 
 
@@ -158,19 +222,32 @@ def study(part: str, url: str, *, offline: bool = False) -> dict:
     CACHE.mkdir(parents=True, exist_ok=True)
     out = CACHE / f"{_key(url)}.json"
     if out.exists():
-        return json.loads(out.read_text(encoding="utf-8"))
+        cached = json.loads(out.read_text(encoding="utf-8"))
+        # An older record has no page or section on its facts. Re-read rather
+        # than serve provenance that was never captured.
+        if cached.get("format") == FACTS_FORMAT:
+            return cached
 
     pdf = fetch(url, offline=offline)
     if pdf is None:
         return {"part": part, "source": url, "facts": {}, "status": "unavailable"}
 
+    text = text_of(pdf)
     facts = {}
-    for name, pattern, read in EXTRACTORS:
-        hit = _search_lines(pattern, text_of(pdf))
+    for name, pattern, read, enables in EXTRACTORS:
+        hit = _search_lines(pattern, text)
         if hit is None:
             continue
-        match, line = hit
+        match, line, page, section, wrapped = hit
         facts[name] = {
+            "page": page,
+            "section": section,
+            # About the extraction, never about the engineering: the datasheet
+            # is not in doubt, the reading of it is. `high` matched inside one
+            # line; `medium` needed two joined, which is where a wrapped table
+            # row can pick up a neighbour's number.
+            "confidence": _confidence(line, match, wrapped),
+            "enables": enables,
             "value": read(match),
             # The line the number came out of. The first version searched the
             # whole document flattened to one string, which matched patterns
@@ -182,6 +259,7 @@ def study(part: str, url: str, *, offline: bool = False) -> dict:
         }
     record = {
         "part": part,
+        "format": FACTS_FORMAT,
         "source": url,
         "sha256": hashlib.sha256(pdf).hexdigest()[:16],
         "facts": facts,
