@@ -32,6 +32,9 @@ Three outcomes, and the third is the one that keeps the other two honest:
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
 import json
 
 
@@ -144,6 +147,11 @@ def pipeline_hash() -> str:
     and every hash stayed identical while the graph's output changed. A sweep
     that silently stops describing the system is the exact failure the other two
     hashes exist to prevent, so the deterministic side gets one too.
+
+    It was a list of rule names, which is not behaviour, and it failed the same
+    way it was written to prevent: two sweeps an hour apart reported V8 at 55 of
+    65 and at 20 under the same hash, because the report had begun reading a
+    field nothing wrote. It now covers the detectors' own code as well.
     """
     from graph.prompts import CLAIM_KINDS
     from harness.checks import RULES
@@ -156,10 +164,58 @@ def pipeline_hash() -> str:
             "dfm": sorted(fn.__name__ for fn in DFM_RULES),
             "datasheet": sorted(fn.__name__ for fn in DATASHEET_RULES),
             "claims": sorted(CLAIM_KINDS),
+            "detectors": _detector_logic(),
         },
         sort_keys=True,
     )
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:12]
+
+
+#: The modules that turn a board into findings. A change in any of them changes
+#: what a sweep measured, whatever the rule names still say.
+DETECTOR_SOURCES = (
+    "graph/v7.py",
+    "graph/build.py",
+    "baseline/single_prompt.py",
+    "harness/evaluate.py",
+)
+
+
+def _detector_logic() -> dict[str, str]:
+    """A fingerprint of each detector's code, ignoring how it is written.
+
+    Names of rules were the whole of this hash, and names are not behaviour.
+    Two sweeps an hour apart reported V8 at 55 of 65 and at 20, and carried the
+    same pipeline hash, because between them the report had started reading a
+    field nothing wrote - a change no list of rule names can see. One of those
+    tables was then read as a result, which is the exact failure this hash is
+    described as preventing.
+
+    It hashes the parsed syntax rather than the text, with docstrings dropped,
+    so rewriting a comment or a docstring does not invalidate a sweep while
+    changing a single expression does. Comments never reach the tree at all.
+    """
+    import ast
+
+    out = {}
+    for name in DETECTOR_SOURCES:
+        path = ROOT / name
+        if not path.exists():
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            body = getattr(node, "body", [])
+            if (
+                body
+                and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[0].value.value, str)
+            ):
+                body.pop(0)
+        out[name] = hashlib.sha256(ast.dump(tree).encode("utf-8")).hexdigest()[:12]
+    return out
 
 
 def schema_hash() -> str:

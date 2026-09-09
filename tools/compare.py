@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from console import utf8  # noqa: E402
+from harness.grade import pipeline_hash  # noqa: E402
 
 
 def load(path: Path) -> dict:
@@ -83,9 +84,30 @@ def main() -> int:
     if not paths:
         paths = sorted(ROOT.glob("results/sweep-*.json"))[-1:]
 
+    # Say which file this came from, and whether the code that produced it is
+    # the code in the tree. A sweep is a measurement of a particular pipeline,
+    # and two of tonight's differ from the current one by a bug: one where the
+    # critic rejected every finding it was given, one where the report read a
+    # field nothing wrote. Both produced a table that looks exactly like a
+    # result. An unlabelled table is how one of them gets read as one.
+    now = pipeline_hash()
     rows: list[dict] = []
+    stale = []
     for path in paths:
-        rows += load(path)["rows"]
+        data = load(path)
+        was = data.get("pipeline_hash", "?")
+        mark = "" if was == now else "  <- DIFFERENT PIPELINE"
+        if was != now:
+            stale.append(path.name)
+        print(f"read {path.name}  pipeline {was}{mark}")
+        rows += data["rows"]
+    print(f"code in the tree: pipeline {now}")
+    print()
+    if stale:
+        print("WARNING: " + ", ".join(stale))
+        print("         was produced by different code than is checked out now.")
+        print("         Its numbers measure that code, not this.")
+        print()
 
     detectors = sorted({r["detector"] for r in rows})
     # A defect is rule-covered if any detector's rules fired on that board, so
