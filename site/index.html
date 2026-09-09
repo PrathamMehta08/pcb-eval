@@ -408,6 +408,50 @@ kbd {
   border-radius: 3px; background: var(--raised); color: var(--ink-mid);
 }
 
+/* ------------------------------------------------------- documentation view --
+   The board used to carry a mark per part. It was a second object over the
+   copper that could only say yes or no about one part at a time, and the real
+   question is what the whole board still needs. */
+.tab-docs[data-state="none"] { opacity: .55; }
+.tab-docs[data-state="missing"]::after {
+  content: attr(data-count); margin-left: 6px; font-size: 9px;
+  padding: 0 5px; border-radius: 8px; vertical-align: 1px;
+  background: var(--warn); color: #1d1403;
+}
+.tab-docs[data-state="done"]::after {
+  content: "✓"; margin-left: 6px; font-size: 9px; color: var(--mint);
+}
+#docs-overlay {
+  position: absolute; right: 12px; top: 12px; bottom: 12px;
+  width: clamp(340px, 34vw, 560px); max-width: calc(100% - 24px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: rgba(10, 12, 16, .93); border: 1px solid var(--line);
+  border-radius: 5px; backdrop-filter: blur(3px);
+}
+.dv-row {
+  padding: 11px 14px; border-bottom: 1px solid var(--line-soft);
+  border-left: 2px solid transparent;
+}
+.dv-row.missing { border-left-color: var(--warn); }
+.dv-row.have { border-left-color: var(--mint); }
+.dv-head { display: flex; align-items: baseline; gap: 10px; }
+.dv-head b { font-family: var(--mono); font-size: 13px; color: #e6eae7; }
+.dv-value { font-family: var(--mono); font-size: 11px; color: var(--mint); flex: 1; }
+.dv-head .btn { flex: none; }
+.dv-why { margin: 5px 0 0; font-size: 11.5px; color: #79828b; max-width: 60ch; }
+.dv-facts { list-style: none; margin: 8px 0 0; padding: 0; }
+.dv-facts li {
+  display: flex; align-items: baseline; gap: 8px; padding: 2px 0; font-size: 11.5px;
+}
+.dv-facts li span { color: #79828b; flex: 1; }
+.dv-facts li b {
+  font-family: var(--mono); color: #b6bfc5; font-variant-numeric: tabular-nums;
+}
+.dv-facts li em {
+  font-style: normal; font-family: var(--mono); font-size: 9.5px; color: #5d666e;
+}
+.dv-facts li.unsure b { color: var(--warn); }
+
 /* ---------------------------------------------------------------- dialog ---
    Attaching a document means reading what came back out of it, and the rail is
    300px of a column that already holds four panels. */
@@ -511,17 +555,6 @@ kbd {
 /* ------------------------------------------------------- datasheet badges ---
    Only on parts a review would research. A tick over every resistor would be
    forty ticks saying nothing. */
-/* An outline on the part itself. Every badge drawn beside a part was a second
-   object competing with the copper and losing; the thing being described is
-   the part, so the mark is the part's own outline. Nothing is drawn once a
-   document is attached, so a fully documented board is a quiet one. */
-.ds-badge { cursor: pointer; }
-.ds-ring {
-  fill: none; stroke: var(--warn); stroke-width: .12; stroke-dasharray: .5 .32;
-  opacity: .85; pointer-events: stroke;
-}
-.ds-badge:hover .ds-ring { stroke: var(--ink); opacity: 1; }
-.hide-datasheets .datasheet-marks { display: none; }
 
 /* ------------------------------------------------------ datasheet, inspector */
 .ds-panel { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius);
@@ -768,6 +801,8 @@ input, select {
     <div class="board-id" id="board-id"></div>
     <nav class="tabs" role="tablist" aria-label="View">
       <button class="tab" role="tab" data-view="routing" aria-selected="true">Board</button>
+      <button class="tab tab-docs" role="tab" id="tab-docs" data-view="docs"
+              aria-selected="false">Docs</button>
       <button class="tab tab-review" role="tab" id="tab-review" data-view="review"
               aria-selected="false">Review</button>
     </nav>
@@ -782,13 +817,13 @@ input, select {
         <button class="chip" data-layer="b-cu">B.Cu</button>
         <button class="chip" data-layer="silk">Silk</button>
         <button class="chip" data-layer="labels">Refs</button>
-        <button class="chip" data-layer="datasheets">Datasheets</button>
       </div>
       <div class="overlay-br">
         <button class="chip" id="fit">Fit</button>
         <span>scroll to zoom · drag to pan</span>
       </div>
       <div id="review-overlay" hidden></div>
+      <div id="docs-overlay" hidden></div>
       <div id="flash" role="status" aria-live="polite"></div>
     </section>
 

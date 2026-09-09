@@ -12,7 +12,6 @@ import {
   highlightNets,
   markDivergence,
   markRefs,
-  markDatasheets,
   packageFacts,
   renderBoard,
   renderFootprint,
@@ -84,29 +83,11 @@ function drawView({ keepZoom = true } = {}) {
   svg.dataset.view = "board";
   stage.appendChild(svg);
 
-  markDatasheets(svg, state.board, coverage(state.board));
-  // Clicking the badge is what someone does when they notice it, so it opens
-  // the dialog rather than doing nothing and leaving them to find the part in
-  // the rail. The part is selected too, so the rail agrees with the screen.
-  //
-  // The listener goes on the layer, not on the badges. `markDatasheets` empties
-  // and refills the layer on every repaint, so a badge holding its own listener
-  // loses it the moment anything changes - which included the repaint that runs
-  // as soon as the stored documents finish loading, so it was dead on arrival.
-  const marks = svg.querySelector(".datasheet-marks");
-  if (marks) {
-    marks.addEventListener("pointerdown", (e) => e.stopPropagation());
-    marks.addEventListener("pointerup", (e) => {
-      const badge = e.target.closest(".ds-badge");
-      if (!badge) return;
-      e.stopPropagation();
-      select({ kind: "part", ref: badge.dataset.ref });
-      openDocs(badge.dataset.ref);
-    });
-  }
-  // The badges are drawn from what is in memory, so a board whose
-  // documents are still being read shows them a moment later.
-  loadDocs(state.board.meta.name).then(paintDatasheets);
+  // The count on the Docs tab comes from what is in memory, so a board whose
+  // documents are still being read updates a moment later. Nothing is drawn on
+  // the board itself: a mark per part was a second object over the copper that
+  // could only ever answer for one part at a time.
+  loadDocs(state.board.meta.name).then(renderDocs);
   panzoom = attachPanZoom(svg, {
     onPointerDown: startDrag,
     onTap: (target) => select(target ? describe(target) : null),
@@ -543,7 +524,6 @@ function renderPartInspector(panel, ref) {
       renderInspector();
     });
   }
-  renderDatasheetPanel(panel, ref);
 }
 
 /** Two decimals, which is the precision a board file is drawn to. */
@@ -1152,6 +1132,36 @@ function renderReview() {
   }
 }
 
+/**
+ * Delete whatever is selected, and say so when there is nothing to delete.
+ *
+ * Copper can go: a track, a via, a pour. A part cannot, and the reason is the
+ * editor's own rule - a schematic edit stops at the schematic, and removing a
+ * footprint would take copper with it that the netlist still refers to. So a
+ * part says what it can do instead of failing silently, because a key that does
+ * nothing reads as a broken key.
+ */
+function deleteSelection() {
+  const sel = state.selection;
+  if (!sel) return false;
+  if (sel.kind === "track") {
+    const ok = record({ op: "delete_track", args: { track_id: sel.id } });
+    if (ok) select(null);
+    return ok;
+  }
+  if (sel.kind === "via") {
+    const ok = record({ op: "delete_via", args: { via_id: sel.id } });
+    if (ok) select(null);
+    return ok;
+  }
+  if (sel.kind === "zone") {
+    flash("A pour is switched off rather than deleted — use Fill in the inspector.");
+    return true;
+  }
+  flash(`${sel.ref || "That"} cannot be deleted. Move it, rotate it, or change a pin.`);
+  return true;
+}
+
 // ----------------------------------------------------------------------- shell
 
 function setView(view) {
@@ -1163,6 +1173,7 @@ function setView(view) {
   keptView = null;
   drawView({ keepZoom: false });
   renderOverlay();
+  renderDocs();
 }
 
 function boot() {
@@ -1199,6 +1210,8 @@ function boot() {
       if (document.querySelector(".modal-back")) return;
       state.armed = null;
       select(null);
+    } else if (e.key === "Delete" || e.key === "Backspace") {
+      if (!deleteSelection()) return;
     } else if ((e.key === "r" || e.key === "R") && state.selection?.kind === "part") {
       // A quarter turn from wherever it is now. The operation takes an absolute
       // angle, so pressing R three times used to set 90 degrees three times -
@@ -1257,33 +1270,85 @@ boot();
 
 
 /**
- * What the review knows about this part's documentation, in one line.
+ * Documentation, as a view of its own.
  *
- * The detail lives in a dialog rather than in the rail. The rail is 300 pixels
- * of a column that already holds four panels, and attaching a document means
- * reading what came back out of it - which needs room the rail does not have.
+ * It began as a mark on each part, and every version of that mark had the same
+ * fault: it put a second object on the board, competing with copper it could
+ * not out-shout, and it could only ever say yes or no about one part at a time.
+ * The question is not about one part. It is "what does this board still need",
+ * and that is a list - which parts, why each was researched, what is on file,
+ * and what was read out of it.
+ *
+ * So the board is left alone and the tab carries the count. A number beside the
+ * word is more legible than four outlines and does not have to survive being
+ * drawn over a red track.
  */
-function renderDatasheetPanel(panel, ref) {
-  const state_ = coverage(state.board).get(ref);
-  if (!state_) return;
+function renderDocs() {
+  const overlay = $("docs-overlay");
+  const tab = $("tab-docs");
+  const status = coverage(state.board);
+  const missing = [...status.values()].filter((s) => s.status === "missing").length;
 
-  const doc = state_.doc;
-  const wrap = document.createElement("div");
-  wrap.className = `ds-panel ${state_.status}`;
-  wrap.innerHTML = `
-    <h4>Documentation</h4>
-    ${doc ? html`<p class="ds-why">${doc.name} · ${plural(doc.pages.length, "page")}</p>` : ""}
-    <div class="row"><button class="btn" id="ds-open">${
-      doc ? "Replace" : "Attach a PDF"
-    }</button></div>`;
-  panel.appendChild(wrap);
-  wrap.querySelector("#ds-open").addEventListener("click", () => openDocs(ref));
-}
+  tab.dataset.count = String(missing);
+  tab.dataset.state = missing ? "missing" : status.size ? "done" : "none";
 
-/** Repaint the badges from whatever is stored now. */
-function paintDatasheets() {
-  const svg = document.querySelector("#stage .board-svg");
-  if (svg) markDatasheets(svg, state.board, coverage(state.board));
+  if (state.view !== "docs") {
+    overlay.hidden = true;
+    return;
+  }
+  overlay.hidden = false;
+
+  if (!status.size) {
+    overlay.innerHTML = `<div class="ro-head"><h3>Documentation</h3></div>
+      <p class="ro-empty muted">No part on this board would be researched.</p>`;
+    return;
+  }
+
+  const rows = [...status.entries()]
+    .sort((a, b) => (a[1].status === b[1].status ? 0 : a[1].status === "missing" ? -1 : 1))
+    .map(([ref, s]) => {
+      const comp = state.board.components.find((c) => c.ref === ref);
+      const facts = Object.entries(factsOf(state.board.meta.name, ref));
+      return `<div class="dv-row ${s.status}" data-ref="${escapeHtml(ref)}">
+        <div class="dv-head">
+          <b>${escapeHtml(ref)}</b>
+          <span class="dv-value">${escapeHtml(comp?.value || "")}</span>
+          <button class="btn" data-attach="${escapeHtml(ref)}">${
+        s.doc ? "Replace" : "Attach a PDF"
+      }</button>
+        </div>
+        <p class="dv-why">${
+          s.doc
+            ? html`${s.doc.name} · ${plural(s.doc.pages.length, "page")}`
+            : html`Researched because it ${s.why}.`
+        }</p>
+        ${
+          facts.length
+            ? `<ul class="dv-facts">${facts
+                .map(
+                  ([, f]) => html`<li class="${f.confidence === "low" ? "unsure" : ""}"
+                    ><span>${f.label}</span><b>${f.shown}</b><em>p${f.page}</em></li>`
+                )
+                .join("")}</ul>`
+            : ""
+        }
+      </div>`;
+    })
+    .join("");
+
+  overlay.innerHTML = `
+    <div class="ro-head"><h3>Documentation</h3></div>
+    <div class="ro-list">${rows}</div>
+    <div class="ro-foot">${
+      missing
+        ? `${missing} of ${status.size} still to attach. Nothing is assumed for a part
+           without one — the checks that need its numbers are skipped, not guessed.`
+        : "Every researched part has a document."
+    }</div>`;
+
+  for (const button of overlay.querySelectorAll("[data-attach]")) {
+    button.addEventListener("click", () => openDocs(button.dataset.attach));
+  }
 }
 
 /** "1 page", "3 pages". Written once because it appears in three places. */
@@ -1317,8 +1382,7 @@ function openDocs(ref) {
   const close = () => {
     host.remove();
     document.removeEventListener("keydown", onKey);
-    paintDatasheets();
-    renderInspector();
+    renderDocs();
   };
   const onKey = (e) => {
     if (e.key === "Escape") close();

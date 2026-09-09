@@ -358,7 +358,6 @@ export function renderBoard(board, { copper = true, showSilk = true, showRefs = 
   svg.appendChild(el("path", { class: "edge", d: outlinePath(layout.outline) }));
   svg.appendChild(el("g", { class: "divergence" }));
   svg.appendChild(el("g", { class: "marks" }));
-  svg.appendChild(el("g", { class: "datasheet-marks" }));
   return svg;
 }
 
@@ -624,63 +623,6 @@ export function attachPanZoom(svg, { onPointerDown, onTap } = {}) {
       return { ...view };
     },
   };
-}
-
-/**
- * Ring the parts nobody has documented.
- *
- * There was a badge here - a sheet, then an outline and a dot, then a triangle -
- * and every version had the same problem underneath the drawing: it was a
- * second object floating beside the part, competing with the copper for the
- * reader's attention and never quite legible against it. The thing being
- * described is the part, so the mark is on the part. An outline around its
- * body, in the colour the interface already uses for "wants attention", and
- * nothing at all once a document is attached.
- *
- * Absence as the good state is the right way round here. A board with every
- * part documented is a quiet board, and the marks disappear as the work gets
- * done rather than turning green and staying in the way.
- *
- * Drawn in the marks layer rather than on the footprint, so it survives the
- * layer being cleared and refilled and never has to be unpicked from the
- * board's own drawing.
- */
-export function markDatasheets(svg, board, coverage) {
-  const layer = svg.querySelector(".datasheet-marks");
-  if (!layer) return;
-  while (layer.firstChild) layer.removeChild(layer.firstChild);
-  if (!coverage || !coverage.size) return;
-
-  for (const fp of board.layout.footprints) {
-    const state = coverage.get(fp.ref);
-    if (!state || state.status === "have") continue;
-
-    const box = footprintBounds(fp);
-    const flip = fp.layer === "B";
-    const group = el("g", {
-      class: "ds-badge ds-missing",
-      transform:
-        `translate(${f(fp.x)} ${f(fp.y)})` +
-        (fp.rot ? ` rotate(${f(flip ? fp.rot : -fp.rot)})` : "") +
-        (flip ? " scale(1 -1)" : ""),
-    });
-    group.dataset.ref = fp.ref;
-    group.dataset.status = state.status;
-    group.appendChild(
-      el("rect", {
-        class: "ds-ring",
-        x: f(box.x1), y: f(box.y1),
-        width: f(box.x2 - box.x1), height: f(box.y2 - box.y1),
-        rx: 0.25,
-      })
-    );
-
-    const title = el("title");
-    title.textContent =
-      `${fp.ref}: no documentation. Researched because it ${state.why}. Click to attach.`;
-    group.appendChild(title);
-    layer.appendChild(group);
-  }
 }
 
 /**
