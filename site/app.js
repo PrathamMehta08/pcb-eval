@@ -931,6 +931,64 @@ function stepSummary(step) {
  * underneath, in whichever view the finding belongs in, with the finding
  * explained beside it.
  */
+/**
+ * The findings, under the three headings the tallies count.
+ *
+ * The tallies were at the top and the list underneath was one undifferentiated
+ * run of twelve, so the numbers said "1 caught, 11 also raised" and nothing on
+ * screen said which was which. Grouping is the whole of the answer: a heading
+ * per tally, in the order they matter - what it got, what it missed, what else
+ * it said.
+ *
+ * `missed` is not a list of findings. It is a list of edits nothing reported,
+ * so it names the change rather than a problem, and it carries no click target
+ * because there is no finding to put on the board.
+ */
+function findingsHtml(findings, caught, missed, other) {
+  const at = (finding) => findings.indexOf(finding);
+  const block = (item, i) => `<button class="ro-item${
+    state.focused === i ? " on" : ""
+  }" data-finding="${i}">
+      <span class="ro-sev">${escapeHtml(item.severity)}</span>
+      ${bullet("Problem", item.title)}
+      ${bullet("Why", item.why)}
+      ${bullet("Solution", item.fix)}
+      <span class="tags">${[...item.refs, ...item.nets]
+        .map((tag) => html`<code>${tag}</code>`)
+        .join("")}</span>
+    </button>`;
+
+  const parts = [];
+  if (caught.length) {
+    parts.push(
+      `<h4 class="ro-group good">Caught <span>${caught.length}</span></h4>` +
+        caught
+          .map(
+            ({ expected, finding }) =>
+              `<p class="ro-matched">matched your edit: ${escapeHtml(expected.title)}</p>` +
+              block(finding, at(finding))
+          )
+          .join("")
+    );
+  }
+  if (missed.length) {
+    parts.push(
+      `<h4 class="ro-group bad">Missed <span>${missed.length}</span></h4>` +
+        `<p class="ro-note">You changed these and nothing reported them.</p>` +
+        missed.map((want) => html`<p class="ro-missed">${want.title}</p>`).join("")
+    );
+  }
+  if (other.length) {
+    parts.push(
+      `<h4 class="ro-group warn">Also raised <span>${other.length}</span></h4>` +
+        `<p class="ro-note">Not about anything you changed. On an untouched
+          board these are the false-alarm rate.</p>` +
+        other.map((item) => block(item, at(item))).join("")
+    );
+  }
+  return parts.join("");
+}
+
 function renderOverlay() {
   const overlay = $("review-overlay");
   const tab = $("tab-review");
@@ -1000,30 +1058,17 @@ function renderOverlay() {
         <div class="${other.length ? "warn" : ""}"><b>${other.length}</b><span>also raised</span></div>
       </div>
     </div>
-    <div class="ro-list">${findings
-      .map(
-        (finding, i) => `<button class="ro-item sev-${escapeHtml(finding.severity)}${
-          state.focused === i ? " on" : ""
-        }" data-finding="${i}">
-          ${bullet("Problem", finding.title)}
-          ${bullet("Why", finding.why)}
-          ${bullet("Solution", finding.fix)}
-          <span class="tags">${[...finding.refs, ...finding.nets]
-            .map((tag) => html`<code>${tag}</code>`)
-            .join("")}</span>
-        </button>`
-      )
-      .join("")}</div>
-    <div class="ro-graph-done">
-      <h4>How it got there</h4>
-      ${railHtml(verdict.steps || [])}
+    <div class="ro-list">
+      ${findingsHtml(findings, caught, missed, other)}
+      <div class="ro-graph-done">
+        <h4>How it got there</h4>
+        ${railHtml(verdict.steps || [])}
+      </div>
+      <details class="ro-graph">
+        <summary>What each node said</summary>
+        ${pipelineHtml(verdict.steps || [])}
+      </details>
     </div>
-    <details class="ro-graph">
-      <summary>What each node said — ${verdict.proposed} proposed, ${
-        findings.length
-      } reported</summary>
-      ${pipelineHtml(verdict.steps || [])}
-    </details>
     <div class="ro-foot">Click a finding to put it on the board.</div>`;
 
   for (const button of overlay.querySelectorAll(".ro-item")) {
@@ -1165,26 +1210,9 @@ function renderReview() {
         <b>${other.length}</b><span>also raised</span></div>
     </div>
     ${state.verdict.cached ? `<p class="cached">Replayed from this browser's cache — no call was made.</p>` : ""}
-    ${missed.length ? `<h4 class="eyebrow">Missed</h4><ul class="findings">${missed
-      .map((want) => html`<li class="missed"><b>${want.title}</b></li>`)
-      .join("")}</ul>` : ""}
-    ${state.verdict.findings.length
-      ? `<h4 class="eyebrow">What it reported — click one to see it on the board</h4>
-         <ul class="findings">${state.verdict.findings
-          .map(
-            (finding, i) => `<li class="sev-${escapeHtml(finding.severity)}${
-              state.focused === i ? " focused" : ""
-            }">
-              <button class="finding" data-finding="${i}">
-                ${bullet("Problem", finding.title)}
-                ${bullet("Why", finding.why)}
-                ${bullet("Solution", finding.fix)}
-              </button>
-            </li>`
-          )
-          .join("")}</ul>`
-      : `<p class="muted">No findings. On the untouched board that is the right
-         answer; after an edit it is a miss.</p>`}
+    <p class="hint">The findings are on the Review tab, grouped by whether they
+      matched something you changed. They were listed here as well, which is one
+      list of twelve in a 420px column beside the same twelve in a wider one.</p>
   `;
 
   for (const button of panel.querySelectorAll(".finding")) {

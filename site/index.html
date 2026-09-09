@@ -273,7 +273,10 @@ main { display: flex; flex: 1; min-height: 0; }
 }
 .ro-rule.dropped { color: var(--warn); }
 
-.ro-graph { border-top: 1px solid var(--line); flex: none; max-height: 45%; overflow-y: auto; }
+/* No scroller of its own. It sits inside the panel's one scroll region now, and
+   a second one nested in the first is most of why the panel was hard to read:
+   expanding it gave you two bars, neither of which moved the whole thing. */
+.ro-graph { border-top: 1px solid var(--line-soft); }
 .ro-graph summary {
   padding: 9px 14px; cursor: pointer; font-family: var(--mono); font-size: 10px;
   letter-spacing: .1em; text-transform: uppercase; color: #79828b;
@@ -407,6 +410,41 @@ kbd {
   border: 1px solid var(--line); border-bottom-width: 2px;
   border-radius: 3px; background: var(--raised); color: var(--ink-mid);
 }
+
+/* --------------------------------------------------------- finding groups ---
+   The tallies at the top counted three things and the list below was one run
+   of twelve, so nothing on screen said which finding was which. */
+.ro-group {
+  position: sticky; top: 0; z-index: 1;
+  margin: 0; padding: 9px 14px 7px;
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase;
+  background: rgba(10, 12, 16, .97); border-bottom: 1px solid var(--line);
+  color: var(--ink-dim);
+}
+.ro-group span {
+  margin-left: 6px; font-size: 9px; padding: 0 5px; border-radius: 7px;
+  background: var(--raised); border: 1px solid var(--line);
+}
+.ro-group.good { color: var(--mint); }
+.ro-group.bad { color: var(--crit); }
+.ro-group.warn { color: var(--warn); }
+.ro-note { margin: 8px 14px 2px; font-size: 11px; color: #5d666e; max-width: 56ch; }
+.ro-matched {
+  margin: 8px 14px -2px; font-family: var(--mono); font-size: 10px;
+  color: var(--mint); letter-spacing: .04em;
+}
+.ro-missed {
+  margin: 0; padding: 8px 14px; font-size: 12.5px; color: #b6bfc5;
+  border-bottom: 1px solid var(--line-soft);
+}
+/* Severity as a word. It was a coloured stripe down the left of every finding
+   with nothing anywhere saying what the colours meant. */
+.ro-sev {
+  display: block; margin-bottom: 4px; font-family: var(--mono); font-size: 9px;
+  letter-spacing: .1em; text-transform: uppercase; color: #5d666e;
+}
+.ro-item.on .ro-sev { color: var(--mint); }
 
 /* ------------------------------------------------------------- graph rail ---
    The review used to be a list of steps, which showed what happened without
