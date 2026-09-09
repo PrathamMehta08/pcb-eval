@@ -1,0 +1,22 @@
+# Inputs the KiCad project does not contain. Written by hand, because nobody
+# else knows them: a schematic states what is connected, not how much current
+# flows or how hot the room is.
+#
+# Everything here is optional. An absent value means the check that needs it is
+# skipped and coverage says so — it does not mean a default.
+#
+# This board is a TPS561208 buck: 12 V in from J1, 3.3 V out at J2.
+
+ambient_c: 25
+max_junction_c: 125
+
+rails:
+  "/IN": 12.0
+  "/OUT": 3.3
+
+# Dissipation in the converter at the load this board was designed for.
+# 2 A out at 3.3 V, roughly 90% efficient, so about 0.7 W in the package.
+dissipation_w:
+  U1: 0.7
+
+copper_weight_oz: 1

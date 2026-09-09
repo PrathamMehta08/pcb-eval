@@ -695,13 +695,13 @@ def check_graph(c: Check) -> None:
 
     # A clean board gives the rules nothing to chase, so one pass and stop.
     client = StubClient({})
-    state = run_graph(json.loads(json.dumps(clean)), client)
+    state = run_graph(json.loads(json.dumps(clean)), client, inputs={})
     c.equals(state["stopped"], "stop:nothing-to-chase", "clean board stops immediately")
     c.equals(state["passes"], 1, "and does it in one pass")
     c.equals(
         [label.split("/")[0] for label in client.labels],
         sorted(REVIEWERS),
-        "every reviewer node ran",
+        "with no assumptions, only the always-on reviewers run",
     )
 
     # A board with a copper defect, taken from the generators rather than
@@ -729,7 +729,7 @@ def check_graph(c: Check) -> None:
     client = StubClient({"circuit": {"findings": [
         {"title": "unrelated", "refs": ["R1"], "nets": [], "severity": "minor", "why": ""}
     ]}})
-    state = run_graph(json.loads(json.dumps(broken)), client)
+    state = run_graph(json.loads(json.dumps(broken)), client, inputs={})
     c.equals(state["stopped"], "stop:passes-spent", "an unaccounted rule sends it round again")
     c.equals(state["passes"], MAX_PASSES, f"and it stops after {MAX_PASSES} passes")
 
@@ -744,7 +744,7 @@ def check_graph(c: Check) -> None:
         }
         for net in broken_nets
     ]}})
-    state = run_graph(json.loads(json.dumps(broken)), client)
+    state = run_graph(json.loads(json.dumps(broken)), client, inputs={})
     c.equals(state["stopped"], "stop:rules-accounted-for", "a matching finding ends the loop")
     c.equals(state["passes"], 1, "in one pass")
 
@@ -761,7 +761,7 @@ def check_graph(c: Check) -> None:
             "why": "",
         },
     ]}})
-    state = run_graph(json.loads(json.dumps(broken)), client)
+    state = run_graph(json.loads(json.dumps(broken)), client, inputs={})
     dropped = {item["title"]: item["dropped"] for item in state["dropped"]}
     c.that("U9 is wrong" in dropped, f"a part that does not exist is refuted: {dropped}")
     c.that(
@@ -933,7 +933,12 @@ def check_evidence_boundary(c: Check) -> None:
         board = case["board"]
         state = ingest({"board": board})
         packs = state.get("packs") or {}
-        if not c.equals(set(packs), {"circuit", "physical"}, f"{case['id']}: two packs"):
+        # The two always-on packs, plus whichever gated ones this board has the
+        # inputs for. Which is which is asserted below rather than here.
+        if not c.that(
+            {"circuit", "physical"} <= set(packs),
+            f"{case['id']}: both always-on packs exist, got {sorted(packs)}",
+        ):
             return
 
         # Determinism: the same board must produce the same bytes, or a scored
@@ -1053,6 +1058,58 @@ def check_evidence_boundary(c: Check) -> None:
             f"the estimate states its inputs: {tj[0]['why'][:70]}",
         )
     c.note(f"unassessed on a bare board: {sorted(missing)}")
+
+    # Gating. A conditional specialist is not built at all without its inputs,
+    # so a domain nobody can assess costs no call and cannot produce a finding.
+    from harness.assumptions import enabled as gates_for
+    from harness.assumptions import load as load_assumptions
+    from harness.packs import build_packs as packs_for
+
+    facts = brief(board, offline=True)
+    bare_gates = gates_for(None, facts)
+    c.equals(
+        sorted(k for k, v in bare_gates.items() if not v),
+        [],
+        "with no assumptions, no conditional specialist is enabled",
+    )
+    c.that(
+        all(bare_gates.values()),
+        f"and each one says what it is missing: {bare_gates}",
+    )
+    bare_packs = packs_for(board, facts, [], None)
+    c.equals(
+        sorted(bare_packs), ["circuit", "physical"],
+        "a disabled specialist gets no pack at all, rather than an empty one",
+    )
+
+    # Thermal needs three things from two places: ambient and a dissipation from
+    # the assumptions file, and a junction-to-ambient resistance from a
+    # datasheet. Two of the three is not enough to reason about this board.
+    two_thirds = gates_for({"ambient_c": 25, "dissipation_w": {"R1": 0.1}}, {})
+    c.that(
+        "junction-to-ambient" in two_thirds["thermal"],
+        f"thermal stays off without a theta_JA: {two_thirds['thermal']!r}",
+    )
+    # And a theta read from a multi-column table does not count as having one.
+    low_only = {"U3": {"facts": {"thermal": {"value": {}, "confidence": "low"}}}}
+    c.that(
+        gates_for({"ambient_c": 25, "dissipation_w": {"U3": 1.0}}, low_only)["thermal"],
+        "a low-confidence theta_JA does not enable the thermal reviewer",
+    )
+
+    supplied_inputs = load_assumptions("stm32-good")
+    if c.that(supplied_inputs, "the sample board carries an assumptions file"):
+        gates = gates_for(supplied_inputs, facts)
+        c.that(not gates["thermal"], f"real inputs enable thermal: {gates['thermal']!r}")
+        c.that(gates["signal_integrity"], "signal integrity stays off without a stackup")
+        c.that(gates["power_integrity"], "power integrity stays off without a stackup")
+        with_thermal = packs_for(board, facts, [], supplied_inputs)
+        c.that("thermal" in with_thermal, "an enabled specialist gets a pack")
+        c.that(
+            "SUPPLIED INPUTS" in with_thermal["thermal"],
+            "and the pack labels supplied figures as supplied, not measured",
+        )
+        c.note(f"enabled with assumptions: {sorted(with_thermal)}")
 
 
 # ---------------------------------------------------------------------------

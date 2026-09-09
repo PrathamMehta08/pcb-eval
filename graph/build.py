@@ -29,7 +29,10 @@ from langgraph.graph import END, StateGraph
 
 from graph.nodes.adjudicate import make_adjudicate
 from graph.nodes.review import reviewers
+from graph.prompts import REVIEWERS
 from graph.state import ReviewState, key
+from harness.assumptions import enabled as gates_for
+from harness.assumptions import load as load_assumptions
 from harness.evaluate import evaluate
 from harness.research import brief
 from harness.distill import distill
@@ -42,19 +45,24 @@ def ingest(state: ReviewState) -> dict:
     """Everything here is measured. No model has been asked anything yet."""
     board = state["board"]
     facts = brief(board, offline=True)
+    inputs = state.get("inputs") or load_assumptions(board["meta"]["name"]) or {}
     # One layer, one record of what it could and could not do. `coverage` says
     # which evaluators ran and why the rest did not, and travels to the report:
     # a domain that was not assessed is not a domain that passed.
-    result = evaluate(board, facts, state.get("inputs"))
+    result = evaluate(board, facts, inputs)
     deterministic = result["findings"]
+    coverage = dict(result["coverage"])
+    for domain, why in gates_for(inputs, facts).items():
+        coverage[domain] = "ran" if not why else f"skipped: {why}"
     return {
-        "coverage": result["coverage"],
+        "coverage": coverage,
         "measured": result["measured"],
         "distilled": distill(board),
         "deterministic": deterministic,
         # The seam. Built here, from measurements only, and handed to the
         # reviewers instead of the board.
-        "packs": build_packs(board, facts, deterministic + result["measured"]),
+        "inputs": inputs,
+        "packs": build_packs(board, facts, deterministic + result["measured"], inputs),
         # The fourth evaluator, and the only one that is pure geometry. It does
         # not feed the gate: a DFM finding is already complete, and looping the
         # reviewers over it would spend calls to be told what the board said.
@@ -138,8 +146,8 @@ def _why(decision: str, state: ReviewState, left: list[dict]) -> str:
     )
 
 
-def build_graph(client):
-    nodes = reviewers(client)
+def build_graph(client, enabled_agents=None):
+    nodes = reviewers(client, enabled_agents)
     graph = StateGraph(ReviewState)
     graph.add_node("ingest", ingest)
     for name, node in nodes.items():
@@ -160,9 +168,25 @@ def build_graph(client):
     return graph.compile()
 
 
-def run_graph(board: dict, client) -> ReviewState:
-    graph = build_graph(client)
-    return graph.invoke({"board": board}, {"recursion_limit": 50})
+def run_graph(board: dict, client, inputs: dict | None = None) -> ReviewState:
+    """Run the review. Which specialists exist is decided before the graph is.
+
+    A gated specialist is not built at all rather than built and skipped: a node
+    that exists is a node that can be called, and the point of gating is that a
+    domain nobody can assess costs nothing and shows up as unassessed.
+    """
+    inputs = inputs if inputs is not None else (load_assumptions(board["meta"]["name"]) or {})
+    # The gate needs the research too: thermal wants a theta_JA, and that comes
+    # from a datasheet rather than from the assumptions file.
+    facts = brief(board, offline=True)
+    enabled_agents = list(REVIEWERS) + [
+        name for name, why in gates_for(inputs, facts).items() if not why
+    ]
+    graph = build_graph(client, enabled_agents)
+    return graph.invoke(
+        {"board": board, "inputs": inputs, "enabled_agents": enabled_agents},
+        {"recursion_limit": 50},
+    )
 
 
 if __name__ == "__main__":

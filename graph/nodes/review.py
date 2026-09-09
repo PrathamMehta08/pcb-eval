@@ -14,7 +14,7 @@ in something a checkpointer might serialise.
 
 from __future__ import annotations
 
-from graph.prompts import REVIEWERS, SYSTEM
+from graph.prompts import ALL_REVIEWERS, REVIEWERS, SYSTEM
 from graph.state import ReviewState, normalise
 
 
@@ -25,7 +25,7 @@ def make_node(name: str, client):
     the evidence boundary: what this model can say is bounded by what was put in
     front of it, and that is asserted in `tests.run 15`.
     """
-    build_prompt, pack_name = REVIEWERS[name]
+    build_prompt, pack_name = ALL_REVIEWERS[name]
 
     def node(state: ReviewState) -> dict:
         pack = state["packs"][pack_name]
@@ -45,6 +45,7 @@ def make_node(name: str, client):
     return node
 
 
-def reviewers(client) -> dict:
-    """Every always-on reviewer, bound to one client."""
-    return {name: make_node(name, client) for name in REVIEWERS}
+def reviewers(client, enabled=None) -> dict:
+    """The reviewers this board has the inputs for, bound to one client."""
+    names = list(REVIEWERS) if enabled is None else list(enabled)
+    return {name: make_node(name, client) for name in names}

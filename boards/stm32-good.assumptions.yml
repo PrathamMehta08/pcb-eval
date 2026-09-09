@@ -1,0 +1,21 @@
+# Inputs the KiCad project does not contain, for the pill-dispenser controller.
+#
+# Everything here is supplied by hand and labelled as such wherever it reaches a
+# reviewer. Nothing is defaulted: an absent value means the check that needs it
+# is skipped and coverage says so.
+
+ambient_c: 25
+max_junction_c: 125
+
+rails:
+  "+3.3V": 3.3
+  "+3.3VA": 3.3
+  "+5V": 5.0
+  "/IN": 12.0
+
+# The buck converting 12 V to 5 V. At the stepper and servo load this board was
+# built for, roughly 1 A out, and about 0.6 W lost in the package.
+dissipation_w:
+  S1: 0.6
+
+copper_weight_oz: 1

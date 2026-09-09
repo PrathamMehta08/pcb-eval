@@ -27,6 +27,8 @@ class ReviewState(TypedDict, total=False):
     #: sends the reviewers round again for rules they missed, and there is
     #: nothing for them to add to a number.
     measured: list[dict]
+    #: The specialists that actually ran, decided before the graph was built.
+    enabled_agents: list
     #: Which evaluators ran, and why each of the rest did not. First-class
     #: because a skipped check and a passing check look identical in a report
     #: unless one of them says so.

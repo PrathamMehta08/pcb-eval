@@ -150,17 +150,90 @@ GEOMETRY_RULES = {
 }
 
 
+def _inputs_block(inputs: dict, keys: tuple[str, ...]) -> list[str]:
+    """The supplied figures a gated reviewer is allowed to reason from.
+
+    Only what it needs, and labelled as supplied rather than measured, so a
+    finding resting on one can say so.
+    """
+    lines = ["SUPPLIED INPUTS  given by hand, not measured from the board"]
+    for key in keys:
+        value = inputs.get(key)
+        if value in (None, {}, []):
+            continue
+        lines.append(f"{key}: {value}")
+    return lines if len(lines) > 1 else []
+
+
+def thermal_pack(board: dict, research: dict, inputs: dict, findings: list[dict]) -> str:
+    """Heat, and only for a board whose ambient and dissipation are known."""
+    thermal_facts = {
+        ref: rec
+        for ref, rec in (research or {}).items()
+        if (rec.get("facts") or {}).get("thermal")
+    }
+    blocks = [
+        _header(board, "thermal"),
+        _inputs_block(inputs, ("ambient_c", "max_junction_c", "dissipation_w", "copper_weight_oz")),
+        _research_block(thermal_facts),
+        _copper_section(board),
+        _findings_block(findings, "COMPUTED  already calculated, with their inputs"),
+    ]
+    return "\n\n".join("\n".join(b) for b in blocks if b)
+
+
+def si_pack(board: dict, inputs: dict, findings: list[dict]) -> str:
+    """Signal integrity, and only where a stackup makes impedance meaningful."""
+    blocks = [
+        _header(board, "signal_integrity"),
+        _inputs_block(inputs, ("stackup", "high_speed_nets", "copper_weight_oz")),
+        _copper_section(board),
+        _findings_block(findings, "ALREADY MEASURED  do not report these again"),
+    ]
+    return "\n\n".join("\n".join(b) for b in blocks if b)
+
+
+def pi_pack(board: dict, inputs: dict, findings: list[dict]) -> str:
+    """The power distribution network, given real currents."""
+    blocks = [
+        _header(board, "power_integrity"),
+        _inputs_block(inputs, ("rails", "dissipation_w", "stackup", "copper_weight_oz")),
+        _copper_section(board),
+        _decoupling_section(board),
+        _findings_block(findings, "COMPUTED  already calculated, with their inputs"),
+    ]
+    return "\n\n".join("\n".join(b) for b in blocks if b)
+
+
 def build_packs(
     board: dict,
     research: dict | None = None,
     deterministic: list[dict] | None = None,
+    inputs: dict | None = None,
 ) -> dict[str, str]:
-    """Every pack for this board, keyed by the agent that receives it."""
+    """Every pack this board has the inputs for, keyed by the agent.
+
+    A gated pack is absent rather than empty. An absent pack is how the graph
+    knows not to build that node at all, so a domain nobody can assess costs no
+    call and appears in coverage as unassessed instead of as a clean section.
+    """
+    from harness.assumptions import enabled
+
     research = research or {}
+    inputs = inputs or {}
     findings = deterministic or []
     geometry = [f for f in findings if f.get("rule") in GEOMETRY_RULES]
     circuit = [f for f in findings if f.get("rule") not in GEOMETRY_RULES]
-    return {
+
+    packs = {
         "circuit": circuit_pack(board, research, circuit),
         "physical": physical_pack(board, geometry),
     }
+    gates = enabled(inputs, research)
+    if not gates["thermal"]:
+        packs["thermal"] = thermal_pack(board, research, inputs, findings)
+    if not gates["signal_integrity"]:
+        packs["signal_integrity"] = si_pack(board, inputs, findings)
+    if not gates["power_integrity"]:
+        packs["power_integrity"] = pi_pack(board, inputs, findings)
+    return packs

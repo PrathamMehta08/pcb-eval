@@ -171,6 +171,70 @@ functions, part values or part descriptions: another reviewer holds those and
 reports on netlist correctness and component selection. Do not infer them and do
 not comment on them."""
 
+THERMAL_JOB = """You are reviewing heat.
+
+You are running because an ambient temperature, a dissipation and a
+junction-to-ambient resistance all exist for this board. If any of them were
+missing you would not have been called: a thermal finding built on a number
+nobody supplied is not a finding, and estimating one is the failure this whole
+pipeline is arranged to prevent.
+
+THERMAL INPUTS gives the ambient and the dissipation each figure rests on.
+COMPUTED gives the junction temperatures already calculated from them, each
+stating its inputs. COPPER gives the pour each hot part sits on and the vias
+under it.
+
+The arithmetic is done. What is left is judgement: whether a margin is adequate
+for this part in this application rather than merely positive, where the path
+from junction to ambient is interrupted, whether the copper a part relies on is
+actually connected to the pad it sits under, whether there are enough thermal
+vias to matter, and which parts are individually fine and together are not.
+
+Every number you use must come from the inputs above. Say which, and if a
+finding rests on a supplied figure rather than a measured one, name it in
+`assumption`."""
+
+SIGNAL_INTEGRITY_JOB = """You are reviewing signal integrity.
+
+You are running because a stackup exists and at least one net is marked
+high-speed. Without a stackup there is no impedance, and most of this domain
+would be speculation dressed as analysis.
+
+STACKUP gives the layer order and dielectric. HIGH-SPEED lists the nets and what
+each belongs to. GEOMETRY gives lengths, widths, layer changes, via counts and
+the reference plane under each segment.
+
+Reason about differential pairs and their coupling, where a trace changes
+reference plane and whether a return via is near enough to matter, stubs,
+length matching within an interface, and coupling between an aggressive net and
+a sensitive one that runs beside it.
+
+Mark every finding `status`. A `violation` is something the supplied geometry
+and stackup prove - a plane change with no return via within a stated distance.
+A `risk` is something the data suggests but cannot settle. For a risk, say which
+missing input would settle it. Do not report an impedance violation from a
+stackup that gives a range rather than a value."""
+
+POWER_INTEGRITY_JOB = """You are reviewing the power distribution network.
+
+You are running because per-rail load currents and a stackup both exist.
+Bulk sufficiency, droop and PDN impedance are all functions of current; without
+it this review would have nothing to reason from.
+
+RAILS gives each rail, its source, its nominal voltage and its load. DECOUPLING
+gives every capacitor on each rail and its distance from the pin it serves.
+COPPER gives island counts, track length, narrowest segment, vias and pours.
+COMPUTED gives whatever was already calculated, with its inputs.
+
+Reason about whether the regulator topology suits the load it feeds, bulk
+against local decoupling and whether a large capacitor far from a pin serves
+that pin at all, what happens when this load steps, IR drop along the actual
+copper and where the narrowest segment falls, and the return path shared between
+a noisy load and a quiet one.
+
+Every current you use must come from RAILS. Do not derive one from a component
+value or a trace width."""
+
 ADJUDICATE_JOB = """You are merging three reviews of one board into one list.
 
 Below are findings from three reviewers, each numbered. Some describe the same
@@ -215,13 +279,39 @@ def physical_prompt(pack: str) -> str:
     return _node(PHYSICAL_JOB, pack)
 
 
-#: The reviewers, and the pack each one is handed. Two, not three, and not
+def thermal_prompt(pack: str) -> str:
+    return _node(THERMAL_JOB, pack)
+
+
+def signal_integrity_prompt(pack: str) -> str:
+    return _node(SIGNAL_INTEGRITY_JOB, pack)
+
+
+def power_integrity_prompt(pack: str) -> str:
+    return _node(POWER_INTEGRITY_JOB, pack)
+
+
+#: The always-on reviewers, and the pack each is handed. Two, not three and not
 #: seven: a specialist earns its call by holding evidence no other specialist
-#: holds, and there are two disjoint bodies of evidence here.
+#: holds, and there are exactly two disjoint bodies of evidence on a board
+#: extracted from KiCad.
 REVIEWERS = {
     "circuit": (circuit_prompt, "circuit"),
     "physical": (physical_prompt, "physical"),
 }
+
+#: The conditional specialists. Each is a real domain whose inputs a KiCad
+#: project does not contain, so each stays switched off until somebody supplies
+#: them in `boards/<name>.assumptions.yml`. They are not enabled because the
+#: category exists - that is how a review ends up with seven sections and three
+#: of them invented.
+CONDITIONAL = {
+    "thermal": (thermal_prompt, "thermal"),
+    "signal_integrity": (signal_integrity_prompt, "signal_integrity"),
+    "power_integrity": (power_integrity_prompt, "power_integrity"),
+}
+
+ALL_REVIEWERS = {**REVIEWERS, **CONDITIONAL}
 
 
 def single_prompt(distilled: str) -> str:
@@ -259,6 +349,9 @@ def prompt_hash() -> str:
             _TAIL,
             CIRCUIT_JOB,
             PHYSICAL_JOB,
+            THERMAL_JOB,
+            SIGNAL_INTEGRITY_JOB,
+            POWER_INTEGRITY_JOB,
             ADJUDICATE_JOB,
             SINGLE_PROMPT_JOB,
         ]
