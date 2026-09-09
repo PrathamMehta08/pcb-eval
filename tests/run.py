@@ -542,6 +542,49 @@ def check_graph(c: Check) -> None:
     # what makes the loop go round, and what makes it stop.
     run_node(c, "graph_browser.mjs")
 
+    # No prompt may name anything that belongs to one board.
+    #
+    # The prompts used to open with "a two-layer STM32F103 controller for a pill
+    # dispenser: a TPS563208 buck converter..." and the reviewer jobs named the
+    # exact conventions two seeded defects break - a servo lead's pin order, an
+    # HC-SR04's pin order - plus the buck's 3 A rating. That is teaching to the
+    # test, and it was also simply wrong for anyone reviewing their own board on
+    # the page. Everything a review needs about a board now arrives in the
+    # distilled board itself, so this asserts the prompts stay empty of it.
+    from graph.prompts import (
+        BOARD_SLOT,
+        connections_prompt,
+        datasheet_prompt,
+        layout_prompt,
+        single_prompt_template,
+    )
+
+    board = load_board()
+    heads = {
+        "single": single_prompt_template().split(BOARD_SLOT)[0],
+        "datasheet": datasheet_prompt(BOARD_SLOT).split(BOARD_SLOT)[0],
+        "connections": connections_prompt(BOARD_SLOT).split(BOARD_SLOT)[0],
+        "layout": layout_prompt(BOARD_SLOT).split(BOARD_SLOT)[0],
+    }
+    # Values, refs and net names from this board. Short tokens are skipped:
+    # "IN" and "SW" are real net names here and ordinary English elsewhere.
+    board_words = {c["value"] for c in board["components"] if len(c["value"]) >= 4}
+    board_words |= {n["name"].lstrip("/") for n in board["nets"] if len(n["name"].lstrip("/")) >= 4}
+    # Part families that named this design rather than any design.
+    board_words |= {"HC-SR04", "STM32", "pill dispenser", "barrel jack", "servo lead"}
+    # Designators are short - S1, R4, U2 - so a length cutoff misses them, and
+    # the first version of this check did: the schema's own example carried
+    # "S1" and "/FB" straight from this board. They are distinctive enough to
+    # match on a word boundary instead, at any length.
+    refs = {c["ref"] for c in board["components"]}
+    short_nets = {n["name"].lstrip("/") for n in board["nets"] if len(n["name"].lstrip("/")) < 4}
+    for name, head in heads.items():
+        leaked = sorted(w for w in board_words if w.lower() in head.lower())
+        leaked += sorted(
+            w for w in refs | short_nets if re.search(rf"{re.escape(w)}", head)
+        )
+        c.that(not leaked, f"the {name} prompt names nothing board-specific: {sorted(set(leaked))}")
+
     # The typed claim, its subject, and the critic that reads them.
     from graph.state import normalise_subject
     from graph.verify import facts, verify

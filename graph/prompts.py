@@ -14,8 +14,8 @@ import hashlib
 
 SCHEMA = """{"findings": [{
   "severity": "critical" | "major" | "minor",
-  "refs": ["S1"],
-  "nets": ["/FB", "VBST"],
+  "refs": ["<ref>", "..."],
+  "nets": ["<net>", "..."],
   "problem": "one line naming the defect",
   "why": "one sentence on the consequence",
   "fix": "one sentence naming the change that would correct it"
@@ -59,11 +59,11 @@ GRAPH_SCHEMA = """{"findings": [{
            "pin_floating" | "value_unbuildable" | "net_split" |
            "decoupling_distance" | "missing_component" |
            "manufacturability" | "other",
-  "subject": "S1" or "/FB" — the one ref or net this finding is about,
+  "subject": "<the one ref or net this finding is about>",
   "evidence": "a line copied exactly from the board data above",
   "severity": "critical" | "major" | "minor",
-  "refs": ["S1"],
-  "nets": ["/FB", "VBST"],
+  "refs": ["<ref>", "..."],
+  "nets": ["<net>", "..."],
   "problem": "one line naming the defect",
   "why": "one sentence on the consequence",
   "fix": "one sentence naming the change that would correct it"
@@ -99,10 +99,16 @@ inventing evidence. Do not report trace width, current capacity, heating or
 power dissipation. Report what the netlist, the copper geometry and the pin
 functions can settle."""
 
-BOARD_CONTEXT = """The board is a two-layer STM32F103 controller for a pill
-dispenser: a TPS563208 buck converter from a barrel jack, an AMS1117-3.3 LDO,
-a ULN2003 driving a 5 V unipolar stepper, three servo headers, an HC-SR04
-ultrasonic header, a USB micro-B connector, and a 16 MHz crystal."""
+#: Deliberately empty, and it used to describe one board.
+#:
+#: It read "a two-layer STM32F103 controller for a pill dispenser: a TPS563208
+#: buck converter from a barrel jack, an AMS1117-3.3 LDO..." - sent verbatim
+#: with every review, including reviews of somebody else's board uploaded to the
+#: page. It was wrong there, and redundant here: the distilled board already
+#: opens with a COMPONENTS section giving every part its value, package and the
+#: library's own description, so the model reads what this board is from the
+#: data instead of being told what one board was.
+BOARD_CONTEXT = ""
 
 #: The tail every prompt shares. It says nothing about areas: the three node
 #: jobs each say what is not theirs, and the single prompt has no area at all —
@@ -122,9 +128,8 @@ BOARD_SLOT = "<<<BOARD>>>"
 
 
 def _build(job: str, distilled: str, schema: str = SCHEMA) -> str:
-    return f"{BOARD_CONTEXT}\n\n{job.strip()}\n" + _TAIL.format(
-        schema=schema, distilled=distilled
-    )
+    head = f"{BOARD_CONTEXT}\n\n" if BOARD_CONTEXT else ""
+    return f"{head}{job.strip()}\n" + _TAIL.format(schema=schema, distilled=distilled)
 
 
 def _node(job: str, distilled: str) -> str:
@@ -137,12 +142,10 @@ DATASHEET_JOB = """Your area is what each pin is for, against what it is wired t
 The net list gives every pin the chip's own name for it, taken from the symbol
 library, and the pin's electrical type. Use them. Look for:
 
-- a pin whose name says one node and whose net is another, especially on the
-  buck converter, the regulator and the MCU's supply pins;
+- a pin whose library name says one node and whose net is another;
 - a supply or bias pin sitting on a net with no source of that supply;
-- a feedback or bootstrap pin on the wrong node;
-- a crystal, reset or boot pin wired in a way the part cannot work with;
-- a part whose value cannot be ordered, or cannot carry what is asked of it.
+- a control pin wired somewhere its part cannot work from;
+- a part whose value cannot be ordered.
 
 Report only defects in your area. Do not comment on layout, copper, trace
 widths or placement — another reviewer has those."""
@@ -151,9 +154,9 @@ CONNECTIONS_JOB = """Your area is the wiring between parts and off the board.
 
 Look for:
 
-- a connector whose pin order does not match the module that plugs into it. A
-  three-wire servo lead is signal, power, ground in that physical order. An
-  HC-SR04 is VCC, TRIG, ECHO, GND in that order. Neither connector is keyed.
+- a connector whose pin order does not match the module that plugs into it.
+  Headers like these are not keyed, so the board has to match the cable; the
+  designer's own net names are what say which module is expected.
 - an input pin with nothing holding it at reset. An MCU port is high impedance
   until firmware configures it, so an input whose only company is an MCU port
   and no pull resistor floats from power-up.
@@ -173,13 +176,14 @@ vias, and which layers carry a pour. Read it carefully. Look for:
 - a net whose pads sit on more than one island. That net is not connected,
   whatever the net list says. Both ERC and DRC read the net list rather than
   the copper, so both pass a board like that.
-- a ground net with no vias tying the two layers together, or with a pour on
-  only one layer while pads sit on both;
-- a trace too narrow for the current its rail carries. Roughly 0.5 mm per amp
-  on 1 oz outer copper for a 20 C rise. The buck is rated 3 A; three servos
-  stall near 700 mA each; the ULN2003 sinks the stepper coils.
+- a ground net with no vias tying the layers together, or with a pour on only
+  one layer while pads sit on both;
 - a decoupling capacitor far from the pin it serves. The DECOUPLING section
   gives that distance in millimetres for every supply pin on the board.
+
+The board data carries no current, load, power, temperature or timing figure.
+Do not report trace width, current capacity or heating: any such finding would
+rest on a number you supplied yourself.
 
 Report only defects in your area. Do not comment on schematic connectivity, pin
 functions or part values — another reviewer has those."""
@@ -216,9 +220,12 @@ things:
    narrowest track, how many vias, and which layers carry a pour; the
    DECOUPLING section gives the distance from every supply pin to the nearest
    capacitor on its net. A net whose pads sit on more than one island is not
-   connected, whatever the net list says. Trace width against the current a
-   rail carries, at roughly 0.5 mm per amp on 1 oz outer copper for a 20 C
-   rise. Ground return, pour coverage, decoupling distance.
+   connected, whatever the net list says. Ground return, pour coverage,
+   decoupling distance.
+
+The board data carries no current, load, power, temperature or timing figure.
+Do not report trace width, current capacity or heating: any such finding would
+rest on a number you supplied yourself.
 
 Do not report style, silkscreen or aesthetics, or anything you would have to
 guess at."""

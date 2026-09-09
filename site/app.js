@@ -213,13 +213,16 @@ function loadBoard(board, notes = [], files = null) {
 function renderSource() {
   const panel = $("source");
   const stats = state.board.layout;
+  // Both labels come from the board that is loaded. The sample used to be
+  // named in the source, which read as though the tool were built around it.
   $("board-id").textContent = custom
     ? `${custom.name} · your file`
-    : "stm32-good · pillmate rev 1";
+    : `${state.board.meta.name} · sample board`;
 
   if (!custom) {
-    panel.innerHTML = `<p class="muted">A real STM32 controller. Edit it, or load
-      your own KiCad project.</p>`;
+    panel.innerHTML = `<p class="muted">${escapeHtml(summarise(state.board))}</p>
+      <p class="hint">A board extracted from KiCad. Edit it, or load your own
+      project.</p>`;
   } else {
     panel.innerHTML = `
       <p class="loaded"><b>${escapeHtml(custom.name)}</b> ${escapeHtml(summarise(state.board))}</p>

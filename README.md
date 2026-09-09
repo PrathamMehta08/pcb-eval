@@ -13,7 +13,21 @@ loop.
 
 ---
 
-## The board is real, and so are the defects
+## What it works on
+
+Any KiCad project. `extract/` reads a `.kicad_pcb` and a `.kicad_sch` into one
+board object; the page reads the same pair in the browser with no upload. Every
+rule is structural — a four-pin header with one supply, one ground and two
+signals; a supply pin sharing a net with a port; a net whose pads sit on more
+than one island — so none of them names a part, and none was written against a
+particular defect. The prompts name nothing board-specific either, and
+`tests.run 12` fails if that changes.
+
+One board is the **corpus**, not the scope. It is the design the numbers below
+were measured on, because scoring a detector needs defects whose location is
+already known.
+
+## The board the numbers come from
 
 `STM32.kicad_pcb` is the controller for a pill dispenser: 53 components, 62
 nets, 400 track segments, 63 vias, five copper pours, 61 × 46 mm on two layers.
@@ -34,152 +48,122 @@ it, let alone find it.
 ## Results
 
 Eight boards - one clean, seven seeded. Two detectors, given the same distilled
-board, the same model and the same temperature, and pointed at the same data
-sections in the same words. One asks a single flat prompt to do all three jobs;
-the other splits them across a LangGraph pipeline of three specialists, a merge,
-and a deterministic critic.
+board, the same model and the same temperature. One asks a single flat prompt to
+do all three jobs; the other splits them across a LangGraph pipeline of three
+specialists, a merge, and a deterministic critic. The whole sweep runs five
+times, because a single run of this cannot be told apart from noise.
 
-**The whole sweep is run five times.** One run of this cannot be told apart from
-noise: an earlier single-run sweep put both detectors at 7 of 7, and that turned
-out to be the top of the range rather than the typical case. Everything below is
-a median over five trials with the full range beside it.
-
-`openai/gpt-oss-120b` - 5 trials - 225 calls - prompts `96d80c10c401` - schema
-`cd607fa645b8` - corpus `d2138f0ecf8d` - full record in
+`openai/gpt-oss-120b` - 5 trials - 241 calls - prompts `5b7e1df62b4f` - schema
+`96e5a7694704` - corpus `d2138f0ecf8d` - pipeline `83fb6a92630d` - full record in
 [`results/latest.json`](results/latest.json)
 
 | per trial, median (min-max) | one prompt | the graph |
 |---|---|---|
-| defects matched, of 7 | 5 (5-7) | **6 (4-6)** |
-| findings on the clean board | 7 (5-8) | **3 (2-5)** |
-| unmatched findings on the seeded boards | 41 (37-43) | **17 (14-27)** |
-| findings the copper refutes - proposed | 2 (1-2) | **1 (0-3)** |
-| **findings the copper refutes - reported** | **2 (1-2)** | **0 (0-0)** |
+| defects matched, of 7 | 5 (3-7) | 5 (2-5) |
+| findings on the clean board | 4 (2-5) | **2 (0-10)** |
+| unmatched findings on the seeded boards | **20 (14-26)** | 27 (23-49) |
+| **findings the copper refutes - reported** | 1 (0-2) | **0 (0-0)** |
 | model calls per board | 1 | 4, or 8 when the gate loops |
 
-Over five trials: 28 of 35 for the single prompt, 27 of 35 for the graph.
+Over five trials: **24 of 35 for the single prompt, 21 of 35 for the graph.**
 
-### The row that needs no opinion
+### The prompts used to name the defects, and the scores moved when they stopped
 
-A finding that says a net is split into copper islands, on a net whose copper is
-one connected piece, is wrong - and the geometry says so. `harness/grade.py`
-measures that over both what each detector *proposed* and what it *reported*.
+This is the finding worth reading the rest for.
 
-**The graph reported zero board-refuted claims in all five trials. The single
-prompt reported one or two in every trial, and never zero.** It is the only
-comparison whose ranges do not overlap, and the graph's variance on it is nil.
+Until this sweep the reviewers' prompts opened with a description of this exact
+board, and the jobs spelled out the conventions the seeded defects break - a
+three-wire servo lead's pin order, a four-wire sensor module's pin order, the
+buck's supply pins, the buck's 3 A rating. The output schema's own example
+carried this board's net names, `/FB` and `VBST`. None of that was edited after
+a score was seen, but all of it told the detectors where to look.
 
-That is the design in one number: LLM nodes propose, deterministic checks
-dispose, and the referee is the board.
+Removing every trace of it, so a prompt names no part, no net and no convention
+specific to one board, cost both detectors about a fifth of their recall:
 
-### What the architecture change actually bought
+| over 5 trials | prompts naming the defects | board-agnostic prompts |
+|---|---|---|
+| the graph, caught /35 | 27 | **21** |
+| one prompt, caught /35 | 28 | **24** |
+| the graph, clean-board findings | 17 | 21 |
+| one prompt, clean-board findings | 33 | **18** |
+| the graph, seeded noise | 97 | 166 |
+| one prompt, seeded noise | 202 | **100** |
 
-The graph was rebuilt once the repeated sweep made its weaknesses measurable.
-Three versions, same corpus, same ruler:
+**And it reverses the comparison.** With prompts that named the defect classes,
+the graph led on noise and matched on recall. Without them the single flat
+prompt is ahead on recall, 24 to 21, and quieter on the seeded boards, 100
+unmatched findings to 166. Everything this project previously reported about
+decomposition beating a flat prompt was measured through prompts that had been
+told what to find.
 
-| over 5 trials | caught /35 | clean-board | seeded noise | refuted reported | noise per catch |
-|---|---|---|---|---|---|
-| graph v1 - untyped findings | **32** | 25 | 241 | 0 | 8.3 |
-| graph v2 - typed claims | 31 | 36 | 194 | 0 | 7.4 |
-| **graph v3 - current** | 27 | **17** | **97** | **0** | **4.2** |
-| one prompt | 28 | 33 | 202 | 8 | 8.4 |
+`tests/run.py` step 12 now fails if any prompt names a part, a net, a designator
+or a board-specific convention, so the leak cannot come back quietly. The guard
+earned its place immediately: its first version used a length cutoff and sailed
+past `S1` and `/FB` sitting in the schema example.
 
-**v3 beats the single prompt on every column.** Against v1 it is a trade, not an
-improvement: 57% less noise for five fewer catches, and the honest summary is
-that the corpus is too small to say whether that trade is worth taking.
+### What survives
 
-Everything v3 lost is one defect. `stepper-in4-floating` went 4 of 5 to 0 of 5,
-and every other defect moved by at most one. That defect is caught **5 times out
-of 5 by a five-line deterministic rule**, for no tokens - which is the argument
-this project keeps arriving at from different directions.
+One thing, and it is the one that needs no judgement.
 
-### A vocabulary is a prompt
+**The graph reported zero findings the copper refutes, in all five trials. The
+single prompt reported one in the median trial and up to two.** A finding that
+says a net is split into islands, on a net whose copper is one connected piece,
+is wrong and a union-find says so. The graph proposes none of them at all now
+(0 of 0); the baseline proposes five across the sweep and reports all five.
 
-The single most useful result here came from a one-word change.
+Its matched findings are also tighter: a mean breadth of 2.9 names against 8.21,
+and it never buys a match by naming half the board.
 
-v2 offered the reviewers a closed list of claim kinds, one of which was
-`trace_undersized`. On the clean board they filed **twelve** of them - a third of
-everything they reported there - each resting on a current figure the board data
-does not contain and the critic therefore could not refute. There is no supply
-current anywhere in the extraction; the model supplied it.
-
-Removing that one word from the list, and stating plainly that the data carries
-no current, load, power, temperature or timing figure, took clean-board findings
-from 36 to 17 and seeded noise from 194 to 97.
-
-Offering a category is an instruction to fill it. This is the same failure as a
-report template with a mandatory section per topic, and it is worth knowing
-before adding thermal, signal-integrity or power-integrity stages to a system
-whose input carries no current, no stackup and no ambient.
+That is a real difference, and it is a smaller claim than the one this README
+used to make. Decomposition did not beat a flat prompt at finding defects on this
+corpus. What it bought is that nothing reaches the report which the board itself
+can contradict.
 
 ### Where recall comes from
 
 Per defect, out of five trials:
 
-| defect | v1 | v2 | **v3** | one prompt |
-|---|---|---|---|---|
-| `vfb-vbst-swap` | 5 | 5 | 5 | 5 |
-| `servo-power-end-pin` | 5 | 5 | 5 | 5 |
-| `ultrasonic-crossed` | 5 | 5 | 5 | 5 |
-| `stepper-common-open` | 5 | 5 | 5 | 4 |
-| `ground-stranded` | 5 | 5 | 4 | 5 |
-| `unbuildable-value` | 3 | 4 | 3 | **1** |
-| `stepper-in4-floating` | 4 | 2 | **0** | 3 |
-
-Five of the seven are near-saturated for everything. The comparison lives in the
-last two, and both of those are caught 5 of 5 by a deterministic rule.
-
-### The matching rule is generous, and one detector exploits it
-
-A finding matches a defect when their component refs or net names intersect,
-which cannot tell a finding that *identified* a defect from one that merely
-*named a part the defect touches*. So every match records `breadth`: how many
-refs and nets the finding threw at the board.
-
-| breadth of a matched finding | one prompt | graph v3 |
+| defect | the graph | one prompt |
 |---|---|---|
-| median | 2 | 3 |
-| mean | 8.46 | **3.44** |
-| largest | **50** | **6** |
-| share naming 10 or more | **14%** | **0%** |
+| `vfb-vbst-swap` | 5 | 5 |
+| `ground-stranded` | 4 | 4 |
+| `stepper-common-open` | **4** | 2 |
+| `servo-power-end-pin` | **3** | 2 |
+| `stepper-in4-floating` | **3** | 1 |
+| `ultrasonic-crossed` | 1 | **5** |
+| `unbuildable-value` | 1 | **5** |
 
-The single prompt's matches are bimodal: half name two things or fewer, and 14%
-name ten or more - one of them naming **50 refs and nets on a board with 53
-components**. A finding that names most of the board intersects any defect you
-like. The graph never does this; its widest match names six.
+The graph leads on three, the baseline on two, and they tie on two. The
+baseline's two are the ones a deterministic rule settles instantly - a value
+with no digits in it, and a header whose pin order does not match the module -
+which is the argument this project keeps arriving at from different directions.
 
 ### What is not being claimed
 
-- **It is one board.** Seven defects seeded into a single design, so they are not
-  independent draws. Five trials fix the noise in the measurement, not the
+- **It is one board.** Seven defects seeded into a single design, so they are
+  not independent draws. Five trials fix the noise in the measurement, not the
   narrowness of the corpus.
-- **Recall here is the model's recall, not the system's.** The deterministic
-  rules always run, and on every one of the graph's eight misses the rule for
-  that defect fired. That is equally true of the other detectors, so it does not
-  make one better than another - it means recall over these seven defects is
-  worth less than it looks, for all of them.
-- **Only the automatic metrics are repeated.** Whether a finding *reads* as
-  identifying its defect is a judgement; `breadth` is the automatic proxy.
+- **The spread is wide enough to swallow most of these differences.** The
+  graph's clean-board count ranges from 0 to 10 across five identical runs. Read
+  the ranges, not the medians.
+- **Recall here is the model's, not the system's.** The deterministic rules
+  always run, and on every miss the rule for that defect fired. That is equally
+  true of both detectors.
 - **The clean-board count conflates two things.** Some of what both raise there
-  is true and simply not a seeded defect: the ULN2003's decoupling capacitor
-  really is 17.2 mm from its ground pin, and `NRST` really has no external pull.
+  is true and simply not a seeded defect: a decoupling capacitor really is
+  17.2 mm from its ground pin, and one reset pin really has no external pull.
 - **The refutation check is narrow.** It settles existence, split nets, values,
   and whether a net is held at a level. It says nothing about a thermal or
   current claim, which is why those are not solicited.
-- **Neither prompt was edited after a score was seen.** `prompt_hash` makes that
-  checkable, and `tests/run.py` step 13 fails when the committed result predates
-  the current prompts.
 
 ### What it cost
 
-Five trials from cold: 225 model calls, 836k tokens in, 413k out, **$0.3729**,
-13 minutes at two concurrent requests. That figure comes from the per-call token
-counts rather than from what the run happened to spend, so it does not shrink to
-zero when the cache is warm.
-
-Every call is logged with its tokens, seconds and dollars. Every sweep carries
-the prompt hash, the schema hash and the corpus hash, because a score that
-outlives the system it measured is worse than no score.
+Five trials from cold: 241 model calls, 876k tokens in, 594k out, **$0.4878**,
+23 minutes at two concurrent requests. Every sweep carries the prompt, schema,
+corpus and pipeline hashes, because a score that outlives the system it measured
+is worse than no score - and `pipeline_hash` exists because adding an evaluator
+once changed the results while the other three hashes stayed identical.
 
 
 ## What a netlist cannot see

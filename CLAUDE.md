@@ -55,6 +55,21 @@ KiCad. The bare layout was the routing view with the copper hidden. `tests.run 7
 asserts `renderSchematic` and `data-view="layout"` are *absent*, so they cannot
 creep back unnoticed.
 
+**No prompt may name anything belonging to one board.** Not a part, not a net,
+not a designator, and not a convention that only one seeded defect breaks. The
+prompts used to open with "a two-layer STM32F103 controller for a pill
+dispenser: a TPS563208 buck converter…" and the reviewer jobs spelled out a
+servo lead's pin order and an HC-SR04's pin order — which are the exact
+conventions two presets violate. That is teaching to the test, and it was also
+plainly wrong for anyone reviewing their own board on the page. Everything a
+review needs about a board arrives in the distilled board, which already gives
+every part its value, package and description.
+
+`tests.run 12` asserts it mechanically, and it earns its place: the first
+version of the guard used a length cutoff and missed `S1` and `/FB` sitting in
+the schema's own example. Designators are short, so they are matched on a word
+boundary at any length.
+
 **The critic and the grader are different functions, and must stay that way.**
 `graph/verify.py::verify()` is the critic the graph runs. `contradiction()` in
 `graph/nodes/adjudicate.py` is what `harness/grade.py::refuted()` scores every
