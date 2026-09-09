@@ -708,13 +708,40 @@ function flash(message) {
 // --------------------------------------------------------------------- review
 
 /** What the visitor changed, so a finding can be matched against it. */
+/**
+ * What the reviewer should find, from what you changed.
+ *
+ * An edit that names neither a part nor a net can never be matched to a
+ * finding, so it is scored as missed however well the reviewer did. Two of the
+ * nine operations were in that state: `set_track_width` records a track id and
+ * a width, and `toggle_zone` records a zone id, and neither carries the net the
+ * copper belongs to. Narrowing a track to 0.1 mm and having the rule report it
+ * by name still counted as a miss, with the correct finding filed under "also
+ * raised" - the page marking its own reviewer down for being right.
+ *
+ * The id is enough to find the net, so it is looked up on the board rather than
+ * added to the operation. The edit log is mirrored in harness/ops.py and pinned
+ * by a fixture; this is a question the page asks about its own state, and it
+ * does not belong in the log's shape.
+ */
 function expectedFromState() {
+  const netOfTrack = new Map(state.board.layout.tracks.map((t) => [t.id, t.net]));
+  const netOfVia = new Map(state.board.layout.vias.map((v) => [v.id, v.net]));
+  const netOfZone = new Map((state.board.layout.zones || []).map((z) => [z.id, z.net]));
   return state.log.map((entry, i) => {
     const args = entry.args || {};
     const refs = [args.ref].filter(Boolean);
-    const nets = [args.to_net, entry.from_net, entry.track?.net, entry.via?.net].filter(Boolean);
+    const nets = [
+      args.to_net,
+      entry.from_net,
+      entry.track?.net,
+      entry.via?.net,
+      netOfTrack.get(args.track_id),
+      netOfVia.get(args.via_id),
+      netOfZone.get(args.zone_id),
+    ].filter(Boolean);
     if (entry.op === "swap_pins") nets.push(...netsOf(args.ref));
-    return { id: `edit-${i}`, title: entry.label, refs, nets };
+    return { id: `edit-${i}`, title: entry.label, refs, nets: [...new Set(nets)] };
   });
 }
 
@@ -873,6 +900,21 @@ function nodeTally(step) {
   return "";
 }
 
+/**
+ * What the node in flight is saying, and nothing else.
+ *
+ * The reviewing panel drew the rail and then the whole step list under it,
+ * which repeated all five nodes with their full role descriptions - the rail
+ * says which node is running in five lines, and the list said it again in
+ * forty. While a review is in progress the only thing there that the rail does
+ * not already carry is the answer arriving.
+ */
+function runningStream(steps) {
+  const step = steps.find((s) => s.running);
+  if (!step || !step.stream) return "";
+  return `<pre class="ro-stream">${escapeHtml(step.stream)}</pre>`;
+}
+
 /** The graph, as a list of steps with what each one did. */
 function pipelineHtml(steps) {
   if (!steps.length) return `<p class="ro-empty muted">Starting.</p>`;
@@ -1003,10 +1045,10 @@ function renderOverlay() {
   if (state.reviewing) {
     overlay.innerHTML = `
       <div class="ro-head"><h3>Reviewing</h3></div>
-      <div class="ro-list">${railHtml(state.steps)}${pipelineHtml(state.steps)}</div>
-      <div class="ro-foot">One reviewer with the whole board, asked twice.
-        Everything after it is arithmetic: the board refuses what it can
-        disprove, then the rules are merged in.</div>`;
+      <div class="ro-list">
+        ${railHtml(state.steps)}
+        ${runningStream(state.steps)}
+      </div>`;
     return;
   }
 
