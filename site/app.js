@@ -454,13 +454,11 @@ function renderPartInspector(panel, ref) {
       ${pins
         .map((pin) => {
           const armed = state.armed && state.armed.ref === ref && state.armed.pin === pin.pin;
-          const role = pinRole(pin);
           return `<li data-hay="${escapeHtml(
             `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
           )}">
             <b>${escapeHtml(pin.pin)}</b>
             <span class="fn">${escapeHtml(pin.function || "")}</span>
-            ${role ? `<em class="role role-${escapeHtml(role)}">${escapeHtml(role.replace(/_/g, " "))}</em>` : ""}
             <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
               ${netNames
                 .map(
@@ -579,22 +577,6 @@ function packageRows(pk) {
  * no ground pin is normal for a two-pin passive and alarming for an MCU, and
  * which one this is belongs to whoever is reading.
  */
-/**
- * What to call a pin, for someone reading.
- *
- * A ground pin's electrical type in the symbol is `power_in`, which is true and
- * useless: VSSA is an analog ground, and labelling it POWER IN tells the reader
- * the opposite of what they need. The name decides, not the net - the name is a
- * property of the part, so it stays right when the part is miswired, and a
- * power pin sitting on a ground net keeps reading as a power pin, which is
- * exactly the case worth noticing.
- */
-function pinRole(pin) {
-  const role = baseType(pin.type || "");
-  if (role === "power_in" && isGround(pin.function || pin.name || "")) return "ground";
-  return role;
-}
-
 function electrics(pins) {
   const rails = new Set();
   const grounds = new Set();
@@ -1402,8 +1384,11 @@ function openDocs(ref) {
     const facts = factsOf(boardName, part);
     const found = Object.entries(facts);
     if (!found.length) {
-      return `<p class="dm-none">No known parameters in this document.
-        Its text is still searched when the board is reviewed.</p>`;
+      return `<p class="dm-none">None of the parameters it looks for are in this
+        document: an input voltage range, a junction-to-ambient resistance, a
+        maximum junction temperature, a required bootstrap capacitor, an enable
+        requirement, an output current. Its text is still searched when the
+        board is reviewed, so passages from it can still reach a reviewer.</p>`;
     }
     return (
       '<ul class="dm-facts">' +

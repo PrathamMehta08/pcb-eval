@@ -415,13 +415,6 @@ main { display: flex; flex: 1; min-height: 0; }
   width: 58px; flex: none; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;
 }
-.role {
-  font-style: normal; font-family: var(--mono); font-size: 8.5px;
-  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim);
-  width: 38px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.role-power_in, .role-power_out { color: var(--warn); }
-.role-output, .role-open_collector, .role-tri_state { color: var(--mint); }
 kbd {
   font-family: var(--mono); font-size: 10px; padding: 0 4px;
   border: 1px solid var(--line); border-bottom-width: 2px;
@@ -531,15 +524,16 @@ kbd {
 /* ------------------------------------------------------- datasheet badges ---
    Only on parts a review would research. A tick over every resistor would be
    forty ticks saying nothing. */
-/* One filled shape with a dark rim, so it holds its edge over copper of any
-   colour. The board is drawn in hairlines; anything with an outline, a fill and
-   an inner detail reads as pasted in from another program. */
-.ds-badge { cursor: pointer; pointer-events: auto; }
-.ds-mark { stroke: rgba(6, 9, 11, .9); stroke-width: .13; stroke-linejoin: round; }
-.ds-hit { fill: transparent; stroke: none; }
-.ds-have .ds-mark { fill: var(--mint); }
-.ds-missing .ds-mark { fill: var(--warn); }
-.ds-badge:hover .ds-mark { stroke: var(--ink); }
+/* An outline on the part itself. Every badge drawn beside a part was a second
+   object competing with the copper and losing; the thing being described is
+   the part, so the mark is the part's own outline. Nothing is drawn once a
+   document is attached, so a fully documented board is a quiet one. */
+.ds-badge { cursor: pointer; }
+.ds-ring {
+  fill: none; stroke: var(--warn); stroke-width: .12; stroke-dasharray: .5 .32;
+  opacity: .85; pointer-events: stroke;
+}
+.ds-badge:hover .ds-ring { stroke: var(--ink); opacity: 1; }
 .hide-datasheets .datasheet-marks { display: none; }
 
 /* ------------------------------------------------------ datasheet, inspector */
@@ -639,7 +633,6 @@ input, select {
   color: var(--ink-mid); min-width: 18px; text-align: right; flex: none;
 }
 .pins .net-pick { flex: 1; min-width: 0; }
-.pins .role { flex: none; }
 
 .swap {
   font-family: var(--mono); font-size: 12px; line-height: 1; cursor: pointer;
@@ -3262,39 +3255,66 @@ function queryFor(board, ref, pins = []) {
 const NORMALISE = (text) => text.replace(/θ/g, "th").replace(/µ|μ/g, "u");
 
 /**
+ * The largest number in a match, which is what a range's upper bound is.
+ *
+ * Datasheets state limits as table rows - "TJ Junction temperature -40 150 C" -
+ * where min and max are two columns with nothing between them but space. A
+ * pattern that takes the first number takes the minimum, and reports -40 as the
+ * maximum junction temperature. Taking the largest is right for every limit
+ * spelled this way, and a row with one number is a range of one.
+ */
+const largest = (text) => {
+  const numbers = (text.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  return numbers.length ? Math.max(...numbers) : null;
+};
+
+/** Both ends of a range, smallest and largest, from the same row. */
+const span = (text) => {
+  const numbers = (text.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  if (numbers.length < 2) return null;
+  return { min: Math.min(...numbers), max: Math.max(...numbers) };
+};
+
+/**
  * What to look for. Each is a name, a pattern, how to read the match, and the
  * deterministic evaluator the fact turns on - null when nothing consumes it yet
  * and it is shown for the reader alone.
+ *
+ * The patterns are written for the way a datasheet is actually laid out rather
+ * than the way one might describe itself in a sentence. A parameter is a table
+ * row: a symbol, a description, a min, a max and a unit, separated by nothing
+ * but whitespace once a PDF extractor has flattened the columns. The first
+ * version of these wanted prose - "supply input voltage range 4.5 to 17 V" -
+ * and found nothing at all in two real documents, because no datasheet writes
+ * that sentence. What every one of them does write is the unit, so the unit
+ * anchors the match and the numbers are read out of the span before it.
  */
 const EXTRACTORS = [
   {
     name: "vin_range_v",
     label: "Input voltage range",
-    pattern: /(?:supply )?input voltage range\D{0,20}?([\d.]+)\s*(?:to|-|–)?\s*([\d.]+)\s*V/i,
-    read: (m) => ({ min: Number(m[1]), max: Number(m[2]) }),
+    // A package name between the description and the numbers - "LQFP48 7x7" -
+    // carries digits, so the gap cannot be digit-free the way prose allows.
+    pattern: /(?:input|supply|operating)\s+voltage(?:\s+range)?[^\n]{0,60}?((?:-?[\d.]+\s+){1,3}-?[\d.]+)\s*V\b/i,
+    read: (m) => span(m[1]),
     show: (v) => `${v.min} to ${v.max} V`,
     enables: "rail_within_input_range",
   },
   {
     name: "bootstrap_cap",
     label: "Bootstrap capacitor",
-    // Either order. "Connect a 0.1 uF capacitor between VBST and SW" and
-    // "VBST: connect a 0.1 uF capacitor" are one sentence to a reader and
-    // were not to the first version of this, which wanted the pin name first
-    // and so missed the phrasing the datasheet actually uses.
+    // Either order: "0.1 uF capacitor between VBST and SW" and "VBST: connect
+    // a 0.1 uF capacitor" are one sentence to a reader.
     pattern:
       /(?:(VBST|BOOT)\b[^.]{0,80}?([\d.]+)\s*uF|([\d.]+)\s*uF[^.]{0,80}?\b(VBST|BOOT)\b)/i,
-    read: (m) => ({
-      value_uf: Number(m[2] ?? m[3]),
-      pin: (m[1] ?? m[4]).toUpperCase(),
-    }),
+    read: (m) => ({ value_uf: Number(m[2] ?? m[3]), pin: (m[1] ?? m[4]).toUpperCase() }),
     show: (v) => `${v.value_uf} uF at ${v.pin}`,
     enables: "required_external_part",
   },
   {
     name: "enable_needs_pullup",
     label: "Enable pin",
-    pattern: /\bEN\b[^.]{0,60}?must be pulled up/i,
+    pattern: /\bEN\b[^.]{0,60}?(?:must be pulled up|requires a pull-?up)/i,
     read: () => true,
     show: () => "must be pulled up",
     enables: null,
@@ -3302,15 +3322,16 @@ const EXTRACTORS = [
   {
     name: "output_current_a",
     label: "Output current",
-    pattern: /\b([\d.]+)\s*A\s+(?:synchronous )?step-down/i,
-    read: (m) => Number(m[1]),
+    pattern: /\b([\d.]+)\s*A\s+(?:synchronous\s+)?step-?down|output current[^\n]{0,40}?([\d.]+)\s*A\b/i,
+    read: (m) => Number(m[1] ?? m[2]),
     show: (v) => `${v} A`,
     enables: null,
   },
   {
     name: "thermal",
     label: "Junction-to-ambient",
-    pattern: /(?:R\s*th\s*JA|RthJA|Theta\s*JA|junction-to-ambient[^\n]{0,40}?)\D{0,40}?([\d.]+)\s*(?:C|°C)\s*\/\s*W/i,
+    pattern:
+      /(?:R\s*th\s*JA|RthJA|Theta\s*JA|junction[- ]to[- ]ambient|junction[- ]ambient)[^\n]{0,60}?(-?[\d.]+)\s*(?:°|deg)?\s*C\s*\/\s*W/i,
     read: (m) => ({ theta_ja_c_per_w: Number(m[1]) }),
     show: (v) => `${v.theta_ja_c_per_w} °C/W`,
     enables: "junction_temp",
@@ -3318,8 +3339,9 @@ const EXTRACTORS = [
   {
     name: "max_junction_c",
     label: "Maximum junction temperature",
-    pattern: /(?:maximum |max )?(?:chip[- ])?junction temperature\D{0,40}?([\d.]+)\s*(?:C|°C)\b/i,
-    read: (m) => Number(m[1]),
+    pattern:
+      /(?:maximum |max |operating )?(?:chip[- ])?junction temperature[^\n]{0,60}?((?:-?[\d.]+[\s,]+){0,3}-?[\d.]+)\s*(?:°|deg)?\s*C\b/i,
+    read: (m) => largest(m[1]),
     show: (v) => `${v} °C`,
     enables: "junction_temp",
   },
@@ -4369,15 +4391,23 @@ function attachPanZoom(svg, { onPointerDown, onTap } = {}) {
 }
 
 /**
- * A badge over a part, saying whether anyone has told the review what its
- * datasheet says.
+ * Ring the parts nobody has documented.
  *
- * Only on parts that would be researched. A tick over every resistor would be
- * forty ticks saying nothing; the badge is worth drawing exactly where its
- * absence is worth noticing.
+ * There was a badge here - a sheet, then an outline and a dot, then a triangle -
+ * and every version had the same problem underneath the drawing: it was a
+ * second object floating beside the part, competing with the copper for the
+ * reader's attention and never quite legible against it. The thing being
+ * described is the part, so the mark is on the part. An outline around its
+ * body, in the colour the interface already uses for "wants attention", and
+ * nothing at all once a document is attached.
  *
- * Drawn last, outside the footprint's own transform, so a part rotated 270
- * degrees does not get an upside-down warning triangle.
+ * Absence as the good state is the right way round here. A board with every
+ * part documented is a quiet board, and the marks disappear as the work gets
+ * done rather than turning green and staying in the way.
+ *
+ * Drawn in the marks layer rather than on the footprint, so it survives the
+ * layer being cleared and refilled and never has to be unpicked from the
+ * board's own drawing.
  */
 function markDatasheets(svg, board, coverage) {
   const layer = svg.querySelector(".datasheet-marks");
@@ -4387,43 +4417,31 @@ function markDatasheets(svg, board, coverage) {
 
   for (const fp of board.layout.footprints) {
     const state = coverage.get(fp.ref);
-    if (!state) continue;
+    if (!state || state.status === "have") continue;
+
+    const box = footprintBounds(fp);
+    const flip = fp.layer === "B";
     const group = el("g", {
-      class: `ds-badge ds-${state.status}`,
-      transform: `translate(${f(fp.x)} ${f(fp.y)})`,
+      class: "ds-badge ds-missing",
+      transform:
+        `translate(${f(fp.x)} ${f(fp.y)})` +
+        (fp.rot ? ` rotate(${f(flip ? fp.rot : -fp.rot)})` : "") +
+        (flip ? " scale(1 -1)" : ""),
     });
     group.dataset.ref = fp.ref;
     group.dataset.status = state.status;
-
-    // One shape, and nothing drawn around it.
-    //
-    // This started as a document: a sheet, a folded corner, three ruled lines,
-    // a status mark in its corner. Every one of those is a detail that has to
-    // be resolved before the badge can be read, and at eighteen pixels over
-    // copper none of them resolve. The question being asked is a yes or a no,
-    // so the badge is a yes or a no - a dot when there is documentation, a
-    // triangle when there is not. Two silhouettes, told apart at a glance and
-    // without relying on colour, which is what the drawing has to survive on
-    // when it sits over a red track.
-    //
-    // The shapes are picked against what is already on the board. Vias and
-    // round pads are circles, so the dot is smaller than any of them; nothing
-    // on a board is a triangle.
     group.appendChild(
-      state.status === "have"
-        ? el("circle", { class: "ds-mark", cx: 0, cy: 0, r: 0.5 })
-        : el("path", { class: "ds-mark", d: "M 0 -0.7 L 0.7 0.5 L -0.7 0.5 Z" })
+      el("rect", {
+        class: "ds-ring",
+        x: f(box.x1), y: f(box.y1),
+        width: f(box.x2 - box.x1), height: f(box.y2 - box.y1),
+        rx: 0.25,
+      })
     );
-
-    // An invisible disc behind it, because the shape itself is about a
-    // millimetre across and the badge is meant to be clicked.
-    group.appendChild(el("circle", { class: "ds-hit", cx: 0, cy: 0, r: 1.1 }));
 
     const title = el("title");
     title.textContent =
-      state.status === "have"
-        ? `${fp.ref}: documentation on file. Click to open it.`
-        : `${fp.ref}: no documentation. Researched because it ${state.why}. Click to attach.`;
+      `${fp.ref}: no documentation. Researched because it ${state.why}. Click to attach.`;
     group.appendChild(title);
     layer.appendChild(group);
   }
@@ -5867,13 +5885,11 @@ function renderPartInspector(panel, ref) {
       ${pins
         .map((pin) => {
           const armed = state.armed && state.armed.ref === ref && state.armed.pin === pin.pin;
-          const role = pinRole(pin);
           return `<li data-hay="${escapeHtml(
             `${pin.pin} ${pin.function || ""} ${pin.net}`.toLowerCase()
           )}">
             <b>${escapeHtml(pin.pin)}</b>
             <span class="fn">${escapeHtml(pin.function || "")}</span>
-            ${role ? `<em class="role role-${escapeHtml(role)}">${escapeHtml(role.replace(/_/g, " "))}</em>` : ""}
             <select class="net-pick" data-pin="${escapeHtml(pin.pin)}">
               ${netNames
                 .map(
@@ -5992,22 +6008,6 @@ function packageRows(pk) {
  * no ground pin is normal for a two-pin passive and alarming for an MCU, and
  * which one this is belongs to whoever is reading.
  */
-/**
- * What to call a pin, for someone reading.
- *
- * A ground pin's electrical type in the symbol is `power_in`, which is true and
- * useless: VSSA is an analog ground, and labelling it POWER IN tells the reader
- * the opposite of what they need. The name decides, not the net - the name is a
- * property of the part, so it stays right when the part is miswired, and a
- * power pin sitting on a ground net keeps reading as a power pin, which is
- * exactly the case worth noticing.
- */
-function pinRole(pin) {
-  const role = baseType(pin.type || "");
-  if (role === "power_in" && isGround(pin.function || pin.name || "")) return "ground";
-  return role;
-}
-
 function electrics(pins) {
   const rails = new Set();
   const grounds = new Set();
@@ -6815,8 +6815,11 @@ function openDocs(ref) {
     const facts = factsOf(boardName, part);
     const found = Object.entries(facts);
     if (!found.length) {
-      return `<p class="dm-none">No known parameters in this document.
-        Its text is still searched when the board is reviewed.</p>`;
+      return `<p class="dm-none">None of the parameters it looks for are in this
+        document: an input voltage range, a junction-to-ambient resistance, a
+        maximum junction temperature, a required bootstrap capacitor, an enable
+        requirement, an output current. Its text is still searched when the
+        board is reviewed, so passages from it can still reach a reviewer.</p>`;
     }
     return (
       '<ul class="dm-facts">' +

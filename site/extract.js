@@ -28,39 +28,66 @@
 const NORMALISE = (text) => text.replace(/θ/g, "th").replace(/µ|μ/g, "u");
 
 /**
+ * The largest number in a match, which is what a range's upper bound is.
+ *
+ * Datasheets state limits as table rows - "TJ Junction temperature -40 150 C" -
+ * where min and max are two columns with nothing between them but space. A
+ * pattern that takes the first number takes the minimum, and reports -40 as the
+ * maximum junction temperature. Taking the largest is right for every limit
+ * spelled this way, and a row with one number is a range of one.
+ */
+const largest = (text) => {
+  const numbers = (text.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  return numbers.length ? Math.max(...numbers) : null;
+};
+
+/** Both ends of a range, smallest and largest, from the same row. */
+const span = (text) => {
+  const numbers = (text.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  if (numbers.length < 2) return null;
+  return { min: Math.min(...numbers), max: Math.max(...numbers) };
+};
+
+/**
  * What to look for. Each is a name, a pattern, how to read the match, and the
  * deterministic evaluator the fact turns on - null when nothing consumes it yet
  * and it is shown for the reader alone.
+ *
+ * The patterns are written for the way a datasheet is actually laid out rather
+ * than the way one might describe itself in a sentence. A parameter is a table
+ * row: a symbol, a description, a min, a max and a unit, separated by nothing
+ * but whitespace once a PDF extractor has flattened the columns. The first
+ * version of these wanted prose - "supply input voltage range 4.5 to 17 V" -
+ * and found nothing at all in two real documents, because no datasheet writes
+ * that sentence. What every one of them does write is the unit, so the unit
+ * anchors the match and the numbers are read out of the span before it.
  */
 export const EXTRACTORS = [
   {
     name: "vin_range_v",
     label: "Input voltage range",
-    pattern: /(?:supply )?input voltage range\D{0,20}?([\d.]+)\s*(?:to|-|–)?\s*([\d.]+)\s*V/i,
-    read: (m) => ({ min: Number(m[1]), max: Number(m[2]) }),
+    // A package name between the description and the numbers - "LQFP48 7x7" -
+    // carries digits, so the gap cannot be digit-free the way prose allows.
+    pattern: /(?:input|supply|operating)\s+voltage(?:\s+range)?[^\n]{0,60}?((?:-?[\d.]+\s+){1,3}-?[\d.]+)\s*V\b/i,
+    read: (m) => span(m[1]),
     show: (v) => `${v.min} to ${v.max} V`,
     enables: "rail_within_input_range",
   },
   {
     name: "bootstrap_cap",
     label: "Bootstrap capacitor",
-    // Either order. "Connect a 0.1 uF capacitor between VBST and SW" and
-    // "VBST: connect a 0.1 uF capacitor" are one sentence to a reader and
-    // were not to the first version of this, which wanted the pin name first
-    // and so missed the phrasing the datasheet actually uses.
+    // Either order: "0.1 uF capacitor between VBST and SW" and "VBST: connect
+    // a 0.1 uF capacitor" are one sentence to a reader.
     pattern:
       /(?:(VBST|BOOT)\b[^.]{0,80}?([\d.]+)\s*uF|([\d.]+)\s*uF[^.]{0,80}?\b(VBST|BOOT)\b)/i,
-    read: (m) => ({
-      value_uf: Number(m[2] ?? m[3]),
-      pin: (m[1] ?? m[4]).toUpperCase(),
-    }),
+    read: (m) => ({ value_uf: Number(m[2] ?? m[3]), pin: (m[1] ?? m[4]).toUpperCase() }),
     show: (v) => `${v.value_uf} uF at ${v.pin}`,
     enables: "required_external_part",
   },
   {
     name: "enable_needs_pullup",
     label: "Enable pin",
-    pattern: /\bEN\b[^.]{0,60}?must be pulled up/i,
+    pattern: /\bEN\b[^.]{0,60}?(?:must be pulled up|requires a pull-?up)/i,
     read: () => true,
     show: () => "must be pulled up",
     enables: null,
@@ -68,15 +95,16 @@ export const EXTRACTORS = [
   {
     name: "output_current_a",
     label: "Output current",
-    pattern: /\b([\d.]+)\s*A\s+(?:synchronous )?step-down/i,
-    read: (m) => Number(m[1]),
+    pattern: /\b([\d.]+)\s*A\s+(?:synchronous\s+)?step-?down|output current[^\n]{0,40}?([\d.]+)\s*A\b/i,
+    read: (m) => Number(m[1] ?? m[2]),
     show: (v) => `${v} A`,
     enables: null,
   },
   {
     name: "thermal",
     label: "Junction-to-ambient",
-    pattern: /(?:R\s*th\s*JA|RthJA|Theta\s*JA|junction-to-ambient[^\n]{0,40}?)\D{0,40}?([\d.]+)\s*(?:C|°C)\s*\/\s*W/i,
+    pattern:
+      /(?:R\s*th\s*JA|RthJA|Theta\s*JA|junction[- ]to[- ]ambient|junction[- ]ambient)[^\n]{0,60}?(-?[\d.]+)\s*(?:°|deg)?\s*C\s*\/\s*W/i,
     read: (m) => ({ theta_ja_c_per_w: Number(m[1]) }),
     show: (v) => `${v.theta_ja_c_per_w} °C/W`,
     enables: "junction_temp",
@@ -84,8 +112,9 @@ export const EXTRACTORS = [
   {
     name: "max_junction_c",
     label: "Maximum junction temperature",
-    pattern: /(?:maximum |max )?(?:chip[- ])?junction temperature\D{0,40}?([\d.]+)\s*(?:C|°C)\b/i,
-    read: (m) => Number(m[1]),
+    pattern:
+      /(?:maximum |max |operating )?(?:chip[- ])?junction temperature[^\n]{0,60}?((?:-?[\d.]+[\s,]+){0,3}-?[\d.]+)\s*(?:°|deg)?\s*C\b/i,
+    read: (m) => largest(m[1]),
     show: (v) => `${v} °C`,
     enables: "junction_temp",
   },

@@ -627,15 +627,23 @@ export function attachPanZoom(svg, { onPointerDown, onTap } = {}) {
 }
 
 /**
- * A badge over a part, saying whether anyone has told the review what its
- * datasheet says.
+ * Ring the parts nobody has documented.
  *
- * Only on parts that would be researched. A tick over every resistor would be
- * forty ticks saying nothing; the badge is worth drawing exactly where its
- * absence is worth noticing.
+ * There was a badge here - a sheet, then an outline and a dot, then a triangle -
+ * and every version had the same problem underneath the drawing: it was a
+ * second object floating beside the part, competing with the copper for the
+ * reader's attention and never quite legible against it. The thing being
+ * described is the part, so the mark is on the part. An outline around its
+ * body, in the colour the interface already uses for "wants attention", and
+ * nothing at all once a document is attached.
  *
- * Drawn last, outside the footprint's own transform, so a part rotated 270
- * degrees does not get an upside-down warning triangle.
+ * Absence as the good state is the right way round here. A board with every
+ * part documented is a quiet board, and the marks disappear as the work gets
+ * done rather than turning green and staying in the way.
+ *
+ * Drawn in the marks layer rather than on the footprint, so it survives the
+ * layer being cleared and refilled and never has to be unpicked from the
+ * board's own drawing.
  */
 export function markDatasheets(svg, board, coverage) {
   const layer = svg.querySelector(".datasheet-marks");
@@ -645,43 +653,31 @@ export function markDatasheets(svg, board, coverage) {
 
   for (const fp of board.layout.footprints) {
     const state = coverage.get(fp.ref);
-    if (!state) continue;
+    if (!state || state.status === "have") continue;
+
+    const box = footprintBounds(fp);
+    const flip = fp.layer === "B";
     const group = el("g", {
-      class: `ds-badge ds-${state.status}`,
-      transform: `translate(${f(fp.x)} ${f(fp.y)})`,
+      class: "ds-badge ds-missing",
+      transform:
+        `translate(${f(fp.x)} ${f(fp.y)})` +
+        (fp.rot ? ` rotate(${f(flip ? fp.rot : -fp.rot)})` : "") +
+        (flip ? " scale(1 -1)" : ""),
     });
     group.dataset.ref = fp.ref;
     group.dataset.status = state.status;
-
-    // One shape, and nothing drawn around it.
-    //
-    // This started as a document: a sheet, a folded corner, three ruled lines,
-    // a status mark in its corner. Every one of those is a detail that has to
-    // be resolved before the badge can be read, and at eighteen pixels over
-    // copper none of them resolve. The question being asked is a yes or a no,
-    // so the badge is a yes or a no - a dot when there is documentation, a
-    // triangle when there is not. Two silhouettes, told apart at a glance and
-    // without relying on colour, which is what the drawing has to survive on
-    // when it sits over a red track.
-    //
-    // The shapes are picked against what is already on the board. Vias and
-    // round pads are circles, so the dot is smaller than any of them; nothing
-    // on a board is a triangle.
     group.appendChild(
-      state.status === "have"
-        ? el("circle", { class: "ds-mark", cx: 0, cy: 0, r: 0.5 })
-        : el("path", { class: "ds-mark", d: "M 0 -0.7 L 0.7 0.5 L -0.7 0.5 Z" })
+      el("rect", {
+        class: "ds-ring",
+        x: f(box.x1), y: f(box.y1),
+        width: f(box.x2 - box.x1), height: f(box.y2 - box.y1),
+        rx: 0.25,
+      })
     );
-
-    // An invisible disc behind it, because the shape itself is about a
-    // millimetre across and the badge is meant to be clicked.
-    group.appendChild(el("circle", { class: "ds-hit", cx: 0, cy: 0, r: 1.1 }));
 
     const title = el("title");
     title.textContent =
-      state.status === "have"
-        ? `${fp.ref}: documentation on file. Click to open it.`
-        : `${fp.ref}: no documentation. Researched because it ${state.why}. Click to attach.`;
+      `${fp.ref}: no documentation. Researched because it ${state.why}. Click to attach.`;
     group.appendChild(title);
     layer.appendChild(group);
   }

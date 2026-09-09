@@ -402,13 +402,6 @@ main { display: flex; flex: 1; min-height: 0; }
   width: 58px; flex: none; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;
 }
-.role {
-  font-style: normal; font-family: var(--mono); font-size: 8.5px;
-  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim);
-  width: 38px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.role-power_in, .role-power_out { color: var(--warn); }
-.role-output, .role-open_collector, .role-tri_state { color: var(--mint); }
 kbd {
   font-family: var(--mono); font-size: 10px; padding: 0 4px;
   border: 1px solid var(--line); border-bottom-width: 2px;
@@ -518,15 +511,16 @@ kbd {
 /* ------------------------------------------------------- datasheet badges ---
    Only on parts a review would research. A tick over every resistor would be
    forty ticks saying nothing. */
-/* One filled shape with a dark rim, so it holds its edge over copper of any
-   colour. The board is drawn in hairlines; anything with an outline, a fill and
-   an inner detail reads as pasted in from another program. */
-.ds-badge { cursor: pointer; pointer-events: auto; }
-.ds-mark { stroke: rgba(6, 9, 11, .9); stroke-width: .13; stroke-linejoin: round; }
-.ds-hit { fill: transparent; stroke: none; }
-.ds-have .ds-mark { fill: var(--mint); }
-.ds-missing .ds-mark { fill: var(--warn); }
-.ds-badge:hover .ds-mark { stroke: var(--ink); }
+/* An outline on the part itself. Every badge drawn beside a part was a second
+   object competing with the copper and losing; the thing being described is
+   the part, so the mark is the part's own outline. Nothing is drawn once a
+   document is attached, so a fully documented board is a quiet one. */
+.ds-badge { cursor: pointer; }
+.ds-ring {
+  fill: none; stroke: var(--warn); stroke-width: .12; stroke-dasharray: .5 .32;
+  opacity: .85; pointer-events: stroke;
+}
+.ds-badge:hover .ds-ring { stroke: var(--ink); opacity: 1; }
 .hide-datasheets .datasheet-marks { display: none; }
 
 /* ------------------------------------------------------ datasheet, inspector */
@@ -626,7 +620,6 @@ input, select {
   color: var(--ink-mid); min-width: 18px; text-align: right; flex: none;
 }
 .pins .net-pick { flex: 1; min-width: 0; }
-.pins .role { flex: none; }
 
 .swap {
   font-family: var(--mono); font-size: 12px; line-height: 1; cursor: pointer;
