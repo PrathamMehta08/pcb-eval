@@ -289,7 +289,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "--detector",
-        choices=["single", "graph", "v7", "v8", "both", "all"],
+        choices=["single", "graph", "v7", "v8", "both", "all", "ablation"],
         default="both",
     )
     ap.add_argument("--board", default="", help="one board id, or a prefix")
@@ -312,7 +312,12 @@ def main() -> int:
             raise SystemExit(f"no board matching {args.board!r}")
     detectors = {
         "both": ["single", "graph"],
-        "all": ["single", "v7", "v8"],
+        # V7 stays runnable as the ablation - V8 is V7 plus a second look, so
+        # running both says what that call is worth - but the comparison that
+        # matters, and the one the README carries, is the baseline against the
+        # architecture that beat it.
+        "all": ["single", "v8"],
+        "ablation": ["single", "v7", "v8"],
     }.get(args.detector, [args.detector])
 
     client = Client(model=args.model, concurrency=args.concurrency, tpm=args.tpm)

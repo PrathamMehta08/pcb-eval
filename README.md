@@ -7,9 +7,9 @@ An editable board, a review button, and a score.
 **[Open the page](https://pcb-eval.vercel.app)**; the review runs through a
 serverless function that holds the key, so nothing is needed to try it.
 
-Pressing Review runs the graph in front of you — each node as it starts, what it
-proposed, what the board refuted, and the gate's decision at each turn of the
-loop.
+Pressing Review walks the five nodes in front of you — which one is running,
+which two ask a model and which three are arithmetic, what each proposed, and
+what the board refused.
 
 ---
 
@@ -34,8 +34,10 @@ nets, 400 track segments, 63 vias, five copper pours, 61 × 46 mm on two layers.
 An STM32F103C8T6, a TPS563208 buck from a barrel jack, an AMS1117-3.3 LDO, a
 ULN2003 driving a unipolar stepper, three servo headers and an HC-SR04.
 
-The seven seeded defects are not invented. Each one is a fault this design could
-plausibly have shipped with, and the seventh is the one it **did** ship with:
+A second board, `dcdcc`, is a bare TPS561208 buck converter, and between them
+they carry thirteen seeded defects. None is invented. Each is a fault the design
+could plausibly have shipped with, and one of them is the fault this board
+**did** ship with:
 
 > Every ground pad on the top layer stranded from the pour on the bottom.
 > No stitching vias, no top pour. ERC passed. DRC passed. The board did not work.
@@ -47,95 +49,81 @@ it, let alone find it.
 
 ## Results
 
-Eight boards - one clean, seven seeded. Two detectors, given the same distilled
-board, the same model and the same temperature. One asks a single flat prompt to
-do all three jobs; the other splits them across a LangGraph pipeline of three
-specialists, a merge, and a deterministic critic. The whole sweep runs five
-times, because a single run of this cannot be told apart from noise.
+One corpus, two detectors, five trials.
 
-`openai/gpt-oss-120b` - 5 trials - 300 calls - prompts `29d9b80529de` -
+**one prompt** is the baseline: the whole distilled board, one model call,
+whatever it says is the answer. **V8** wraps that same call - the same bytes,
+the same question, through the same prompt builder - in deterministic work
+before and after it, and adds one more call that asks the reviewer what its own
+first pass missed.
+
+`openai/gpt-oss-120b` - 5 trials - 225 calls - prompts `29d9b80529de` -
 schema `96e5a7694704` - corpus `56602c9aa9ca` - pipeline
 `4c9f32168aaa` - full record in
 [`results/latest.json`](results/latest.json)
 
-Three detectors on one corpus: two boards, one clean case each and thirteen
-seeded defects, five trials. Every seeded board carries exactly one planted
-defect, so a trial is 13 chances to catch something and 2 chances to invent
-something.
+Two boards, one clean case each and thirteen seeded defects. Every seeded board
+carries exactly one planted defect, so a trial is 13 chances to catch something
+and 2 chances to invent something.
 
-## The three architectures
+## The two architectures
 
 Boxes a model sees are marked `LLM`. Everything else is arithmetic.
 
 ```text
-ONE PROMPT                V7                          V8
+ONE PROMPT                    V8
 
-                          analyse                     analyse
-                          measure the board,          measure the board,
-                          run the rules               run the rules
-                             |                           |
-  distil the board        distil the board            distil the board
-     |                       |                           |
-  +--------+              +--------+                  +--------+
-  | review |  LLM         | review |  LLM             | review |  LLM
-  +--------+              +--------+                  +--------+
-     |                       |                           |
-     |                       |                        +-------------+
-     |                       |                        | second look |  LLM
-     |                       |                        +-------------+
-     |                       |                           |
-     |                    validate                    validate
-     |                    subject exists?             subject exists?
-     |                    board refutes it?           board refutes it?
-     |                    duplicate?                  duplicate?
-     |                       |                           |
-     |                    aggregate                   aggregate
-     |                    merge with the rules,       merge with the rules,
-     |                    rank, score                 rank, score
-     |                       |                           |
-  findings                findings                    findings
+                              analyse
+                              distil the board,
+                              run the rules
+                                 |
+  distil the board            distil the board
+     |                           |
+  +--------+                  +--------+
+  | review |  LLM             | review |  LLM
+  +--------+                  +--------+
+     |                           |
+     |                        +-------------+
+     |                        | second look |  LLM
+     |                        +-------------+
+     |                           |
+     |                        validate
+     |                        is the subject on this board?
+     |                        does the copper refute it?
+     |                        is it a repeat?
+     |                           |
+     |                        aggregate
+     |                        merge with the rules, rank, score
+     |                           |
+  findings                    findings
 
-1 call/board            1 call/board                2 calls/board
+1 call/board                 2 calls/board
 ```
 
-**One prompt** is the baseline: the whole distilled board, one call, whatever it
-says is the answer. No rules, no checking.
-
-**V7** wraps that same call in deterministic work. Before it, `analyse` runs the
-rule checks. After it, `validate` throws out any finding whose part or net is
-not on the board, that repeats another finding, or that the board's own copper
-contradicts. Then `aggregate` merges what the reviewer said with what the rules
-measured. The reviewer is handed the baseline's prompt through the baseline's
-own builder - not similar, identical - so any difference is the wrapping and not
-a better-written question. Same one call per board.
-
-**V8** adds one call. After the first pass it shows the reviewer its own list of
-findings and asks what that list is missing. It sees the board and its own
-answer; never the rule findings, never the defects.
-
-Neither has an LLM critic. There was one, and it was measured and deleted - see
-below.
+There is no LLM critic in V8, and its absence is a measurement rather than an
+omission - see below.
 
 ## What they scored
 
-| per trial, median (min-max) | one prompt | V7 | V8 |
-|---|---|---|---|
-| defects caught, of 13 | 7 (4-9) | 9 (8-11) | **12 (8-12)** |
-| findings on the clean boards | **4 (3-5)** | 5 (3-6) | 8 (6-9) |
-| unmatched findings on seeded boards | **26 (22-36)** | 30 (17-46) | 52 (44-75) |
+| per trial, median (min-max) | one prompt | V8 |
+|---|---|---|
+| defects caught, of 13 | 7 (4-9) | **12 (8-12)** |
+| findings on the clean boards | **4 (3-5)** | 8 (6-9) |
+| unmatched findings on seeded boards | **26 (22-36)** | 52 (44-75) |
 
-| over 5 trials | one prompt | V7 | V8 |
-|---|---|---|---|
-| **rule-silent recall** | 24 of 45 - 53% | 27 of 45 - 60% | **35 of 45 - 78%** |
-| all defects | 33 of 65 - 51% | 47 of 65 - 72% | **55 of 65 - 85%** |
-| **findings the copper refutes - reported** | 6 | **0** | **0** |
-| model calls per board | 1 | 1 | 2 |
-| **cost per full pass** (15 boards) | $0.024 | $0.024 | $0.058 |
-| cost per board | $0.0016 | $0.0016 | $0.0039 |
+| over 5 trials | one prompt | V8 |
+|---|---|---|
+| **rule-silent recall** | 24 of 45 - 53% | **35 of 45 - 78%** |
+| all defects | 33 of 65 - 51% | **55 of 65 - 85%** |
+| **findings the copper refutes - reported** | 6 | **0** |
+| model calls per board | 1 | 2 |
+| **cost per pass** (15 boards) | $0.024 | $0.058 |
+| cost per board | $0.0016 | $0.0039 |
 
-At these prices a hundred-board run costs sixteen cents with V7 and thirty-nine
-with V8. The model is `openai/gpt-oss-120b` at $0.15 per million tokens in and
-$0.60 out; a different model moves every figure in that row and none above it.
+At these prices a hundred boards is sixteen cents with the baseline and thirty-
+nine with V8. The model is `openai/gpt-oss-120b` at $0.15 per million tokens in
+and $0.60 out; a different model moves every figure in those two rows and none
+of the figures above them.
 
 ## What "rule-silent" means, and why it is the headline
 
@@ -145,55 +133,44 @@ three of those are a rule and a generator written from the same condition -
 `value-unorderable` against `value-not-orderable`. The defect is planted by the
 same logic that detects it.
 
-Any system carrying those rules catches those defects without a model being
-involved at all. So recall over all thirteen is partly a measurement of that
-coincidence rather than of the reviewer.
+Any system carrying those rules catches those defects with no model involved, so
+recall over all thirteen is partly a measurement of that coincidence rather than
+of the reviewer.
 
 **Rule-silent recall is over the nine defects no rule fires on.** It is the
-smaller, less flattering number, and it is the one that distinguishes one
-reviewer from another. V8 wins there - 78% against 53% - so the gain is the
-architecture and not the rules.
+smaller, less flattering number and the one that distinguishes one reviewer from
+another. V8 wins there - **78% against 53%** - so the gain is the architecture
+and not the rules.
 
 Both are reported because both are true: rule-silent measures the reviewer, and
-all-defects measures what the system actually delivers to someone reviewing a
-board.
+all-defects measures what the system delivers to someone reviewing a board.
 
-## What "÷ single" means
+## The gap between two draws is wider than the gap between two architectures
 
-Corpora differ in difficulty, and this project has changed corpus twice. An
-absolute recall from one cannot be compared with an absolute recall from
-another - the current corpus has thirteen defects across two boards where the
-old one had seven on one, and the baseline drops from 69% to 51% between them
-without anything about the baseline changing.
+The measurement that produced V8, and the most surprising number here.
 
-So an architecture is quoted as a ratio: **its recall divided by the recall of a
-single flat prompt on the same corpus, in the same trials.** The baseline
-absorbs the difficulty difference, and 1.42 means "caught 42% more than one
-prompt did, measured beside it".
+Two runs of the *same* reviewer, on the *same* prompt, at temperature zero,
+caught seven and eleven of thirteen defects - and between them covered twelve.
+Not different architectures. The same question asked twice.
 
-| measured on | architecture | ÷ single |
-|---|---|---|
-| old corpus, prompts that named the defects | 3 reviewers | 1.14 |
-| old corpus, board-agnostic prompts | 3 reviewers | **0.88** |
-| this corpus | V7 | 1.42 |
-| this corpus | V8 | **1.67** |
+So V8 takes a second draw. After the first pass it asks the same model, with the
+same board, what its own list is missing - and it is shown only that list, never
+the rule findings and never the defects. It costs one call and it is worth eight
+points of rule-silent recall.
 
-The 1.14 is the number this repository exists to disown: the specialist graph
-beat one prompt only while the prompts spelled out the conventions the seeded
-defects broke. Take that out and the same architecture loses - 0.88 - which is
-the finding the next section is about.
+The corollary is worth stating plainly: **a single-sample comparison of two
+reviewers on this corpus is mostly noise.** Five trials is the minimum it
+supports, and `tests.run 13` refuses a committed sweep with fewer.
 
-### The LLM critic was measured three ways and deleted
+## The LLM critic was measured three ways and deleted
 
-V7 was specified with one, and it does not have one. This is the clearest
-result of the night after V8 itself.
+V8 was specified with one. It does not have one.
 
 Wired as written it rejected **409 of 409 findings across five trials** - the
 entire reviewer output. It was told to be strictest about whether quoted
-evidence supports a claim, and the baseline's schema carries no quoted evidence,
-so every finding reached it reading `evidence: (none quoted)`. Recall fell to
-exactly the four defects the deterministic rules catch, which is the shape this
-failure always takes.
+evidence supports a claim, and this schema carries no quoted evidence, so every
+finding reached it reading `evidence: (none quoted)`. Recall fell to exactly the
+four defects the deterministic rules catch.
 
 Rewritten to judge what is actually there, and told the asymmetry - a defect
 rejected is gone and ships with the board, a doubtful finding kept costs a
@@ -201,155 +178,45 @@ person a minute - it went the other way and rejected six of two hundred and
 twenty-nine. Over five trials it cost two rule-silent defects, 33 against 35,
 and saved one finding on a clean board.
 
-So it went, and V8 got cheaper as well as better: 150 calls where it used 225.
-The job it was meant to do is already done by `validate`, which is arithmetic
-and string comparison rather than a second opinion, and which is why V7 and V8
-report zero findings the board contradicts while the baseline reports six.
+So it went, and V8 got cheaper as well as better. What it was meant to do is
+already done by `validate`, which is arithmetic and string comparison rather
+than a second opinion - and which is why V8 reports zero findings the board
+contradicts while the baseline reports six.
 
 The rule it failed is this project's own: **if what would refute a node's output
 is a measurement, build the measurement; if the answer is another model, the
 node is probably unnecessary.**
 
-Worth recording that removing it broke the report, silently and in the shape
-this failure always takes. `aggregate` read `verified`, which only the critic
-filled; with the critic gone nothing wrote it and the report became the rule
-findings alone. Recall read 4 of 13 - the rule-covered four - which looks like a
-result and is a wiring bug.
+## What is not being claimed
 
-### One sample of a reviewer is not the reviewer
-
-The measurement that produced V8, and the most surprising number here.
-
-Two runs of the *same* reviewer, on the *same* prompt, at temperature zero,
-caught seven and eleven of thirteen defects - and between them covered twelve.
-Not different architectures. The same question asked twice. The spread between
-one draw and another was wider than the spread between any two architectures
-this project has measured.
-
-So V8 takes a second draw. After the first pass it asks the same model, with the
-same board, what its own list is missing - and it is shown only that list, never
-the rule findings and never the defects. It costs one call and it is worth eight
-points of rule-silent recall.
-
-The corollary is worth stating plainly: **any single-sample comparison of two
-reviewers on this corpus is mostly noise.** The first version of V7 measured
-7 of 13 and the corrected one measured 11, and part of that gap was the fix and
-part was the draw. Five trials is the minimum this corpus supports, and
-`tests.run 13` refuses to accept a committed sweep with fewer.
-
-### What V7 got wrong first, which was mine and not the model's
-
-V7's first build scored *below* the baseline - 3 of 9 rule-silent against 5.
-
-Its pack carried a catalogue of the deterministic checks with a note not to
-spend the answer on what they cover. The reviewer read "these are handled" as
-covering whole categories rather than the individual checks named, and stopped
-reporting a swapped regulator and an oversized companion capacitor - neither of
-which any rule had fired on, and both of which the baseline caught. The
-suppression note cost more recall than the duplicate findings it saved, and
-duplicates were already free to merge afterwards.
-
-The reviewer is now handed the baseline's prompt through the baseline's own
-builder, so the two are asked the same question about the same bytes and
-anything V7 or V8 wins is the architecture around the call.
-
-### The prompts used to name the defects, and the scores moved when they stopped
-
-This is the finding worth reading the rest for.
-
-Until this sweep the reviewers' prompts opened with a description of this exact
-board, and the jobs spelled out the conventions the seeded defects break - a
-three-wire servo lead's pin order, a four-wire sensor module's pin order, the
-buck's supply pins, the buck's 3 A rating. The output schema's own example
-carried this board's net names, `/FB` and `VBST`. None of that was edited after
-a score was seen, but all of it told the detectors where to look.
-
-Removing every trace of it, so a prompt names no part, no net and no convention
-specific to one board, cost both detectors about a fifth of their recall:
-
-| over 5 trials | prompts naming the defects | board-agnostic prompts |
-|---|---|---|
-| the graph, caught /35 | 27 | **21** |
-| one prompt, caught /35 | 28 | **24** |
-| the graph, clean-board findings | 17 | 21 |
-| one prompt, clean-board findings | 33 | **18** |
-| the graph, seeded noise | 97 | 166 |
-| one prompt, seeded noise | 202 | **100** |
-
-**And it reverses the comparison.** With prompts that named the defect classes,
-the graph led on noise and matched on recall. Without them the single flat
-prompt is ahead on recall, 24 to 21, and quieter on the seeded boards, 100
-unmatched findings to 166. Everything this project previously reported about
-decomposition beating a flat prompt was measured through prompts that had been
-told what to find.
-
-`tests/run.py` step 12 now fails if any prompt names a part, a net, a designator
-or a board-specific convention, so the leak cannot come back quietly. The guard
-earned its place immediately: its first version used a length cutoff and sailed
-past `S1` and `/FB` sitting in the schema example.
-
-### What survives
-
-One thing, and it is the one that needs no judgement.
-
-**The graph reported zero findings the copper refutes, in all five trials. The
-single prompt reported one in the median trial and up to two.** A finding that
-says a net is split into islands, on a net whose copper is one connected piece,
-is wrong and a union-find says so. The graph proposes none of them at all now
-(0 of 0); the baseline proposes five across the sweep and reports all five.
-
-Its matched findings are also tighter: a mean breadth of 2.9 names against 8.21,
-and it never buys a match by naming half the board.
-
-That is a real difference, and it is a smaller claim than the one this README
-used to make. Decomposition did not beat a flat prompt at finding defects on this
-corpus. What it bought is that nothing reaches the report which the board itself
-can contradict.
-
-### Where recall comes from
-
-Per defect, out of five trials:
-
-| defect | the graph | one prompt |
-|---|---|---|
-| `vfb-vbst-swap` | 5 | 5 |
-| `ground-stranded` | 4 | 4 |
-| `stepper-common-open` | **4** | 2 |
-| `servo-power-end-pin` | **3** | 2 |
-| `stepper-in4-floating` | **3** | 1 |
-| `ultrasonic-crossed` | 1 | **5** |
-| `unbuildable-value` | 1 | **5** |
-
-The graph leads on three, the baseline on two, and they tie on two. The
-baseline's two are the ones a deterministic rule settles instantly - a value
-with no digits in it, and a header whose pin order does not match the module -
-which is the argument this project keeps arriving at from different directions.
-
-### What is not being claimed
-
-- **It is one board.** Seven defects seeded into a single design, so they are
+- **It is two boards.** Thirteen defects seeded into two designs, so they are
   not independent draws. Five trials fix the noise in the measurement, not the
   narrowness of the corpus.
-- **The spread is wide enough to swallow most of these differences.** The
-  graph's clean-board count ranges from 0 to 10 across five identical runs. Read
-  the ranges, not the medians.
-- **Recall here is the model's, not the system's.** The deterministic rules
-  always run, and on every miss the rule for that defect fired. That is equally
-  true of both detectors.
+- **The spread is wide.** V8's per-trial catch ranges from 8 to 12. Read the
+  ranges, not the medians.
+- **V8 is noisier.** Eight findings on a clean board against four. It finds half
+  again as many real defects and roughly doubles what it says about a board that
+  is fine, and the clean-board count is the honest measure of that cost.
 - **The clean-board count conflates two things.** Some of what both raise there
   is true and simply not a seeded defect: a decoupling capacitor really is
   17.2 mm from its ground pin, and one reset pin really has no external pull.
 - **The refutation check is narrow.** It settles existence, split nets, values,
   and whether a net is held at a level. It says nothing about a thermal or
   current claim, which is why those are not solicited.
+- **No prompt names anything belonging to one board.** Not a part, not a net,
+  not a convention only one seeded defect breaks. `tests.run 12` asserts it
+  mechanically, and it earns its place: an earlier version of this project
+  opened its prompts with a description of this exact board and its recall was a
+  fifth higher for it.
 
-### What it cost
+## What it cost
 
-Five trials from cold: 300 model calls, 834k tokens in, 677k out, **$0.531**,
-23 minutes at two concurrent requests. Every sweep carries the prompt, schema,
-corpus and pipeline hashes, because a score that outlives the system it measured
-is worse than no score - and `pipeline_hash` exists because adding an evaluator
-once changed the results while the other three hashes stayed identical.
+Five trials from cold: 225 model calls, 628k tokens in,
+528k out, **$0.4112**. Every sweep carries the prompt,
+schema, corpus and pipeline hashes, because a score that outlives the system it
+measured is worse than no score - and `pipeline_hash` covers the detectors' own
+code, because it once did not and two sweeps an hour apart reported V8 at 55 of
+65 and at 20 under the same hash.
 
 
 ## What a netlist cannot see
@@ -413,7 +280,7 @@ checks all work on it.
 
 ## Running it
 
-Steps 1 through 11 need no API key at all.
+Everything except the sweep itself needs no API key at all.
 
 ```bash
 "/c/Program Files/KiCad/10.0/bin/python.exe" -m venv .venv
@@ -423,7 +290,7 @@ Steps 1 through 11 need no API key at all.
 
 ```bash
 .venv/Scripts/python.exe -m extract.build      # boards/stm32-good.json
-.venv/Scripts/python.exe -m tests.run          # the acceptance checks, 14 of 14
+.venv/Scripts/python.exe -m tests.run          # the acceptance checks, 19 of 19
 .venv/Scripts/python.exe tools/build_site.py   # dist/pcb-eval.html
 ```
 
@@ -440,15 +307,25 @@ The scored sweep needs a Groq key in `.env` (copy `.env.example`):
 .venv/Scripts/python.exe -m harness.run --trials 5 --tpm 40000 --concurrency 2
 ```
 
+That runs the baseline and V8. `--detector ablation` adds V7 - V8 without the
+second look - which is how the value of that one call was measured. Then:
+
+```bash
+.venv/Scripts/python.exe tools/compare.py
+```
+
+which splits recall into rule-silent and all-defects, and refuses to print a
+table quietly if the sweep was produced by different code than is checked out.
+
 `--trials` repeats the whole sweep and reports a median with its range. It folds
 the trial number into the cache key, so trial 2 asks the model again rather than
 replaying trial 1 — without which repeating a sweep measures the cache and
 reports a variance of zero.
 
 `tests/run.py` is the contract: one check per row of the build order, each
-asserting the thing that row claims. Fourteen of fourteen pass, and none of them
-needs an API key: the graph's wiring, its gate and its contradiction check are
-all decidable against a stub, and only the quality of the findings is not.
+asserting the thing that row claims. Nineteen of nineteen pass, and none of them
+needs an API key: the graph's wiring and its deterministic checks are all
+decidable against a stub, and only the quality of the findings is not.
 `place()`, the transform every view and every copper check rests on, is pinned
 to six pad centres read out of KiCad's own `layer-F_Cu.svg` plot — in Python and
 again in JavaScript.
@@ -459,7 +336,7 @@ again in JavaScript.
 extract/     kicadxml and .kicad_pcb into one Board object, joined on UUID
 harness/     the nine edit operations, seven deterministic rules, the distiller,
              the Groq client, the grader, the sweep runner
-graph/       ingest, three reviewers, adjudicate, gate
+graph/       V8: analyse, review, second look, validate, aggregate
 baseline/    the single flat prompt every architecture is measured against
 site/        ten ES modules; tools/build_site.py makes one file of them
 tests/       the acceptance checks, and the fixtures that keep Python and
@@ -513,8 +390,8 @@ In order of how much each would change what this measures.
 2. **A second model.** Whether decomposition beats capability is the question
    behind the whole comparison, and one model cannot answer it. The trial
    machinery makes it cheap: `--trials 5 --model <other>` is about a dollar, and
-   it is the difference between "the graph helps this model" and "the graph
+   it is the difference between "this helps this model" and "this
    helps".
-4. **More boards.** Seven defects on one board is a corpus you can overfit by
+4. **More boards.** Thirteen defects on two boards is a corpus you can overfit by
    accident. The extractor takes any KiCad project; the presets are the part
    that is board-specific.
