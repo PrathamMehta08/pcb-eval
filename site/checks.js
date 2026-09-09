@@ -637,6 +637,35 @@ export function ampacity(widthMm, { outer = true, ounces = 1 } = {}) {
 }
 
 /**
+ * Which nets are supply rails, by two routes rather than one.
+ *
+ * A name that follows the convention - VBUS, VCC, +3.3V, VOUT - or a net
+ * carrying a pin the symbol typed as power. Either is enough, because neither
+ * is reliable alone: one board calls its rails `/IN` and `/OUT`, which no
+ * naming rule catches, and another draws every symbol with untyped pins.
+ *
+ * The honest limit is that a board doing both - unconventional names and
+ * untyped pins - has no supply rail this can find, and the ampacity check is
+ * silent on it rather than wrong about it. `dcdcc` in this repository is
+ * exactly that board, which is why it is worth saying out loud instead of
+ * discovering later.
+ */
+function supplyRails(board) {
+  const out = new Set();
+  for (const net of board.nets) {
+    if (isGround(net.name)) continue;
+    if (isRail(net.name)) {
+      out.add(net.name);
+      continue;
+    }
+    if (net.nodes.some((n) => POWER_PIN.has(baseType(n.type)))) out.add(net.name);
+  }
+  return out;
+}
+
+const POWER_PIN = new Set(["power_in", "power_out"]);
+
+/**
  * The narrowest track on each supply rail, and what it can carry.
  *
  * A measurement, not a verdict, and it is here because the verdict needs a
@@ -647,10 +676,11 @@ export function ampacity(widthMm, { outer = true, ounces = 1 } = {}) {
  */
 export function railCapacity(board) {
   const out = [];
+  const rails = supplyRails(board);
   const narrowest = new Map();
   for (const track of board.layout.tracks) {
     const net = track.net;
-    if (!net || !isRail(net) || isGround(net)) continue;
+    if (!net || !rails.has(net)) continue;
     if (!narrowest.has(net) || track.width < narrowest.get(net)) {
       narrowest.set(net, track.width);
     }
@@ -695,10 +725,11 @@ export function runDfm(board) {
  */
 export function railAmpacityFindings(board, rated) {
   if (!rated || !Object.keys(rated).length) return [];
+  const rails = supplyRails(board);
   const narrowest = new Map();
   for (const track of board.layout.tracks) {
     const net = track.net;
-    if (!net || !isRail(net) || isGround(net)) continue;
+    if (!net || !rails.has(net)) continue;
     if (!narrowest.has(net) || track.width < narrowest.get(net)) {
       narrowest.set(net, track.width);
     }
