@@ -364,6 +364,85 @@ main { display: flex; flex: 1; min-height: 0; }
 .stranded { fill: none; stroke: var(--crit); stroke-width: .16; opacity: .9; }
 .footprint { cursor: move; }
 
+/* ---------------------------------------------------------------- dialog ---
+   Attaching a document means reading what came back out of it, and the rail is
+   300px of a column that already holds four panels. */
+.modal-back {
+  position: fixed; inset: 0; z-index: 40; display: flex;
+  align-items: center; justify-content: center; padding: 24px;
+  background: rgba(4, 6, 9, .72);
+}
+.modal {
+  width: min(680px, 100%); max-height: min(760px, 100%);
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+}
+.modal-head {
+  display: flex; align-items: center; gap: 12px; flex: none;
+  padding: 14px 18px; border-bottom: 1px solid var(--line);
+}
+.modal-head h3 {
+  margin: 0; font-family: var(--mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim);
+}
+.modal-head h3 em { font-style: normal; color: var(--mint); margin-left: 8px; }
+.icon {
+  margin-left: auto; width: 26px; height: 26px; line-height: 1; font-size: 18px;
+  cursor: pointer; color: var(--ink-dim); background: none;
+  border: 1px solid transparent; border-radius: var(--radius);
+}
+.icon:hover { color: var(--ink); border-color: var(--line); }
+.modal-body { padding: 16px 18px 18px; overflow-y: auto; }
+.modal-body h4 {
+  margin: 20px 0 8px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim);
+}
+.modal-body h4:first-child { margin-top: 0; }
+.dm-why { margin: 0 0 4px; font-size: 12px; color: var(--ink-mid); }
+.dm-note { margin: 0 0 10px; font-size: 11.5px; color: var(--ink-dim); max-width: 62ch; }
+.dm-or { margin: 12px 0 6px; font-size: 11px; color: var(--ink-dim); }
+
+.dm-drop {
+  display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+  padding: 22px 18px; text-align: center; border-radius: var(--radius);
+  border: 1px dashed var(--line); background: var(--raised);
+}
+.dm-drop.over { border-color: var(--mint); background: rgba(79, 211, 154, .07); }
+.dm-drop b { font-size: 12.5px; font-weight: 500; }
+.dm-drop span { font-size: 11.5px; color: var(--ink-dim); }
+.dm-drop input { display: none; }
+
+.dm-file {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  border-radius: var(--radius); background: var(--raised);
+  border-left: 2px solid var(--mint);
+}
+.dm-name { font-size: 12.5px; }
+.dm-meta {
+  margin-left: auto; font-family: var(--mono); font-size: 10.5px;
+  color: var(--ink-dim); font-variant-numeric: tabular-nums;
+}
+
+.dm-hit {
+  display: block; margin: 0 0 8px; padding: 9px 11px;
+  border-radius: var(--radius); background: var(--raised);
+  border-left: 2px solid var(--line);
+}
+.dm-cite {
+  display: block; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .06em; color: var(--mint); margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.dm-text { display: block; font-size: 12px; color: var(--ink-mid); line-height: 1.55; }
+
+.modal-body textarea {
+  width: 100%; resize: vertical; font-family: var(--mono); font-size: 11.5px;
+  padding: 8px 10px; color: var(--ink); background: var(--raised);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.btn.primary-ghost { color: var(--mint); border-color: rgba(79, 211, 154, .4); }
+
 /* ------------------------------------------------------- datasheet badges ---
    Only on parts a review would research. A tick over every resistor would be
    forty ticks saying nothing. */
@@ -1981,6 +2060,7 @@ function distill(board) {
 
 
 
+
 const PACK_VERSION = "1";
 
 /** Rules whose findings belong to the physical reviewer rather than the circuit one. */
@@ -2032,9 +2112,11 @@ function circuitPack(board, findings = []) {
     header(board),
     componentsSection(board),
     netsSection(board),
-    // Whatever anyone typed in about a part's datasheet. Empty for a board
-    // nobody has filled in, which is the normal state and not a defect.
+    // Whatever anyone typed in about a part's datasheet, and whatever
+    // retrieval found in the documents they attached. Both empty for a board
+    // nobody has told the page anything about, which is the normal state.
     researchBlock(board),
+    passagesBlock(board),
     findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
   ]);
 }
@@ -2789,6 +2871,477 @@ async function filesFrom(transfer) {
   return out;
 }
 
+// ===== site/rag.js ====================================================
+
+/**
+ * Retrieval over documentation somebody attached to a part.
+ *
+ * A datasheet is 30 to 100 pages. Six researched parts on one board is a few
+ * hundred thousand tokens, and the reviewer needs about two thousand of it. The
+ * job of this module is to pick which two thousand.
+ *
+ * WHY BM25 AND NOT EMBEDDINGS
+ *
+ * The obvious move is to embed every passage and rank by cosine distance. It is
+ * the wrong tool here, for four reasons that are all about this project rather
+ * than about retrieval in general.
+ *
+ * The queries are rare exact tokens. VBST, RthetaJA, UVLO, 0.1uF. Lexical
+ * scoring is at its strongest on exactly those, because a term in one chunk of
+ * four hundred outweighs a term in three hundred and eighty of them. Embeddings
+ * smooth rare tokens toward their neighbours, which is the opposite of what you
+ * want when VBST and VBAT must not be confused.
+ *
+ * A scored sweep may not touch the network, and it is stamped with hashes so it
+ * can be reproduced. An embedding call in the retrieval path breaks both.
+ *
+ * It has to run in the browser, on a board someone just dropped on the page,
+ * with no server. A local embedding model does not.
+ *
+ * And when retrieval returns the wrong passage you can read the reason. A
+ * vector store gives you a number.
+ *
+ * WHAT BM25 IS
+ *
+ * Three ideas. Rare terms count more, which is the idf term. A term repeated
+ * ten times is not ten times the evidence, so term frequency saturates, which
+ * is k1. A long passage should not win by being long, so length is normalised
+ * against the collection average, which is b. That is the whole algorithm.
+ *
+ * DETERMINISM
+ *
+ * Scores are rounded before sorting and ties break on page then index. Two
+ * chunks that score alike must not swap places between one run and the next, or
+ * between this file and the Python beside it - the passages go into a prompt,
+ * and the prompt is a cache key.
+ */
+
+/** BM25's two knobs, at the values the literature settled on. */
+const K1 = 1.2;
+const B = 0.75;
+
+/** Chunk size in words, and how much neighbouring chunks share. */
+const CHUNK_WORDS = 350;
+const OVERLAP_WORDS = 50;
+
+/** Scores are compared at this precision, so float noise cannot reorder them. */
+const PRECISION = 6;
+
+/**
+ * Symbols a datasheet uses that a keyboard does not. Indexed both ways, so
+ * someone who typed "theta" finds a page that printed the Greek letter.
+ */
+const TRANSLITERATE = [
+  [/θ/g, "theta"],
+  [/µ|μ/g, "u"],
+  [/Ω/g, "ohm"],
+  [/°/g, "deg"],
+];
+
+/**
+ * Words that mean the same thing to a datasheet and different things to a
+ * tokenizer. Hand-written and inspectable on purpose: a model could generate a
+ * longer table, and then nobody could say why a retrieval missed.
+ */
+const EXPANSIONS = {
+  theta: ["thermal", "resistance", "junction", "ambient", "rthetaja"],
+  thermal: ["theta", "rthetaja", "junction", "dissipation"],
+  bootstrap: ["vbst", "boot", "capacitor"],
+  enable: ["en", "uvlo", "threshold", "shutdown"],
+  input: ["vin", "supply", "operating", "range"],
+  output: ["vout", "regulation"],
+  maximum: ["absolute", "ratings", "max"],
+  decoupling: ["bypass", "capacitor", "placement"],
+};
+
+/**
+ * Split text into terms without destroying the ones that matter.
+ *
+ * A tokenizer that splits on every non-letter turns 0.1uF into "0", "1", "uf"
+ * and 4.5V into "4", "5v", which is how a retrieval that looks correct returns
+ * the revision history. Dots, signs and slashes are kept inside a token and
+ * trimmed only from its ends.
+ */
+function terms(text) {
+  let source = String(text || "").toLowerCase();
+  for (const [pattern, plain] of TRANSLITERATE) source = source.replace(pattern, plain);
+  const out = [];
+  for (const raw of source.split(/[^a-z0-9.\-+_/]+/)) {
+    const token = raw.replace(/^[.\-+_/]+/, "").replace(/[.\-+_/]+$/, "");
+    if (token.length > 1) out.push(token);
+  }
+  return out;
+}
+
+/**
+ * A best guess at which section a passage came from.
+ *
+ * Datasheet headings are short and title-case, and sit at the start of what
+ * follows them. This is a label for whoever reads the citation, not something a
+ * check depends on, so a wrong guess costs nothing.
+ */
+function heading(words) {
+  const head = words.slice(0, 8).join(" ");
+  const match = /^([A-Z][A-Za-z ]{3,40}?)(?=\s+[A-Z]?[a-z]|\s*$)/.exec(head);
+  return match ? match[1].trim() : "";
+}
+
+/**
+ * Cut a document into passages, never across a page boundary.
+ *
+ * Page boundaries are hard limits because the page number is the provenance: a
+ * quote spanning two pages cannot be cited to either. Inside a page the split is
+ * by word count with an overlap, so a parameter table straddling a boundary
+ * survives whole in one of the two chunks.
+ *
+ * `pages` is one string per page, which is what a PDF extractor gives and what
+ * pasted text degenerates to - a single page.
+ */
+function chunk(pages, { part = "", source = "" } = {}) {
+  const out = [];
+  const step = Math.max(1, CHUNK_WORDS - OVERLAP_WORDS);
+  pages.forEach((text, i) => {
+    const words = String(text || "").split(/\s+/).filter(Boolean);
+    if (!words.length) return;
+    for (let at = 0; at < words.length; at += step) {
+      const slice = words.slice(at, at + CHUNK_WORDS);
+      if (!slice.length) break;
+      out.push({
+        part,
+        source,
+        page: i + 1,
+        index: out.length,
+        text: slice.join(" "),
+        section: heading(slice),
+      });
+      if (at + CHUNK_WORDS >= words.length) break;
+    }
+  });
+  return out;
+}
+
+/**
+ * A BM25 index over one part's documentation.
+ *
+ * The collection is that part's own chunks rather than every part's, because
+ * idf should mean "rare in this document". A term common in a regulator
+ * datasheet is not thereby common in an MCU's.
+ */
+function index(chunks) {
+  const docs = chunks.map((c) => {
+    const words = terms(c.text);
+    const freq = new Map();
+    for (const t of words) freq.set(t, (freq.get(t) || 0) + 1);
+    return { chunk: c, freq, length: words.length };
+  });
+  const seen = new Map();
+  for (const doc of docs) {
+    for (const term of doc.freq.keys()) seen.set(term, (seen.get(term) || 0) + 1);
+  }
+  const total = docs.length || 1;
+  const avg = docs.reduce((sum, d) => sum + d.length, 0) / total;
+  const idf = new Map();
+  for (const [term, n] of seen) {
+    // The 1 inside the log keeps idf positive for a term that appears in every
+    // chunk, so a ubiquitous term contributes nothing rather than contributing
+    // backwards and pushing the passages that contain it below the ones that
+    // do not.
+    idf.set(term, Math.log(1 + (total - n + 0.5) / (n + 0.5)));
+  }
+  return { docs, idf, avg: avg || 1, size: docs.length };
+}
+
+/** Expand a query with the hand-written synonyms, originals first. */
+function expand(wanted) {
+  const out = [...wanted];
+  for (const term of wanted) {
+    for (const extra of EXPANSIONS[term] || []) {
+      if (!out.includes(extra)) out.push(extra);
+    }
+  }
+  return out;
+}
+
+/**
+ * The top `k` passages for a query, best first.
+ *
+ * A chunk matching nothing scores zero and is dropped rather than ranked last.
+ * Padding a pack with irrelevant text is worse than a shorter pack: every line
+ * of it is a line the reviewer might reason from.
+ */
+function search(idx, query, k = 3) {
+  const wanted = expand(terms(query));
+  const scored = [];
+  for (const doc of idx.docs) {
+    let score = 0;
+    for (const term of wanted) {
+      const f = doc.freq.get(term);
+      if (!f) continue;
+      const norm = f + K1 * (1 - B + (B * doc.length) / idx.avg);
+      score += (idx.idf.get(term) || 0) * ((f * (K1 + 1)) / norm);
+    }
+    if (score <= 0) continue;
+    scored.push({ ...doc.chunk, score: Number(score.toFixed(PRECISION)) });
+  }
+  scored.sort((a, b) => b.score - a.score || a.page - b.page || a.index - b.index);
+  return scored.slice(0, k);
+}
+
+/**
+ * The query for one part, built from the board and nothing else.
+ *
+ * This is a boundary, not a convenience. Built from the deterministic findings
+ * instead, retrieval would fetch the passage describing the seeded defect and
+ * the pack would quote it - the same leak the checks block was rewritten to
+ * close, arriving by a different route. It reads the part, its value, its
+ * package and the nets its pins sit on: all things true of the board whether or
+ * not anything is wrong with it.
+ */
+function queryFor(board, ref, pins = []) {
+  const comp = board.components.find((c) => c.ref === ref);
+  if (!comp) return "";
+  const nets = [...new Set(pins.map((p) => p.net).filter(Boolean))];
+  const functions = [...new Set(pins.map((p) => p.name || p.function).filter(Boolean))];
+  return [
+    comp.value || "",
+    comp.description || "",
+    (comp.footprint || "").split(":").pop() || "",
+    ...functions,
+    ...nets.map((n) => n.replace(/^\//, "")),
+    // Standing questions, identical for every part on every board.
+    "absolute maximum ratings input voltage range thermal resistance",
+    "required external components enable threshold",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+// ===== site/docs.js ===================================================
+
+/**
+ * The documentation somebody attached to a part, and where it is kept.
+ *
+ * The harness fetches a datasheet, caches the PDF and reads it. The page cannot:
+ * no server, and a board someone just dropped on it must not need a vendor CDN
+ * to be reviewed. So the page accepts the document instead - dropped in, or
+ * pasted as text - extracts what it can, and keeps it in the browser.
+ *
+ * WHERE IT LIVES
+ *
+ * IndexedDB, not localStorage. The extracted text of a sixty-page datasheet is
+ * a couple of hundred kilobytes and localStorage is a five-megabyte budget
+ * shared with everything else the page stores; four datasheets would fill it and
+ * the failure mode is a thrown quota error in the middle of an attach.
+ *
+ * Only the extracted text is stored, never the PDF. Text is what retrieval
+ * reads, it is a tenth of the size, and a document nobody can re-download from
+ * here is not worth the space.
+ *
+ * WHY THERE IS A SYNCHRONOUS CACHE IN FRONT OF IT
+ *
+ * IndexedDB is asynchronous and pack building is not. Rather than colour every
+ * caller async for a store that holds a handful of small records, the documents
+ * for the open board are read into memory once when the board loads and after
+ * every attach. Everything downstream reads the cache.
+ */
+
+
+
+const DB = "pcb-eval";
+const STORE = "docs";
+const VERSION = 1;
+
+/** board name -> ref -> {name, pages, addedAt}. Filled by `loadDocs`. */
+const attached = new Map();
+
+/** ref -> built BM25 index. Dropped whenever that part's document changes. */
+const indexes = new Map();
+
+function open() {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") return reject(new Error("no indexedDB"));
+    const req = indexedDB.open(DB, VERSION);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(STORE)) {
+        req.result.createObjectStore(STORE, { keyPath: "key" });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function transact(mode, run) {
+  return open().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, mode);
+        const out = run(tx.objectStore(STORE));
+        tx.oncomplete = () => resolve(out && out.result !== undefined ? out.result : out);
+        tx.onerror = () => reject(tx.error);
+      })
+  );
+}
+
+const keyOf = (boardName, ref) => `${boardName}::${ref}`;
+
+/**
+ * Read this board's documents into memory. Called when a board loads.
+ *
+ * A browser with IndexedDB blocked - a private window, or site data turned off -
+ * resolves to an empty board rather than failing. Nothing here is load-bearing:
+ * no attached document is the ordinary state, and the review runs without one.
+ */
+async function loadDocs(boardName) {
+  const board = new Map();
+  attached.set(boardName, board);
+  indexes.clear();
+  try {
+    const rows = await transact("readonly", (store) => store.getAll());
+    for (const row of rows || []) {
+      if (row.board === boardName) board.set(row.ref, row);
+    }
+  } catch {
+    /* storage unavailable. The page works without it. */
+  }
+  return board;
+}
+
+/** Every document attached to this board, keyed by ref. */
+function docsFor(boardName) {
+  return attached.get(boardName) || new Map();
+}
+
+/** The document attached to one part, or null. */
+function docFor(boardName, ref) {
+  return docsFor(boardName).get(ref) || null;
+}
+
+/** Store a document against a part, replacing whatever was there. */
+async function attach(boardName, ref, { name, pages }) {
+  const record = {
+    key: keyOf(boardName, ref),
+    board: boardName,
+    ref,
+    name: String(name || "document"),
+    pages: (pages || []).map((p) => String(p || "")),
+    addedAt: Date.now(),
+  };
+  docsFor(boardName).set(ref, record);
+  indexes.delete(record.key);
+  try {
+    await transact("readwrite", (store) => store.put(record));
+  } catch {
+    /* it stays in memory for this session, which is better than refusing. */
+  }
+  return record;
+}
+
+/** Forget the document attached to a part. */
+async function detach(boardName, ref) {
+  docsFor(boardName).delete(ref);
+  indexes.delete(keyOf(boardName, ref));
+  try {
+    await transact("readwrite", (store) => store.delete(keyOf(boardName, ref)));
+  } catch {
+    /* nothing to do: it is already gone from memory. */
+  }
+}
+
+/** The BM25 index over one part's document, built once and kept. */
+function indexFor(boardName, ref) {
+  const key = keyOf(boardName, ref);
+  if (indexes.has(key)) return indexes.get(key);
+  const doc = docFor(boardName, ref);
+  if (!doc) return null;
+  const built = index(chunk(doc.pages, { part: ref, source: doc.name }));
+  indexes.set(key, built);
+  return built;
+}
+
+/** How many passages a part's document was cut into. */
+function chunkCount(boardName, ref) {
+  return indexFor(boardName, ref)?.size || 0;
+}
+
+/**
+ * The passages worth showing a reviewer about one part.
+ *
+ * The query comes from `queryFor`, which reads the board and never the
+ * findings. That is the whole reason retrieval is safe to put in a pack.
+ */
+function passagesFor(board, ref, pins, k = 3) {
+  const idx = indexFor(board.meta.name, ref);
+  if (!idx) return [];
+  return search(idx, queryFor(board, ref, pins), k);
+}
+
+/**
+ * Extract one string per page from a PDF.
+ *
+ * pdf.js is fetched from the CDN the moment a PDF is actually dropped, never on
+ * page load: a visitor who only wants to look at a board should not pay for a
+ * parser they will not use, and the page has to keep working when the CDN is
+ * unreachable. If it cannot load, the caller is told to paste text instead,
+ * which is a real answer rather than a broken button.
+ */
+async function pagesOfPdf(file) {
+  const pdfjs = await loadPdfJs();
+  const data = new Uint8Array(await file.arrayBuffer());
+  const doc = await pdfjs.getDocument({ data }).promise;
+  const pages = [];
+  for (let n = 1; n <= doc.numPages; n += 1) {
+    const content = await (await doc.getPage(n)).getTextContent();
+    pages.push(content.items.map((i) => i.str).join(" ").replace(/\s+/g, " ").trim());
+  }
+  return pages;
+}
+
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174";
+
+let pending = null;
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pending) return pending;
+  pending = new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = `${PDFJS}/pdf.min.js`;
+    tag.onload = () => {
+      if (!window.pdfjsLib) return reject(new Error("pdf.js loaded but defined nothing"));
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS}/pdf.worker.min.js`;
+      resolve(window.pdfjsLib);
+    };
+    tag.onerror = () => reject(new Error("could not reach the PDF reader"));
+    document.head.appendChild(tag);
+  });
+  return pending;
+}
+
+/**
+ * The retrieved passages, as a pack section.
+ *
+ * Verbatim, with the page they came from, because a reviewer that paraphrases a
+ * datasheet cannot be checked and one that quotes it can. Three passages per
+ * part is the budget: a pack is a prompt, and a prompt that recites a datasheet
+ * has spent its room on text the reviewer was going to skim.
+ *
+ * Absent for a board nobody has attached anything to, which is the ordinary
+ * state and not a defect.
+ */
+function passagesBlock(board) {
+  const docs = docsFor(board.meta.name);
+  if (!docs.size) return [];
+  const pins = pinsByRef(board);
+  const lines = ["RETRIEVED DOCUMENTATION  verbatim, from documents attached to this board"];
+  for (const ref of [...docs.keys()].sort()) {
+    for (const hit of passagesFor(board, ref, pins.get(ref) || [], 3)) {
+      const where = [`${hit.source} p${hit.page}`, hit.section].filter(Boolean).join(", ");
+      lines.push(`${ref} (${where}): ${hit.text}`);
+    }
+  }
+  return lines.length > 1 ? lines : [];
+}
+
 // ===== site/datasheets.js =============================================
 
 /**
@@ -2816,6 +3369,7 @@ async function filesFrom(transfer) {
  * a browser told to block site data - so every access is guarded and the page
  * works with none of it.
  */
+
 
 
 const KEY = "pcb-eval.datasheets.v1";
@@ -2908,13 +3462,27 @@ function setFacts(boardName, ref, facts) {
   return board[ref] || null;
 }
 
-/** How each part stands: "have", "missing", or absent when it needs nothing. */
+/**
+ * How each part stands: "have", "missing", or absent when it needs nothing.
+ *
+ * Either kind of answer counts. An attached document is the better one, because
+ * retrieval can quote it and a reviewer can be held to the quote; typed fields
+ * are the quicker one, and they are what the deterministic evaluators read. A
+ * part with either is covered, and the badge says which.
+ */
 function coverage(board) {
   const needed = needsDatasheet(board);
   const have = factsFor(board.meta.name);
   const out = new Map();
   for (const [ref, why] of needed) {
-    out.set(ref, { status: have[ref] ? "have" : "missing", why });
+    const doc = docFor(board.meta.name, ref);
+    const facts = Boolean(have[ref]);
+    out.set(ref, {
+      status: doc || facts ? "have" : "missing",
+      why,
+      doc: doc || null,
+      facts,
+    });
   }
   return out;
 }
@@ -4449,6 +5017,7 @@ async function review(sample, board, { onStep, signal } = {}) {
 
 
 
+
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -4499,6 +5068,9 @@ function drawView({ keepZoom = true } = {}) {
   stage.appendChild(svg);
 
   markDatasheets(svg, state.board, coverage(state.board));
+  // The badges are drawn from what is in memory, so a board whose
+  // documents are still being read shows them a moment later.
+  loadDocs(state.board.meta.name).then(paintDatasheets);
   panzoom = attachPanZoom(svg, {
     onPointerDown: startDrag,
     onTap: (target) => select(target ? describe(target) : null),
@@ -5490,73 +6062,227 @@ boot();
 
 
 /**
- * What the review knows about this part's datasheet, and a way to tell it more.
+ * What the review knows about this part's documentation, in one line.
  *
- * Shown only for parts a review would research. The fields are the ones the
- * harness extracts and the evaluators consume, so what is typed here reaches a
- * check rather than a paragraph: an input range feeds the rail comparison, a
- * companion part feeds the required-part check, a thermal resistance feeds the
- * junction temperature. Everything is optional, and blank means the check that
- * needs it is skipped rather than guessed.
+ * The detail lives in a dialog rather than in the rail. The rail is 300 pixels
+ * of a column that already holds four panels, and attaching a document means
+ * reading what came back out of it - which needs room the rail does not have.
  */
 function renderDatasheetPanel(panel, ref) {
-  const needed = needsDatasheet(state.board);
-  const why = needed.get(ref);
-  if (!why) return;
+  const state_ = coverage(state.board).get(ref);
+  if (!state_) return;
 
-  const have = factsOf(state.board.meta.name, ref) || {};
-  const fields = [
-    ["vin_range_v", "Input range", "e.g. 4.5-17 V"],
-    ["external_part", "Needs part", "e.g. 0.1uF between VBST and SW"],
-    ["theta_ja", "Theta JA", "e.g. 92.6 C/W"],
-    ["max_junction_c", "Max Tj", "e.g. 125 C"],
-    ["note", "Other", "anything else the datasheet states"],
-  ];
-  const filled = Object.keys(have).length;
+  const doc = state_.doc;
+  const facts = factsOf(state.board.meta.name, ref);
   const wrap = document.createElement("div");
-  wrap.className = `ds-panel ${filled ? "have" : "missing"}`;
+  wrap.className = `ds-panel ${state_.status}`;
+  const said = doc
+    ? html`<b>${doc.name}</b> · ${plural(doc.pages.length, "page")}
+        · ${plural(chunkCount(state.board.meta.name, ref), "passage")}`
+    : facts
+      ? "Typed facts only. No document to quote from."
+      : html`No documentation. Researched because it ${state_.why}.`;
   wrap.innerHTML = `
-    <h4>${filled ? "Datasheet supplied" : "No datasheet"}</h4>
-    <p class="ds-why">${
-      filled
-        ? "These reach the deterministic checks, not just the review."
-        : html`Researched because it ${why}. Nothing is assumed in its absence —
-            the checks that need these are skipped.`
-    }</p>
-    ${fields
-      .map(
-        ([key, label, hint]) => html`<label class="ds-field"
-          ><span>${label}</span
-          ><input data-ds="${key}" value="${have[key] || ""}" placeholder="${hint}"
-        /></label>`
-      )
-      .join("")}
-    <div class="row"><button class="btn" id="ds-save">Save</button>${
-      filled ? '<button class="btn danger" id="ds-clear">Clear</button>' : ""
-    }</div>`;
+    <h4>Documentation</h4>
+    <p class="ds-why">${said}</p>
+    <div class="row"><button class="btn" id="ds-open">${
+      doc || facts ? "Manage" : "Attach documentation"
+    }</button></div>`;
   panel.appendChild(wrap);
-
-  const collect = () =>
-    Object.fromEntries(
-      [...wrap.querySelectorAll("[data-ds]")].map((i) => [i.dataset.ds, i.value])
-    );
-  wrap.querySelector("#ds-save").addEventListener("click", () => {
-    setFacts(state.board.meta.name, ref, collect());
-    paintDatasheets();
-    renderInspector();
-    flash(`Datasheet facts saved for ${ref}`);
-  });
-  wrap.querySelector("#ds-clear")?.addEventListener("click", () => {
-    setFacts(state.board.meta.name, ref, {});
-    paintDatasheets();
-    renderInspector();
-  });
+  wrap.querySelector("#ds-open").addEventListener("click", () => openDocs(ref));
 }
 
 /** Repaint the badges from whatever is stored now. */
 function paintDatasheets() {
   const svg = document.querySelector("#stage .board-svg");
   if (svg) markDatasheets(svg, state.board, coverage(state.board));
+}
+
+/** "1 page", "3 pages". Written once because it appears in three places. */
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+const FACT_FIELDS = [
+  ["vin_range_v", "Input range", "4.5 to 17 V"],
+  ["external_part", "Needs part", "0.1uF between VBST and SW"],
+  ["theta_ja", "Theta JA", "92.6 C/W"],
+  ["max_junction_c", "Max Tj", "125 C"],
+  ["note", "Other", "anything else the document states"],
+];
+
+/**
+ * The documentation dialog for one part.
+ *
+ * Two ways in, because they answer different questions. A document is the
+ * better one: retrieval quotes it, so a finding that leans on it can be checked
+ * against a page number. Typed fields are the quicker one, and they are what
+ * the deterministic evaluators actually read - an input range feeds the rail
+ * comparison, a thermal resistance feeds the junction temperature.
+ *
+ * The retrieved passages are shown because otherwise nobody can tell whether
+ * the retrieval is any good. What appears here is exactly what a reviewer would
+ * be handed about this part, ranked as it would rank it.
+ */
+function openDocs(ref) {
+  const board = state.board;
+  const name = board.meta.name;
+  const host = document.createElement("div");
+  host.className = "modal-back";
+  host.innerHTML = `<div class="modal" role="dialog" aria-modal="true"
+      aria-label="Documentation for ${escapeHtml(ref)}">
+    <div class="modal-head">
+      <h3>Documentation <em>${escapeHtml(ref)}</em></h3>
+      <button class="icon" id="dm-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body" id="dm-body"></div>
+  </div>`;
+  document.body.appendChild(host);
+
+  const close = () => {
+    host.remove();
+    document.removeEventListener("keydown", onKey);
+    paintDatasheets();
+    renderInspector();
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") close();
+  };
+  document.addEventListener("keydown", onKey);
+  host.addEventListener("click", (e) => {
+    if (e.target === host) close();
+  });
+  host.querySelector("#dm-close").addEventListener("click", close);
+
+  const body = host.querySelector("#dm-body");
+  paint();
+
+  function paint() {
+    const doc = docFor(name, ref);
+    const facts = factsOf(name, ref) || {};
+    const why = needsDatasheet(board).get(ref);
+    const pins = pinsOf(ref);
+    const hits = doc ? passagesFor(board, ref, pins, 3) : [];
+
+    body.innerHTML = `
+      ${why ? html`<p class="dm-why">Researched because it ${why}.</p>` : ""}
+
+      <h4>Attached document</h4>
+      ${
+        doc
+          ? html`<div class="dm-file"
+              ><span class="dm-name">${doc.name}</span
+              ><span class="dm-meta">${plural(doc.pages.length, "page")} ·
+                ${plural(chunkCount(name, ref), "passage")}</span
+              ><button class="btn danger" id="dm-remove">Remove</button></div>`
+          : `<label class="dm-drop" id="dm-drop">
+              <input type="file" id="dm-file" accept=".pdf,.txt,.md,.text">
+              <b>Drop a PDF or text file</b>
+              <span>or click to choose. It is read in your browser and never uploaded.</span>
+            </label>
+            <p class="dm-or">or paste the text</p>
+            <textarea id="dm-paste" rows="4"
+              placeholder="Paste the part of the document that matters — a parameter table, an application note."></textarea>
+            <div class="row"><button class="btn" id="dm-attach">Attach text</button></div>`
+      }
+      ${
+        doc
+          ? `<h4>What the reviewer would be shown</h4>
+             <p class="dm-note">The top passages for this part, ranked by BM25.
+               The query is built from the part and its nets — never from what
+               the checks found, or retrieval would hand over the answer.</p>
+             ${
+               hits.length
+                 ? hits
+                     .map(
+                       (h) => html`<div class="dm-hit"
+                         ><span class="dm-cite">p${h.page}${
+                         h.section ? ` · ${h.section}` : ""
+                       } · ${h.score}</span><span class="dm-text">${h.text.slice(0, 320)}…</span
+                       ></div>`
+                     )
+                     .join("")
+                 : `<p class="dm-note">Nothing in this document matched. That is
+                     a real answer: the reviewer is shown no passage rather than
+                     the least irrelevant one.</p>`
+             }`
+          : ""
+      }
+
+      <h4>Typed facts</h4>
+      <p class="dm-note">These reach the deterministic checks, not just the
+        review. Blank means the check that needs it is skipped — never
+        estimated.</p>
+      ${FACT_FIELDS.map(
+        ([key, label, hint]) => html`<label class="ds-field"
+          ><span>${label}</span
+          ><input data-ds="${key}" value="${facts[key] || ""}" placeholder="${hint}"
+        /></label>`
+      ).join("")}
+      <div class="row">
+        <button class="btn primary-ghost" id="dm-save">Save facts</button>
+        ${Object.keys(facts).length ? '<button class="btn" id="dm-clear">Clear</button>' : ""}
+      </div>`;
+
+    body.querySelector("#dm-remove")?.addEventListener("click", async () => {
+      await detach(name, ref);
+      flash(`Document removed from ${ref}`);
+      paint();
+    });
+    body.querySelector("#dm-file")?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) take(file);
+    });
+    const drop = body.querySelector("#dm-drop");
+    if (drop) {
+      drop.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        drop.classList.add("over");
+      });
+      drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+      drop.addEventListener("drop", (e) => {
+        e.preventDefault();
+        drop.classList.remove("over");
+        const file = e.dataTransfer?.files?.[0];
+        if (file) take(file);
+      });
+    }
+    body.querySelector("#dm-attach")?.addEventListener("click", async () => {
+      const text = body.querySelector("#dm-paste").value.trim();
+      if (!text) return flash("Nothing to attach.");
+      await attach(name, ref, { name: "pasted text", pages: [text] });
+      flash(`Text attached to ${ref}`);
+      paint();
+    });
+    body.querySelector("#dm-save")?.addEventListener("click", () => {
+      const values = Object.fromEntries(
+        [...body.querySelectorAll("[data-ds]")].map((i) => [i.dataset.ds, i.value])
+      );
+      setFacts(name, ref, values);
+      flash(`Facts saved for ${ref}`);
+      paint();
+    });
+    body.querySelector("#dm-clear")?.addEventListener("click", () => {
+      setFacts(name, ref, {});
+      paint();
+    });
+  }
+
+  /** Read a dropped file. A PDF needs the parser; anything else is text. */
+  async function take(file) {
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
+    flash(`Reading ${file.name}…`);
+    try {
+      const pages = isPdf ? await pagesOfPdf(file) : [await file.text()];
+      const words = pages.join(" ").split(/\s+/).filter(Boolean).length;
+      if (!words) {
+        return flash("No text came out of that. A scanned PDF has none — paste it instead.");
+      }
+      await attach(name, ref, { name: file.name, pages });
+      flash(`${file.name} attached to ${ref} — ${words} words`);
+      paint();
+    } catch (err) {
+      flash(`${err.message}. Paste the text instead.`);
+    }
+  }
 }
 </script>
 

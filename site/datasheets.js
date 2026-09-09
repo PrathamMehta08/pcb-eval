@@ -25,6 +25,7 @@
  */
 
 import { baseType, pinsByRef } from "./checks.js";
+import { docFor } from "./docs.js";
 
 const KEY = "pcb-eval.datasheets.v1";
 
@@ -116,13 +117,27 @@ export function setFacts(boardName, ref, facts) {
   return board[ref] || null;
 }
 
-/** How each part stands: "have", "missing", or absent when it needs nothing. */
+/**
+ * How each part stands: "have", "missing", or absent when it needs nothing.
+ *
+ * Either kind of answer counts. An attached document is the better one, because
+ * retrieval can quote it and a reviewer can be held to the quote; typed fields
+ * are the quicker one, and they are what the deterministic evaluators read. A
+ * part with either is covered, and the badge says which.
+ */
 export function coverage(board) {
   const needed = needsDatasheet(board);
   const have = factsFor(board.meta.name);
   const out = new Map();
   for (const [ref, why] of needed) {
-    out.set(ref, { status: have[ref] ? "have" : "missing", why });
+    const doc = docFor(board.meta.name, ref);
+    const facts = Boolean(have[ref]);
+    out.set(ref, {
+      status: doc || facts ? "have" : "missing",
+      why,
+      doc: doc || null,
+      facts,
+    });
   }
   return out;
 }

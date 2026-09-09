@@ -58,6 +58,8 @@ MODULES = [
     "packs.js",
     "kicad.js",
     "upload.js",
+    "rag.js",
+    "docs.js",
     "datasheets.js",
     "render.js",
     "graph.js",

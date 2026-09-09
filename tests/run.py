@@ -1173,6 +1173,10 @@ def check_evidence_boundary(c: Check) -> None:
     # never have happened.
     run_node(c, "datasheets.mjs")
 
+    # And retrieval over whatever documentation was attached to a part, whose
+    # query is built from the board so that it cannot fetch the seeded defect.
+    run_node(c, "rag.mjs")
+
 
 # -------------------------------------------------------------------------- 16
 

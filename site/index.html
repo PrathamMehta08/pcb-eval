@@ -351,6 +351,85 @@ main { display: flex; flex: 1; min-height: 0; }
 .stranded { fill: none; stroke: var(--crit); stroke-width: .16; opacity: .9; }
 .footprint { cursor: move; }
 
+/* ---------------------------------------------------------------- dialog ---
+   Attaching a document means reading what came back out of it, and the rail is
+   300px of a column that already holds four panels. */
+.modal-back {
+  position: fixed; inset: 0; z-index: 40; display: flex;
+  align-items: center; justify-content: center; padding: 24px;
+  background: rgba(4, 6, 9, .72);
+}
+.modal {
+  width: min(680px, 100%); max-height: min(760px, 100%);
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+}
+.modal-head {
+  display: flex; align-items: center; gap: 12px; flex: none;
+  padding: 14px 18px; border-bottom: 1px solid var(--line);
+}
+.modal-head h3 {
+  margin: 0; font-family: var(--mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim);
+}
+.modal-head h3 em { font-style: normal; color: var(--mint); margin-left: 8px; }
+.icon {
+  margin-left: auto; width: 26px; height: 26px; line-height: 1; font-size: 18px;
+  cursor: pointer; color: var(--ink-dim); background: none;
+  border: 1px solid transparent; border-radius: var(--radius);
+}
+.icon:hover { color: var(--ink); border-color: var(--line); }
+.modal-body { padding: 16px 18px 18px; overflow-y: auto; }
+.modal-body h4 {
+  margin: 20px 0 8px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim);
+}
+.modal-body h4:first-child { margin-top: 0; }
+.dm-why { margin: 0 0 4px; font-size: 12px; color: var(--ink-mid); }
+.dm-note { margin: 0 0 10px; font-size: 11.5px; color: var(--ink-dim); max-width: 62ch; }
+.dm-or { margin: 12px 0 6px; font-size: 11px; color: var(--ink-dim); }
+
+.dm-drop {
+  display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+  padding: 22px 18px; text-align: center; border-radius: var(--radius);
+  border: 1px dashed var(--line); background: var(--raised);
+}
+.dm-drop.over { border-color: var(--mint); background: rgba(79, 211, 154, .07); }
+.dm-drop b { font-size: 12.5px; font-weight: 500; }
+.dm-drop span { font-size: 11.5px; color: var(--ink-dim); }
+.dm-drop input { display: none; }
+
+.dm-file {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  border-radius: var(--radius); background: var(--raised);
+  border-left: 2px solid var(--mint);
+}
+.dm-name { font-size: 12.5px; }
+.dm-meta {
+  margin-left: auto; font-family: var(--mono); font-size: 10.5px;
+  color: var(--ink-dim); font-variant-numeric: tabular-nums;
+}
+
+.dm-hit {
+  display: block; margin: 0 0 8px; padding: 9px 11px;
+  border-radius: var(--radius); background: var(--raised);
+  border-left: 2px solid var(--line);
+}
+.dm-cite {
+  display: block; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .06em; color: var(--mint); margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.dm-text { display: block; font-size: 12px; color: var(--ink-mid); line-height: 1.55; }
+
+.modal-body textarea {
+  width: 100%; resize: vertical; font-family: var(--mono); font-size: 11.5px;
+  padding: 8px 10px; color: var(--ink); background: var(--raised);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.btn.primary-ghost { color: var(--mint); border-color: rgba(79, 211, 154, .4); }
+
 /* ------------------------------------------------------- datasheet badges ---
    Only on parts a review would research. A tick over every resistor would be
    forty ticks saying nothing. */

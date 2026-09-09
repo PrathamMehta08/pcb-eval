@@ -15,6 +15,7 @@
  */
 
 import { researchBlock } from "./datasheets.js";
+import { passagesBlock } from "./docs.js";
 import {
   componentsSection,
   copperSection,
@@ -73,9 +74,11 @@ export function circuitPack(board, findings = []) {
     header(board),
     componentsSection(board),
     netsSection(board),
-    // Whatever anyone typed in about a part's datasheet. Empty for a board
-    // nobody has filled in, which is the normal state and not a defect.
+    // Whatever anyone typed in about a part's datasheet, and whatever
+    // retrieval found in the documents they attached. Both empty for a board
+    // nobody has told the page anything about, which is the normal state.
     researchBlock(board),
+    passagesBlock(board),
     findingsBlock(findings, "ALREADY MEASURED  do not report these again"),
   ]);
 }
