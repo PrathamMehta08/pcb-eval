@@ -290,3 +290,19 @@ export function passagesBlock(board) {
   }
   return lines.length > 1 ? lines : [];
 }
+
+/**
+ * Rated output current per part, for the ampacity check.
+ *
+ * Only what a document actually stated and the verifier kept - a value whose
+ * quote was found in the pages it came from. No document, no entry, and the
+ * check that needs it reports as unassessed rather than guessing a current.
+ */
+export function ratedCurrents(board) {
+  const out = {};
+  for (const [ref, doc] of docsFor(board.meta.name)) {
+    const fact = (doc.facts || {}).output_current_a;
+    if (fact && typeof fact.value === "number") out[ref] = fact.value;
+  }
+  return out;
+}

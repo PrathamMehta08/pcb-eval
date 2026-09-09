@@ -32,8 +32,9 @@
 // findings, never a defect list. A second pass told where the deterministic
 // layer already looked is a second pass being handed the answer.
 
-import { boardFacts, runChecks, verify } from "./checks.js";
+import { boardFacts, railAmpacityFindings, railCapacity, runChecks, verify } from "./checks.js";
 import { approxTokens, distill } from "./distill.js";
+import { ratedCurrents } from "./docs.js";
 import { reviewerPack } from "./packs.js";
 import { buildPrompt, secondLookPrompt, SYSTEM_PROMPT } from "./review.js";
 
@@ -200,7 +201,10 @@ export async function runGraph(board, ask, { onStep, signal } = {}) {
   // harness runs offline and its pack is the board alone; the page can do
   // better, and that is the point of attaching a document to a part.
   const distilled = reviewerPack(board);
-  const rules = runChecks(board);
+  // Everything measured, including the current a rail can carry. The ampacity
+  // check only fires where a datasheet stated a rated output current, so on a
+  // board with nothing attached it contributes nothing and says so by absence.
+  const rules = runChecks(board).concat(railAmpacityFindings(board, ratedCurrents(board)));
   const facts = boardFacts(board);
   const steps = [];
 

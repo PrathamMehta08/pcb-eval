@@ -18,6 +18,7 @@
  * the ordinary state, and then the pack is exactly the distilled board.
  */
 
+import { railCapacity } from "./checks.js";
 import { distill } from "./distill.js";
 import { factsBlock, passagesBlock } from "./docs.js";
 
@@ -35,5 +36,27 @@ const join = (blocks) =>
  * and on a seeded board it is the answer.
  */
 export function reviewerPack(board) {
-  return join([[distill(board)], factsBlock(board), passagesBlock(board)]);
+  return join([
+    [distill(board)],
+    railBlock(board),
+    factsBlock(board),
+    passagesBlock(board),
+  ]);
+}
+
+/**
+ * What each supply rail can carry, for every rail on the board.
+ *
+ * Every rail, not the interesting ones. A section listing only the rails
+ * something is wrong with is a section that says which rail is wrong, and on a
+ * seeded board that is the answer. Uniform or absent is the rule the whole pack
+ * is built on.
+ */
+function railBlock(board) {
+  const rails = railCapacity(board);
+  if (!rails.length) return [];
+  return [
+    "RAIL CAPACITY  narrowest segment per supply rail, at 1 oz copper, outer layer, 10 C rise",
+    ...rails.map((r) => `${r.net}: ${r.width_mm} mm carries about ${r.amps} A`),
+  ];
 }

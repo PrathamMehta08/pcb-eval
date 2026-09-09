@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { applyEdits } = await import("file://" + join(root, "site", "ops.js"));
-const { runChecks, boardFacts, contradiction } = await import(
+const { runChecks, boardFacts, contradiction, runDfm, ampacity, widthFor } = await import(
   "file://" + join(root, "site", "checks.js")
 );
 
@@ -93,6 +93,52 @@ check(runChecks(JSON.parse(JSON.stringify(board))).length === 0, "and nothing in
       `${what}: ${shouldRefute ? "should be refuted" : "should stand"}, got ${JSON.stringify(why)}`
     );
   }
+}
+
+// The fab limits, which lived only in the Python for a long time. The parity
+// test could not see the gap: it holds harness/checks.py against site/checks.js,
+// and these were in harness/dfm.py, which had no mirror here to compare with. A
+// file with no mirror cannot drift - it can only be missing, which is quieter.
+{
+  check(runDfm(board).length === 0, "the clean board trips no fab limit");
+
+  const thin = JSON.parse(JSON.stringify(board));
+  thin.layout.tracks[0].width = 0.1;
+  const found = runDfm(thin).map((f) => f.rule);
+  check(
+    found.includes("dfm-track-width"),
+    `a 0.1 mm track is below what a process etches, got ${JSON.stringify(found)}`
+  );
+
+  // Unplated holes are not annular-ring failures. The pad is the drill by
+  // design, and the Python's first version flagged six of them - four mounting
+  // holes and two switch pegs - before this exclusion existed.
+  const unplated = board.layout.footprints.flatMap((fp) =>
+    fp.pads.filter((p) => p.kind === "np_thru_hole").map(() => fp.ref)
+  );
+  check(unplated.length > 0, `the board has unplated holes to get wrong (${unplated.length})`);
+  check(
+    !runDfm(board).some((f) => f.rule === "dfm-annular-ring"),
+    "and none of them is reported as a thin annular ring"
+  );
+}
+
+// Ampacity, by IPC-2221. Checked against the round trip rather than a table:
+// the width for a current must carry that current.
+{
+  for (const amps of [0.5, 1, 3]) {
+    const back = ampacity(widthFor(amps));
+    check(
+      Math.abs(back - amps) < 0.01,
+      `widthFor(${amps}) carries ${back.toFixed(3)} A`
+    );
+  }
+  // An inner layer carries about half what an outer one does, which is why the
+  // assumption is stated wherever the number is.
+  check(
+    Math.abs(ampacity(0.1, { outer: false }) / ampacity(0.1) - 0.5) < 0.01,
+    "an inner layer carries half of an outer one"
+  );
 }
 
 for (const failure of failures) console.error("  x " + failure);
