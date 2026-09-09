@@ -75,7 +75,7 @@ def ingest(state: ReviewState) -> dict:
         # The seam. Built here, from measurements only, and handed to the
         # reviewers instead of the board.
         "inputs": inputs,
-        "packs": build_packs(board, facts, deterministic + result["measured"], inputs),
+        "packs": build_packs(board, facts, inputs),
         # The fourth evaluator, and the only one that is pure geometry. It does
         # not feed the gate: a DFM finding is already complete, and looping the
         # reviewers over it would spend calls to be told what the board said.

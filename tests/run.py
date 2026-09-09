@@ -925,6 +925,9 @@ def check_evidence_boundary(c: Check) -> None:
     from graph.prompts import REVIEWERS
     from harness.generators import GENERATORS
     from harness.packs import PACK_VERSION, build_packs
+
+    #: The heading every pack uses to declare what measurement already covers.
+    HANDLED_HEADING = "HANDLED BY MEASUREMENT"
     from harness.run import corpus
 
     c.that(bool(PACK_VERSION), "packs carry a version, so a result says which shape produced it")
@@ -966,33 +969,38 @@ def check_evidence_boundary(c: Check) -> None:
             f"{case['id']}: circuit {len(circuit)} chars, physical {len(physical)} chars"
         )
 
-    # No pack may name what a seeded defect was planted on.
+    # The block that tells a reviewer what is already measured must be a
+    # constant, byte for byte, across every board in the corpus.
     #
-    # This is the leak that made a sweep meaningless once. The ALREADY MEASURED
-    # block listed each deterministic finding with its refs and nets, so on a
-    # seeded board the circuit pack read "S1 pin 1 (GND_1) is on /ECHO, not GND"
-    # - the planted refs and nets, which are exactly what the grader matches.
-    # Recall on those defects was double the rest, and the graph only led where
-    # it had been told. The block now names the check and not its subject.
+    # This is the leak that made a sweep meaningless once, and it has now been
+    # closed twice. The block first listed each deterministic finding with its
+    # refs and nets, so a seeded circuit pack read "S1 pin 1 (GND_1) is on
+    # /ECHO, not GND" - the planted defect, and exactly what the grader matches.
+    # Recall on those defects was double the rest. That was narrowed to naming
+    # only the checks that fired, which is still a description of this board: a
+    # corpus board carries one seeded defect, so "net-island fired" is nearly
+    # "the defect is a split net", and a reviewer given that hunts around the
+    # split copper and turns up its neighbours as apparent discoveries.
+    #
+    # Comparing the blocks instead of searching them for planted words is the
+    # whole point. A search can only catch the leaks someone thought of; two
+    # identical strings cannot differ in any way at all, thought of or not.
+    blocks: dict[str, set[str]] = {}
     for case in corpus():
-        if not case["defects"]:
-            continue
-        planted = case["defects"][0]
-        subjects = {r.upper() for r in planted["refs"]}
-        subjects |= {n.upper().lstrip("/") for n in planted["nets"]}
-        # Nets like GND appear all over a copper section legitimately; what must
-        # not appear is the defect's subject inside the measured-findings block.
         for name, pack in (ingest({"board": case["board"]}).get("packs") or {}).items():
-            for heading in ("ALREADY MEASURED", "COMPUTED"):
-                start = pack.find(heading)
-                if start < 0:
-                    continue
-                block = pack[start : pack.find("\n\n", start) if pack.find("\n\n", start) > 0 else len(pack)]
-                leaked = sorted(w for w in subjects if w and w in block.upper())
-                c.that(
-                    not leaked,
-                    f"{case['id']}: the {name} pack's {heading} block names {leaked}",
-                )
+            start = pack.find(HANDLED_HEADING)
+            c.that(start >= 0, f"{case['id']}: the {name} pack declares what is measured")
+            if start < 0:
+                continue
+            stop = pack.find(chr(10) * 2, start)
+            blocks.setdefault(name, set()).add(pack[start : stop if stop > 0 else len(pack)])
+    for name, seen in sorted(blocks.items()):
+        c.that(
+            len(seen) == 1,
+            f"the {name} pack says the same thing about measurement on every board"
+            + ("" if len(seen) == 1 else f" ({len(seen)} different blocks)"),
+        )
+    c.note(f"one measurement block per pack, over {len(list(corpus()))} boards")
 
     # Every reviewer maps to exactly one pack, and only to packs that exist.
     mapping = {name: pack for name, (_, pack) in REVIEWERS.items()}
@@ -1008,10 +1016,30 @@ def check_evidence_boundary(c: Check) -> None:
     for forbidden in ('state["board"]', 'state["distilled"]'):
         c.that(forbidden not in source, f"reviewer nodes never read {forbidden}")
 
-    packs = build_packs(load_board(), {}, [])
+    # The catalogue is what runs, so a check that exists must be declared. A
+    # rule added to the deterministic layer and left out of the block is a rule
+    # the reviewer will keep spending its answer on.
+    packs = build_packs(load_board(), {})
+    from harness.evaluate import EVALUATORS, NEEDS_INPUTS
+
+    from harness.packs import CIRCUIT_RULES, GEOMETRY_RULES, THERMAL_RULES
+
+    every = set(EVALUATORS.values()) | set(NEEDS_INPUTS)
+    split = set(CIRCUIT_RULES) | set(GEOMETRY_RULES) | set(THERMAL_RULES)
+    c.equals(
+        sorted(every - split), [],
+        "every deterministic check falls into some pack's catalogue",
+    )
+    c.equals(
+        sorted(split - every), [],
+        "and no catalogue names a check that does not exist",
+    )
+    # The block a reviewer actually reads is drawn from that catalogue, so it
+    # says what runs rather than what fired.
+    body = packs["circuit"][packs["circuit"].find(HANDLED_HEADING) :]
     c.that(
-        "Nothing." in packs["circuit"],
-        "a pack with no deterministic findings says so rather than omitting the section",
+        all(f"- {name}" in body for name in CIRCUIT_RULES),
+        "the circuit pack declares every check its catalogue names",
     )
 
     # A check that could not run must say so. A skipped check and a passing one
@@ -1104,7 +1132,7 @@ def check_evidence_boundary(c: Check) -> None:
         all(bare_gates.values()),
         f"and each one says what it is missing: {bare_gates}",
     )
-    bare_packs = packs_for(board, facts, [], None)
+    bare_packs = packs_for(board, facts, None)
     c.equals(
         sorted(bare_packs), ["circuit", "physical"],
         "a disabled specialist gets no pack at all, rather than an empty one",
@@ -1131,7 +1159,7 @@ def check_evidence_boundary(c: Check) -> None:
         c.that(not gates["thermal"], f"real inputs enable thermal: {gates['thermal']!r}")
         c.that(gates["signal_integrity"], "signal integrity stays off without a stackup")
         c.that(gates["power_integrity"], "power integrity stays off without a stackup")
-        with_thermal = packs_for(board, facts, [], supplied_inputs)
+        with_thermal = packs_for(board, facts, supplied_inputs)
         c.that("thermal" in with_thermal, "an enabled specialist gets a pack")
         c.that(
             "SUPPLIED INPUTS" in with_thermal["thermal"],
@@ -1233,7 +1261,7 @@ def check_critic(c: Check) -> None:
 
     board = load_board()
     f = facts(board)
-    pack = build_packs(board, brief(board, offline=True), [])["circuit"]
+    pack = build_packs(board, brief(board, offline=True))["circuit"]
 
     # --- stage one: exact, free, and first ---------------------------------
     stage_one = [

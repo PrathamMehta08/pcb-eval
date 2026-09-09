@@ -58,32 +58,43 @@ def _header(board: dict, agent: str) -> list[str]:
     ]
 
 
-def _findings_block(findings: list[dict], title: str) -> list[str]:
-    """Which checks already fired, without saying what they fired on.
+def _checks_block(title: str, covered: tuple[str, ...] = ()) -> list[str]:
+    """The division of labour, written the same way on every board.
 
-    This block exists so a reviewer does not spend its call repeating a
-    measurement. Naming the check achieves that. Naming its refs and nets also
-    hands over the answer: on a seeded board those are exactly what the grader
-    matches, so a reviewer could name the same part in some adjacent finding and
-    be scored as having found the defect. It was doing that - the circuit pack
-    for a supply-on-signal board read "S1 pin 1 (GND_1) is on /ECHO, not GND",
-    which is the planted defect, its refs and its nets.
+    A reviewer should not spend its call on what arithmetic already settles, so
+    it has to be told what the deterministic layer covers. The question is how
+    to say that without saying anything about *this* board.
 
-    So the check is named and its subject is not. A reviewer told that
-    `net-island` has already fired knows not to go looking for split copper; it
-    does not know which net.
+    Naming the checks that fired does say something about this board. The first
+    version of this block listed each finding with its refs and nets - on a
+    seeded board, the planted defect, which is exactly what the grader matches.
+    That was fixed to name only the checks, and that is still not enough: a
+    corpus board carries one seeded defect, so "net-island fired" is very nearly
+    "the defect is a split net". A reviewer given that hunts around the split
+    copper and turns up its neighbours, and those neighbours score as
+    independent discoveries. The measurement is contaminated either way.
+
+    So the block names every check that runs, on every board, whether or not it
+    fired. It is a constant. A constant cannot carry information about which
+    board it is attached to, which is a guarantee rather than a judgement about
+    how much a hint is worth - and `tests.run` asserts it by comparing the block
+    across the whole corpus byte for byte.
+
+    The cost is that a reviewer may re-report something a rule already found.
+    That costs a few tokens and the aggregator merges it on (subject, claim),
+    preferring the deterministic finding. A cheap duplicate is worth more than
+    an expensive hint.
     """
-    if not findings:
-        return [
-            title,
-            "Nothing. No deterministic check failed in this area, which is not "
-            "the same as the area being correct.",
-        ]
-    names = sorted({str(item.get("rule") or "a deterministic check") for item in findings})
+    from harness.evaluate import EVALUATORS, NEEDS_INPUTS
+
+    names = sorted(set(EVALUATORS.values()) | set(NEEDS_INPUTS))
+    if covered:
+        names = sorted(set(names) & set(covered))
     return [
         title,
-        "These checks have already fired on this board and their findings are "
-        "already in the report. Do not look for what they cover:",
+        "These are computed from the board itself, on every board, and whatever "
+        "they find is already in the report. Nothing here says what was found "
+        "on this one. Spend your answer on what measurement cannot settle:",
         *(f"- {name}" for name in names),
     ]
 
@@ -111,7 +122,7 @@ def _research_block(research: dict) -> list[str]:
     return lines
 
 
-def circuit_pack(board: dict, research: dict, findings: list[dict]) -> str:
+def circuit_pack(board: dict, research: dict) -> str:
     """What the circuit reviewer sees: parts, nets, pin meaning, researched facts.
 
     No geometry. Not because geometry is secret, but because a reviewer asked
@@ -123,12 +134,12 @@ def circuit_pack(board: dict, research: dict, findings: list[dict]) -> str:
         _components_section(board),
         _nets_section(board),
         _research_block(research),
-        _findings_block(findings, "ALREADY MEASURED  do not report these again"),
+        _checks_block("HANDLED BY MEASUREMENT  do not spend your answer here", CIRCUIT_RULES),
     ]
     return "\n\n".join("\n".join(b) for b in blocks if b)
 
 
-def physical_pack(board: dict, findings: list[dict]) -> str:
+def physical_pack(board: dict) -> str:
     """What the physical reviewer sees: copper, placement, distances.
 
     No pin functions and no part descriptions. The measurements here are facts;
@@ -145,21 +156,32 @@ def physical_pack(board: dict, findings: list[dict]) -> str:
             "only a defect once you can say why it matters for that particular "
             "pin on this particular rail.",
         ],
-        _findings_block(findings, "ALREADY MEASURED  do not report these again"),
+        _checks_block("HANDLED BY MEASUREMENT  do not spend your answer here", GEOMETRY_RULES),
     ]
     return "\n\n".join("\n".join(b) for b in blocks if b)
 
 
-#: Which deterministic findings belong in which pack. A finding is shown to the
-#: reviewer whose domain it falls in, so that reviewer does not repeat it.
-THERMAL_RULES = {"junction_temp"}
+#: Which checks each pack declares as already handled. These are catalogues of
+#: what runs, not lists of what fired, so they are the same on every board.
+THERMAL_RULES = ("junction_temp",)
 
-GEOMETRY_RULES = {
+GEOMETRY_RULES = (
     "net-island",
     "dfm-annular-ring",
     "dfm-drill-size",
     "dfm-track-width",
-}
+)
+
+
+def _circuit_rules() -> tuple[str, ...]:
+    """Everything measured that is not geometry and not heat."""
+    from harness.evaluate import EVALUATORS, NEEDS_INPUTS
+
+    every = set(EVALUATORS.values()) | set(NEEDS_INPUTS)
+    return tuple(sorted(every - set(GEOMETRY_RULES) - set(THERMAL_RULES)))
+
+
+CIRCUIT_RULES = _circuit_rules()
 
 
 def _inputs_block(inputs: dict, keys: tuple[str, ...]) -> list[str]:
@@ -177,7 +199,7 @@ def _inputs_block(inputs: dict, keys: tuple[str, ...]) -> list[str]:
     return lines if len(lines) > 1 else []
 
 
-def thermal_pack(board: dict, research: dict, inputs: dict, findings: list[dict]) -> str:
+def thermal_pack(board: dict, research: dict, inputs: dict) -> str:
     """Heat, and only for a board whose ambient and dissipation are known."""
     thermal_facts = {
         ref: rec
@@ -189,30 +211,30 @@ def thermal_pack(board: dict, research: dict, inputs: dict, findings: list[dict]
         _inputs_block(inputs, ("ambient_c", "max_junction_c", "dissipation_w", "copper_weight_oz")),
         _research_block(thermal_facts),
         _copper_section(board),
-        _findings_block(findings, "COMPUTED  already calculated, with their inputs"),
+        _checks_block("HANDLED BY MEASUREMENT  do not spend your answer here", THERMAL_RULES),
     ]
     return "\n\n".join("\n".join(b) for b in blocks if b)
 
 
-def si_pack(board: dict, inputs: dict, findings: list[dict]) -> str:
+def si_pack(board: dict, inputs: dict) -> str:
     """Signal integrity, and only where a stackup makes impedance meaningful."""
     blocks = [
         _header(board, "signal_integrity"),
         _inputs_block(inputs, ("stackup", "high_speed_nets", "copper_weight_oz")),
         _copper_section(board),
-        _findings_block(findings, "ALREADY MEASURED  do not report these again"),
+        _checks_block("HANDLED BY MEASUREMENT  do not spend your answer here", GEOMETRY_RULES),
     ]
     return "\n\n".join("\n".join(b) for b in blocks if b)
 
 
-def pi_pack(board: dict, inputs: dict, findings: list[dict]) -> str:
+def pi_pack(board: dict, inputs: dict) -> str:
     """The power distribution network, given real currents."""
     blocks = [
         _header(board, "power_integrity"),
         _inputs_block(inputs, ("rails", "dissipation_w", "stackup", "copper_weight_oz")),
         _copper_section(board),
         _decoupling_section(board),
-        _findings_block(findings, "COMPUTED  already calculated, with their inputs"),
+        _checks_block("HANDLED BY MEASUREMENT  do not spend your answer here", GEOMETRY_RULES),
     ]
     return "\n\n".join("\n".join(b) for b in blocks if b)
 
@@ -220,7 +242,6 @@ def pi_pack(board: dict, inputs: dict, findings: list[dict]) -> str:
 def build_packs(
     board: dict,
     research: dict | None = None,
-    deterministic: list[dict] | None = None,
     inputs: dict | None = None,
 ) -> dict[str, str]:
     """Every pack this board has the inputs for, keyed by the agent.
@@ -233,24 +254,16 @@ def build_packs(
 
     research = research or {}
     inputs = inputs or {}
-    findings = deterministic or []
-    geometry = [f for f in findings if f.get("rule") in GEOMETRY_RULES]
-    circuit = [f for f in findings if f.get("rule") not in GEOMETRY_RULES]
 
     packs = {
-        "circuit": circuit_pack(board, research, circuit),
-        "physical": physical_pack(board, geometry),
+        "circuit": circuit_pack(board, research),
+        "physical": physical_pack(board),
     }
     gates = enabled(inputs, research)
-    # A gated reviewer sees the findings from its own domain only. It was being
-    # handed every deterministic finding, so the thermal reviewer was reading
-    # the circuit reviewer's subject matter - a hole in the boundary this module
-    # exists to hold.
-    thermal_findings = [f for f in findings if f.get("rule") in THERMAL_RULES]
     if not gates["thermal"]:
-        packs["thermal"] = thermal_pack(board, research, inputs, thermal_findings)
+        packs["thermal"] = thermal_pack(board, research, inputs)
     if not gates["signal_integrity"]:
-        packs["signal_integrity"] = si_pack(board, inputs, geometry)
+        packs["signal_integrity"] = si_pack(board, inputs)
     if not gates["power_integrity"]:
-        packs["power_integrity"] = pi_pack(board, inputs, geometry)
+        packs["power_integrity"] = pi_pack(board, inputs)
     return packs
