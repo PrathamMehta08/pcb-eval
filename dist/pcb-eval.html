@@ -469,12 +469,11 @@ kbd {
   letter-spacing: .12em; text-transform: uppercase; color: #5d666e;
 }
 .gr-node {
-  position: relative; display: grid; align-items: baseline;
-  grid-template-columns: 14px 1fr auto; gap: 2px 9px;
-  padding: 5px 0 5px 0;
+  position: relative; display: flex; align-items: baseline; gap: 9px;
+  padding: 3px 0;
 }
 .gr-edge {
-  position: absolute; left: 6px; top: -6px; height: 12px; width: 1px;
+  position: absolute; left: 6px; top: -4px; height: 8px; width: 1px;
   background: var(--line);
 }
 .gr-dot {
@@ -482,17 +481,17 @@ kbd {
   border: 1px solid var(--line); background: var(--ground); justify-self: center;
 }
 .gr-name {
-  grid-column: 2; font-family: var(--mono); font-size: 12px; color: #79828b;
-}
-.gr-kind {
-  grid-column: 3; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
-  text-transform: uppercase; color: #5d666e;
+  font-family: var(--mono); font-size: 12px; color: #79828b; flex: none;
 }
 .gr-count {
-  grid-column: 2 / -1; font-size: 11px; color: #5d666e;
-  font-variant-numeric: tabular-nums;
+  flex: 1; min-width: 0; font-size: 11px; color: #5d666e;
+  font-variant-numeric: tabular-nums; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
 }
-.gr-node.model .gr-kind { color: var(--mint); }
+.gr-kind {
+  flex: none; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--mint);
+}
 .gr-node.done .gr-dot { background: var(--ink-dim); border-color: var(--ink-dim); }
 .gr-node.done .gr-name { color: #b6bfc5; }
 .gr-node.on .gr-dot { background: var(--mint); border-color: var(--mint); }
@@ -2924,10 +2923,6 @@ async function load(files) {
         "symbol in the schematic; the rest fell back to their silkscreen label."
     );
   }
-  notes.push(
-    "The schematic view shows where the parts sit on the sheet, not KiCad's " +
-      "drawing — that picture comes from kicad-cli, which a web page cannot run."
-  );
   return { board, notes, files: { pcb: picked.pcb.name, sch: picked.sch?.name || null } };
 }
 
@@ -6359,8 +6354,8 @@ function railHtml(steps) {
       ${i ? '<span class="gr-edge" aria-hidden="true"></span>' : ""}
       <span class="gr-dot"></span>
       <span class="gr-name">${escapeHtml(node.replace(/_/g, " "))}</span>
-      <span class="gr-kind">${kind === "model" ? "asks the model" : "arithmetic"}</span>
       <span class="gr-count">${step ? nodeTally(step) : ""}</span>
+      <span class="gr-kind">${kind === "model" ? "model" : ""}</span>
     </li>`;
   }).join("")}</ol>`;
 }
@@ -6489,8 +6484,6 @@ function findingsHtml(findings, caught, missed, other) {
   if (other.length) {
     parts.push(
       `<h4 class="ro-group warn">Also raised <span>${other.length}</span></h4>` +
-        `<p class="ro-note">Not about anything you changed. On an untouched
-          board these are the false-alarm rate.</p>` +
         other.map((item) => block(item, at(item))).join("")
     );
   }

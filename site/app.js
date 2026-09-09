@@ -851,8 +851,8 @@ function railHtml(steps) {
       ${i ? '<span class="gr-edge" aria-hidden="true"></span>' : ""}
       <span class="gr-dot"></span>
       <span class="gr-name">${escapeHtml(node.replace(/_/g, " "))}</span>
-      <span class="gr-kind">${kind === "model" ? "asks the model" : "arithmetic"}</span>
       <span class="gr-count">${step ? nodeTally(step) : ""}</span>
+      <span class="gr-kind">${kind === "model" ? "model" : ""}</span>
     </li>`;
   }).join("")}</ol>`;
 }
@@ -981,8 +981,6 @@ function findingsHtml(findings, caught, missed, other) {
   if (other.length) {
     parts.push(
       `<h4 class="ro-group warn">Also raised <span>${other.length}</span></h4>` +
-        `<p class="ro-note">Not about anything you changed. On an untouched
-          board these are the false-alarm rate.</p>` +
         other.map((item) => block(item, at(item))).join("")
     );
   }

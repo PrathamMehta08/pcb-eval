@@ -66,10 +66,6 @@ export async function load(files) {
         "symbol in the schematic; the rest fell back to their silkscreen label."
     );
   }
-  notes.push(
-    "The schematic view shows where the parts sit on the sheet, not KiCad's " +
-      "drawing — that picture comes from kicad-cli, which a web page cannot run."
-  );
   return { board, notes, files: { pcb: picked.pcb.name, sch: picked.sch?.name || null } };
 }
 

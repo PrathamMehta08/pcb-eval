@@ -456,12 +456,11 @@ kbd {
   letter-spacing: .12em; text-transform: uppercase; color: #5d666e;
 }
 .gr-node {
-  position: relative; display: grid; align-items: baseline;
-  grid-template-columns: 14px 1fr auto; gap: 2px 9px;
-  padding: 5px 0 5px 0;
+  position: relative; display: flex; align-items: baseline; gap: 9px;
+  padding: 3px 0;
 }
 .gr-edge {
-  position: absolute; left: 6px; top: -6px; height: 12px; width: 1px;
+  position: absolute; left: 6px; top: -4px; height: 8px; width: 1px;
   background: var(--line);
 }
 .gr-dot {
@@ -469,17 +468,17 @@ kbd {
   border: 1px solid var(--line); background: var(--ground); justify-self: center;
 }
 .gr-name {
-  grid-column: 2; font-family: var(--mono); font-size: 12px; color: #79828b;
-}
-.gr-kind {
-  grid-column: 3; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
-  text-transform: uppercase; color: #5d666e;
+  font-family: var(--mono); font-size: 12px; color: #79828b; flex: none;
 }
 .gr-count {
-  grid-column: 2 / -1; font-size: 11px; color: #5d666e;
-  font-variant-numeric: tabular-nums;
+  flex: 1; min-width: 0; font-size: 11px; color: #5d666e;
+  font-variant-numeric: tabular-nums; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
 }
-.gr-node.model .gr-kind { color: var(--mint); }
+.gr-kind {
+  flex: none; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--mint);
+}
 .gr-node.done .gr-dot { background: var(--ink-dim); border-color: var(--ink-dim); }
 .gr-node.done .gr-name { color: #b6bfc5; }
 .gr-node.on .gr-dot { background: var(--mint); border-color: var(--mint); }
