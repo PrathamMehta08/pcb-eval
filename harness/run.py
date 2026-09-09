@@ -30,6 +30,7 @@ sys.path.insert(0, str(ROOT))
 from console import utf8  # noqa: E402
 from baseline.single_prompt import review_once  # noqa: E402
 from graph.build import run_graph  # noqa: E402
+from graph.v7 import run_v7  # noqa: E402
 from graph.prompts import prompt_hash  # noqa: E402
 from harness.grade import corpus_hash, grade, pipeline_hash, refuted, schema_hash, totals  # noqa: E402
 from harness.packs import PACK_VERSION  # noqa: E402
@@ -104,6 +105,10 @@ def run_one(detector: str, case: dict, client: Client) -> dict:
     started = time.monotonic()
     if detector == "graph":
         state = run_graph(case["board"], client)
+    elif detector == "v7":
+        state = run_v7(case["board"], client)
+    elif detector == "v8":
+        state = run_v7(case["board"], client, second_look=True)
     else:
         state = review_once(case["board"], client)
 
@@ -124,6 +129,7 @@ def run_one(detector: str, case: dict, client: Client) -> dict:
         "stopped": state.get("stopped", ""),
         "calls": len(state.get("calls", [])),
         "cached_calls": sum(1 for c in state.get("calls", []) if c.get("cached")),
+        "truncated_calls": sum(1 for c in state.get("calls", []) if c.get("truncated")),
         "tokens_in": sum(c.get("tokens_in", 0) for c in state.get("calls", [])),
         "tokens_out": sum(c.get("tokens_out", 0) for c in state.get("calls", [])),
         "seconds": round(time.monotonic() - started, 1),
@@ -281,7 +287,11 @@ def across_trials(rows: list[dict], detectors: list[str], trials: int) -> str:
 def main() -> int:
     utf8()
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--detector", choices=["single", "graph", "both"], default="both")
+    ap.add_argument(
+        "--detector",
+        choices=["single", "graph", "v7", "v8", "both", "all"],
+        default="both",
+    )
     ap.add_argument("--board", default="", help="one board id, or a prefix")
     ap.add_argument("--concurrency", type=int, default=2)
     ap.add_argument("--tpm", type=int, default=8000, help="token budget per minute")
@@ -300,7 +310,10 @@ def main() -> int:
         cases = [c for c in cases if c["id"].startswith(args.board)]
         if not cases:
             raise SystemExit(f"no board matching {args.board!r}")
-    detectors = ["single", "graph"] if args.detector == "both" else [args.detector]
+    detectors = {
+        "both": ["single", "graph"],
+        "all": ["single", "v7", "v8"],
+    }.get(args.detector, [args.detector])
 
     client = Client(model=args.model, concurrency=args.concurrency, tpm=args.tpm)
     rows = []

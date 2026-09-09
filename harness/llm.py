@@ -103,7 +103,9 @@ class TokenBudget:
 class Client:
     model: str = ""
     temperature: float = 0.0
-    max_tokens: int = 4000
+    #: Raised from 4000 after a V7 review spent all of it reasoning and
+    #: returned nothing, which scored as a board with no defects on it.
+    max_tokens: int = 6000
     concurrency: int = 2
     tpm: int = 8000
     #: Which repeat of the sweep this is. Folded into the cache key so trial 2
@@ -205,6 +207,7 @@ class Client:
         elapsed = time.monotonic() - started
 
         choice = response.choices[0].message
+        finish = getattr(response.choices[0], "finish_reason", "") or ""
         # The answer is `content`. `reasoning` is the model thinking out loud
         # before it — kept because it is worth reading, never used as the answer.
         text = (choice.content or "").strip()
@@ -218,6 +221,11 @@ class Client:
             "seconds": round(elapsed, 2),
             "model": self.model,
             "label": label,
+            # "length" means the budget ran out. On a reasoning model that
+            # usually means it was still thinking, so `text` is empty and the
+            # caller would otherwise record a review that found nothing.
+            "finish": finish,
+            "truncated": bool(finish == "length" and not text),
         }
         if text:
             self._store(key, payload)  # an empty answer is a failure, not a result
@@ -236,6 +244,16 @@ class Client:
     def json(self, prompt: str, label: str = "", system: str = "") -> tuple[dict, dict]:
         """A completion parsed as JSON. Returns (parsed, call info)."""
         info = self.complete(prompt, label=label, system=system)
+        if info.get("truncated"):
+            # Once, with room. A second failure is real and is left visible in
+            # the call record rather than retried until it costs something.
+            grown = min(self.max_tokens * 2, 16000)
+            if grown > self.max_tokens:
+                was, self.max_tokens = self.max_tokens, grown
+                try:
+                    info = self.complete(prompt, label=f"{label}:retry", system=system)
+                finally:
+                    self.max_tokens = was
         return parse_json(info["text"]), info
 
     # -------------------------------------------------------------------- log

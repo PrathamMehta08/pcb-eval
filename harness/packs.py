@@ -267,3 +267,26 @@ def build_packs(
     if not gates["power_integrity"]:
         packs["power_integrity"] = pi_pack(board, inputs)
     return packs
+
+
+def reviewer_pack(board: dict, research: dict | None = None) -> str:
+    """V7's one pack: the distilled board, and nothing added to it.
+
+    It carried the catalogue of deterministic checks at first, with a note not
+    to spend the answer on what they cover. That cost five points of recall. The
+    reviewer read "these are handled" as covering whole categories rather than
+    the individual checks named, and stopped reporting a swapped regulator and
+    an oversized companion capacitor - neither of which any rule had fired on.
+    The duplicate findings it saved were worth far less than the defects it
+    stopped looking for, and duplicates are cheap to merge afterwards anyway.
+
+    So the pack is the distilled board, which is what `baseline.single_prompt`
+    is given. The two reviewers now see the same bytes and are asked the same
+    question, and every difference between the detectors is the architecture
+    around the call. It also removes the last thing in the pack that a seeded
+    corpus could have been leaked through, since a board's own description is
+    all that is left.
+    """
+    from harness.distill import distill
+
+    return distill(board)

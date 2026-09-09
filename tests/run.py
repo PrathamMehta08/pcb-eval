@@ -19,6 +19,9 @@ import traceback
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+#: The heading every pack uses to declare what measurement already covers.
+HANDLED_HEADING = "HANDLED BY MEASUREMENT"
 sys.path.insert(0, str(ROOT))
 
 from console import utf8  # noqa: E402
@@ -817,18 +820,25 @@ def check_sweep(c: Check) -> None:
     trials = result.get("trials", 1)
     c.that(trials >= 5, f"the committed sweep repeats the corpus ({trials} trials)")
 
+    # Which detectors a sweep compares is a decision about the experiment, not
+    # a property the tests should freeze - `graph` was the comparison when there
+    # were two, and pinning it here meant the suite failed the moment a third
+    # architecture was measured. What must hold is that the baseline is present,
+    # since a sweep with nothing to compare against measures nothing, and that
+    # every detector ran every case in every trial.
     detectors = {row["detector"] for row in result["rows"]}
-    c.equals(detectors, {"single", "graph"}, "both detectors ran")
+    c.that("single" in detectors, f"the baseline ran: {sorted(detectors)}")
+    c.that(len(detectors) >= 2, "and at least one architecture is compared against it")
     c.equals(
         len(result["rows"]),
-        2 * len(cases) * trials,
-        "every case ran under both detectors, every trial",
+        len(detectors) * len(cases) * trials,
+        "every case ran under every detector, every trial",
     )
     c.that(
         all("trial" in row for row in result["rows"]),
         "every row says which trial it came from",
     )
-    for detector in ("single", "graph"):
+    for detector in sorted(detectors):
         seen = {row["trial"] for row in result["rows"] if row["detector"] == detector}
         c.equals(seen, set(range(1, trials + 1)), f"{detector} ran every trial")
     for row in result["rows"]:
@@ -837,13 +847,13 @@ def check_sweep(c: Check) -> None:
     clean_rows = [r for r in result["rows"] if not r["defects"]]
     c.equals(
         len(clean_rows),
-        2 * len(clean_now) * trials,
-        "every clean board ran under both detectors",
+        len(detectors) * len(clean_now) * trials,
+        "every clean board ran under every detector",
     )
 
     # The spread is the point of repeating, so it has to be in the record
     # rather than recomputed by whoever reads it.
-    for detector in ("single", "graph"):
+    for detector in sorted(detectors):
         s = result.get("spread", {}).get(detector, {})
         if not c.that(s, f"the result carries {detector}'s spread across trials"):
             break
@@ -925,9 +935,6 @@ def check_evidence_boundary(c: Check) -> None:
     from graph.prompts import REVIEWERS
     from harness.generators import GENERATORS
     from harness.packs import PACK_VERSION, build_packs
-
-    #: The heading every pack uses to declare what measurement already covers.
-    HANDLED_HEADING = "HANDLED BY MEASUREMENT"
     from harness.run import corpus
 
     c.that(bool(PACK_VERSION), "packs carry a version, so a result says which shape produced it")
@@ -1519,6 +1526,124 @@ def parse_selection(args: list[str]) -> list[int]:
             out.append(int(arg))
     return out
 
+
+# -------------------------------------------------------------------------- 19
+
+
+@step(19, "V7 asks one reviewer once, and its pack says nothing about the board")
+def check_v7(c: Check) -> None:
+    """The three ways a seeded corpus can be leaked to, closed one at a time.
+
+    Recall on a corpus of planted defects is worth reading only if the system
+    was not told where to look, and this is the whole of that argument. The pack
+    is the board plus a constant. The reviewer's job text names no board. The
+    critic never sees the board at all. And the shape is checked too: one
+    reviewer, one pass, because every extra call is a chance to hand something
+    over that the first call did not have.
+    """
+    from harness.run import corpus
+    from graph.v7 import run_v7
+    from harness.packs import reviewer_pack
+    from harness.research import brief
+
+    # The pack differs between two boards only by the board. Everything after
+    # the distilled text is the same string on every board in the corpus, which
+    # is what makes a recall number mean something.
+    # The pack is the distilled board and nothing else. Anything appended to it
+    # is a place a seeded corpus could be described to the reviewer, and the one
+    # thing that was appended cost five points of recall for its trouble.
+    from harness.distill import distill
+
+    for case in corpus():
+        c.that(
+            reviewer_pack(case["board"], brief(case["board"], offline=True))
+            == distill(case["board"]),
+            f"{case['id']}: the reviewer pack is the distilled board, byte for byte",
+        )
+
+    # And it is asked the baseline's question through the baseline's builder, so
+    # anything V7 wins it wins on the architecture rather than on the prompt.
+    from graph.prompts import single_prompt
+
+    c.equals(
+        single_prompt(reviewer_pack(load_board(), {})),
+        single_prompt(distill(load_board())),
+        "the V7 reviewer is asked exactly what the baseline is asked",
+    )
+
+    # One reviewer, one pass, two calls. A stub answers so nothing is spent.
+    class Stub:
+        def __init__(self):
+            self.labels = []
+            self.prompts = {}
+
+        def json(self, prompt, label="", system=""):
+            self.labels.append(label)
+            self.prompts[label] = prompt
+            if label == "v7:review":
+                return {
+                    "findings": [
+                        {
+                            "severity": "critical",
+                            "refs": ["U2"],
+                            "nets": ["GND"],
+                            "problem": "something about a real part",
+                            "why": "a consequence",
+                            "fix": "a change",
+                        },
+                        {
+                            "severity": "major",
+                            "refs": ["U99"],
+                            "nets": [],
+                            "problem": "a part that is not on this board",
+                            "why": "x",
+                            "fix": "y",
+                        },
+                    ]
+                }, {"tokens_in": 1, "tokens_out": 1, "cached": False}
+            return {"verdicts": [{"id": 0, "verdict": "accept"}]}, {
+                "tokens_in": 1,
+                "tokens_out": 1,
+                "cached": False,
+            }
+
+    stub = Stub()
+    state = run_v7(load_board(), stub)
+    c.equals(stub.labels, ["v7:review", "v7:critic"], "one reviewer and one critic, once each")
+    c.equals(len(state["calls"]), 2, "two model calls for a board")
+
+    # The deterministic gate is not optional and not a model.
+    c.equals(
+        len(state["validated"]), 1, "the finding naming a part that does not exist is refused"
+    )
+    c.that(
+        "U99" in state["rejected"][0]["dropped"],
+        f"and the refusal says which part: {state['rejected'][0]['dropped']}",
+    )
+
+    # The critic is shown findings and nothing else. A critic holding the board
+    # could look up whether a finding is true, which is the validator's job and
+    # is done deterministically; a critic holding the defect list would be the
+    # leak this whole step exists to rule out.
+    critic_prompt_text = stub.prompts["v7:critic"]
+    for absent in ("BOARD stm32-good", "COMPONENTS", "NETS", "DECOUPLING"):
+        c.that(absent not in critic_prompt_text, f"the critic is not shown {absent!r}")
+
+    # And nothing anywhere names a planted defect.
+    for case in corpus():
+        if not case["defects"]:
+            continue
+        planted = case["defects"][0]
+        # The board's own description names the planted refs, and must: the
+        # reviewer is looking at the broken board. What must not exist is a
+        # second section saying which of them is the broken one.
+        pack = reviewer_pack(case["board"], brief(case["board"], offline=True))
+        c.that(
+            pack == distill(case["board"]),
+            f"{case['id']}: nothing beyond the board is in the pack",
+        )
+
+    c.note(f"pack {len(reviewer_pack(load_board(), {}))} chars, one tail over {len(list(corpus()))} boards")
 
 if __name__ == "__main__":
     raise SystemExit(run(parse_selection(sys.argv[1:])))

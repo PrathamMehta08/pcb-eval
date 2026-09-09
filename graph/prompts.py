@@ -412,6 +412,37 @@ CONDITIONAL = {
 ALL_REVIEWERS = {**REVIEWERS, **CONDITIONAL}
 
 
+SECOND_LOOK_JOB = """You have already reviewed this board once. Below is the
+board again, and the list of problems that were reported.
+
+Report what that list is missing.
+
+A reviewer working through a board once tends to stop when it has something to
+say about each area it looked at, and to look at the areas that suggested
+themselves first. So go after what a first pass skips: a value that is right for
+some other position in the circuit, a part connected the way its neighbour
+should be, a stage that works but is fed from the wrong place, anything whose
+consequence only appears when two parts are considered together.
+
+Do not repeat anything already reported, and do not restate one of those
+findings in different words. If the list is complete, report nothing - an empty
+list is a real answer and a padded one costs the reader more than it gives.
+
+Do not report style, silkscreen or aesthetics, or anything you would have to
+guess at."""
+
+
+def second_look_prompt(distilled: str, already: str) -> str:
+    """The second pass. It sees the board and its own first answer.
+
+    It is shown what was already reported so it does not spend the call
+    repeating it - and that list is the model's own output, never the rule
+    findings and never the defect list, so nothing enters here that the first
+    pass did not already say out loud.
+    """
+    return _build(SECOND_LOOK_JOB, f"{distilled}\n\nALREADY REPORTED\n{already}")
+
+
 def single_prompt(distilled: str) -> str:
     return _build(SINGLE_PROMPT_JOB, distilled)
 
@@ -464,6 +495,7 @@ def prompt_hash() -> str:
             CRITIC_JOB,
             ADJUDICATE_JOB,
             SINGLE_PROMPT_JOB,
+            SECOND_LOOK_JOB,
         ]
     )
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:12]

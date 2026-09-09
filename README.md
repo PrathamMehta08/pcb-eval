@@ -53,19 +53,89 @@ do all three jobs; the other splits them across a LangGraph pipeline of three
 specialists, a merge, and a deterministic critic. The whole sweep runs five
 times, because a single run of this cannot be told apart from noise.
 
-`openai/gpt-oss-120b` - 5 trials - 241 calls - prompts `5b7e1df62b4f` - schema
-`96e5a7694704` - corpus `d2138f0ecf8d` - pipeline `83fb6a92630d` - full record in
+`openai/gpt-oss-120b` - 5 trials - 439 calls - prompts `51fa87930f52` -
+schema `96e5a7694704` - corpus `56602c9aa9ca` - pipeline
+`d7d5464cc261` - full record in
 [`results/latest.json`](results/latest.json)
 
-| per trial, median (min-max) | one prompt | the graph |
-|---|---|---|
-| defects matched, of 7 | 5 (3-7) | 5 (2-5) |
-| findings on the clean board | 4 (2-5) | **2 (0-10)** |
-| unmatched findings on the seeded boards | **20 (14-26)** | 27 (23-49) |
-| **findings the copper refutes - reported** | 1 (0-2) | **0 (0-0)** |
-| model calls per board | 1 | 4, or 8 when the gate loops |
+Three detectors. **one prompt** is a single call with the whole board. **V7** is
+that same call, byte for byte, with a deterministic layer before it and two
+gates after. **V8** is V7 plus one more call that asks the reviewer what its own
+first pass missed.
 
-Over five trials: **24 of 35 for the single prompt, 21 of 35 for the graph.**
+| per trial, median (min-max) | one prompt | V7 | V8 |
+|---|---|---|---|
+| defects matched, of 13 | 7 (4-9) | 9 (8-11) | **12 (8-12)** |
+| findings on the clean board | **4 (3-5)** | 5 (3-6) | 8 (6-9) |
+| unmatched findings on the seeded boards | **26 (22-36)** | 30 (17-46) | 52 (44-75) |
+| **findings the copper refutes - reported** | 6 total | **0** | **0** |
+| model calls per board | 1 | 2 | 3 |
+
+Over five trials, recall on the seeded defects:
+
+| over 5 trials | one prompt | V7 | V8 |
+|---|---|---|---|
+| **rule-silent, of 45** | 24 | 27 | **35** |
+| all defects, of 65 | 33 | 47 | **55** |
+| board-refuted claims proposed | 6 | 3 | 13 |
+| board-refuted claims reported | 6 | **0** | **0** |
+
+**Rule-silent is the headline, and it is the smaller number on purpose.** Four
+of the thirteen seeded defects are also caught by a deterministic rule, and
+three of those are a rule and a generator written from the same condition -
+`supply-on-signal` against `power-pin-on-signal-net`, `value-unorderable`
+against `value-not-orderable`. Any system carrying those rules catches those
+defects, so recall over all thirteen partly measures that coincidence rather
+than the reviewer. The rule-silent column is the nine no rule fires on, and V8
+wins there too: **35 of 45 against 24**.
+
+The other column that matters is the last one. The single prompt reported six
+findings the board's own copper contradicts. V7 and V8 proposed sixteen between
+them and reported none, because the deterministic gate refuses a finding whose
+subject is not on the board, whose evidence is not in what the model was shown,
+or that the board itself disproves. That gate is not the grader - the grader is
+a separate frozen function - so this is not the ruler being moved.
+
+What V8 costs is noise: eight findings on a clean board against four. It finds
+half again as many real defects and roughly doubles what it says about a board
+that is fine.
+
+### One sample of a reviewer is not the reviewer
+
+The measurement that produced V8, and the most surprising number here.
+
+Two runs of the *same* reviewer, on the *same* prompt, at temperature zero,
+caught seven and eleven of thirteen defects - and between them covered twelve.
+Not different architectures. The same question asked twice. The spread between
+one draw and another was wider than the spread between any two architectures
+this project has measured.
+
+So V8 takes a second draw. After the first pass it asks the same model, with the
+same board, what its own list is missing - and it is shown only that list, never
+the rule findings and never the defects. It costs one call and it is worth eight
+points of rule-silent recall.
+
+The corollary is worth stating plainly: **any single-sample comparison of two
+reviewers on this corpus is mostly noise.** The first version of V7 measured
+7 of 13 and the corrected one measured 11, and part of that gap was the fix and
+part was the draw. Five trials is the minimum this corpus supports, and
+`tests.run 13` refuses to accept a committed sweep with fewer.
+
+### What V7 got wrong first, which was mine and not the model's
+
+V7's first build scored *below* the baseline - 3 of 9 rule-silent against 5.
+
+Its pack carried a catalogue of the deterministic checks with a note not to
+spend the answer on what they cover. The reviewer read "these are handled" as
+covering whole categories rather than the individual checks named, and stopped
+reporting a swapped regulator and an oversized companion capacitor - neither of
+which any rule had fired on, and both of which the baseline caught. The
+suppression note cost more recall than the duplicate findings it saved, and
+duplicates were already free to merge afterwards.
+
+The reviewer is now handed the baseline's prompt through the baseline's own
+builder, so the two are asked the same question about the same bytes and
+anything V7 or V8 wins is the architecture around the call.
 
 ### The prompts used to name the defects, and the scores moved when they stopped
 
@@ -159,7 +229,7 @@ which is the argument this project keeps arriving at from different directions.
 
 ### What it cost
 
-Five trials from cold: 241 model calls, 876k tokens in, 594k out, **$0.4878**,
+Five trials from cold: 439 model calls, 952k tokens in, 804k out, **$0.6249**,
 23 minutes at two concurrent requests. Every sweep carries the prompt, schema,
 corpus and pipeline hashes, because a score that outlives the system it measured
 is worse than no score - and `pipeline_hash` exists because adding an evaluator
@@ -274,7 +344,7 @@ extract/     kicadxml and .kicad_pcb into one Board object, joined on UUID
 harness/     the nine edit operations, seven deterministic rules, the distiller,
              the Groq client, the grader, the sweep runner
 graph/       ingest, three reviewers, adjudicate, gate
-baseline/    the single flat prompt the graph is measured against
+baseline/    the single flat prompt every architecture is measured against
 site/        ten ES modules; tools/build_site.py makes one file of them
 tests/       the acceptance checks, and the fixtures that keep Python and
              JavaScript telling the same story
