@@ -15,10 +15,18 @@ from graph.prompts import SYSTEM, connections_prompt, datasheet_prompt, layout_p
 from graph.state import ReviewState, normalise
 
 
+#: Which pack each reviewer is given. The circuit reviewers see parts, nets and
+#: pin meaning; the layout reviewer sees copper and placement. Neither sees the
+#: other's, which is what stops one speculating about measurements it does not
+#: hold and the other repeating a finding that is not its job.
+PACK_FOR = {"datasheet": "circuit", "connections": "circuit", "layout": "physical"}
+
+
 def make_node(name: str, build_prompt, client):
     def node(state: ReviewState) -> dict:
+        pack = state["packs"][PACK_FOR[name]]
         parsed, info = client.json(
-            build_prompt(state["distilled"]),
+            build_prompt(pack),
             label=f"{name}/pass{state.get('passes', 0) + 1}",
             system=SYSTEM,
         )

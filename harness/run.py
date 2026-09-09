@@ -33,7 +33,7 @@ from graph.prompts import prompt_hash  # noqa: E402
 from harness.grade import corpus_hash, grade, pipeline_hash, refuted, schema_hash, totals  # noqa: E402
 from harness.llm import PRICE_IN, PRICE_OUT, Client  # noqa: E402
 from harness.ops import apply_edits, board_hash  # noqa: E402
-from harness.presets import PRESETS, edits_for  # noqa: E402
+from harness.generators import defects_for  # noqa: E402
 
 #: Every board the sweep scores. A defect names the board it belongs to, so the
 #: corpus is one clean case per board plus one case per defect.
@@ -52,9 +52,13 @@ def _load(name: str) -> dict:
 def corpus() -> list[dict]:
     """The clean boards, then every seeded defect, built fresh each time.
 
-    Two boards rather than one, because seven defects on a single design was a
-    corpus you could overfit by accident - and the rules and prompts had. The
-    clean cases carry no defects at all, so every finding on them is a false
+    Defects are generated rather than listed. Each generator searches the board
+    for a site matching its pattern, so adding a KiCad project adds every defect
+    whose pattern that board contains, and a board with no such site contributes
+    nothing for that generator. The corpus is therefore a function of the boards
+    rather than a list written beside them.
+
+    The clean cases carry no defects at all, so every finding on them is a false
     alarm; they are what stop a detector scoring well by flagging everything.
     """
     boards = {name: _load(name) for name in BOARDS}
@@ -68,26 +72,28 @@ def corpus() -> list[dict]:
         }
         for name, board in boards.items()
     ]
-    for preset in PRESETS:
-        name = preset["board"]
-        work = json.loads(json.dumps(boards[name]))
-        apply_edits(work, edits_for(preset, work))
-        cases.append(
-            {
-                "id": preset["id"],
-                "board_name": name,
-                "title": preset["title"],
-                "board": work,
-                "defects": [
-                    {
-                        "id": preset["id"],
-                        "title": preset["title"],
-                        "refs": preset["refs"],
-                        "nets": preset["nets"],
-                    }
-                ],
-            }
-        )
+    for name, board in boards.items():
+        for defect in defects_for(board, name):
+            work = json.loads(json.dumps(board))
+            apply_edits(work, defect["edits"])
+            cases.append(
+                {
+                    "id": defect["id"],
+                    "board_name": name,
+                    "title": defect["title"],
+                    "board": work,
+                    "defects": [
+                        {
+                            "id": defect["id"],
+                            "generator": defect["generator"],
+                            "title": defect["title"],
+                            "refs": defect["refs"],
+                            "nets": defect["nets"],
+                        }
+                    ],
+                }
+            )
+
     return cases
 
 

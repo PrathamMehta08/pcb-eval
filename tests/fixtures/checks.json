@@ -8,20 +8,114 @@
    "refs": []
   },
   {
-   "id": "fb-divider-swapped",
+   "id": "stm32-good:supply-on-signal",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "S1",
+      "pin": "1",
+      "to_net": "/ECHO"
+     }
+    }
+   ],
+   "rules": [
+    "power-pin-miswired",
+    "power-pin-on-signal-net"
+   ],
+   "titles": [
+    "S1 pin 1 (GND_1) is on /ECHO, not GND",
+    "S1 pin 1 is a supply pin sharing /ECHO with the MCU port U2.39"
+   ],
+   "refs": [
+    [
+     "S1"
+    ],
+    [
+     "S1",
+     "U2"
+    ]
+   ]
+  },
+  {
+   "id": "stm32-good:ground-pin-lifted",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "U2",
+      "pin": "23",
+      "to_net": "/LIFTED_U2"
+     }
+    }
+   ],
+   "rules": [],
+   "titles": [],
+   "refs": []
+  },
+  {
+   "id": "stm32-good:outputs-shorted",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "U2",
+      "pin": "40",
+      "to_net": "/ECHO"
+     }
+    }
+   ],
+   "rules": [],
+   "titles": [],
+   "refs": []
+  },
+  {
+   "id": "stm32-good:regulator-io-swapped",
+   "edits": [
+    {
+     "op": "swap_pins",
+     "args": {
+      "ref": "U1",
+      "pin_a": "3",
+      "pin_b": "2"
+     }
+    }
+   ],
+   "rules": [],
+   "titles": [],
+   "refs": []
+  },
+  {
+   "id": "stm32-good:feedback-from-input",
+   "edits": [
+    {
+     "op": "move_pin",
+     "args": {
+      "ref": "R2",
+      "pin": "1",
+      "to_net": "+3.3V"
+     }
+    }
+   ],
+   "rules": [],
+   "titles": [],
+   "refs": []
+  },
+  {
+   "id": "stm32-good:divider-values-swapped",
    "edits": [
     {
      "op": "set_value",
      "args": {
-      "ref": "R1",
-      "value": "56.2K"
+      "ref": "R2",
+      "value": "10k"
      }
     },
     {
      "op": "set_value",
      "args": {
-      "ref": "R2",
-      "value": "10K"
+      "ref": "R3",
+      "value": "56k2"
      }
     }
    ],
@@ -30,27 +124,12 @@
    "refs": []
   },
   {
-   "id": "bootstrap-cap-oversized",
+   "id": "stm32-good:bulk-cap-undersized",
    "edits": [
     {
      "op": "set_value",
      "args": {
-      "ref": "C2",
-      "value": "10uF"
-     }
-    }
-   ],
-   "rules": [],
-   "titles": [],
-   "refs": []
-  },
-  {
-   "id": "output-cap-undersized",
-   "edits": [
-    {
-     "op": "set_value",
-     "args": {
-      "ref": "C3",
+      "ref": "C12",
       "value": "0.1uF"
      }
     }
@@ -60,14 +139,13 @@
    "refs": []
   },
   {
-   "id": "feedback-from-input",
+   "id": "stm32-good:companion-cap-oversized",
    "edits": [
     {
-     "op": "move_pin",
+     "op": "set_value",
      "args": {
-      "ref": "R2",
-      "pin": "1",
-      "to_net": "/IN"
+      "ref": "C6",
+      "value": "10uF"
      }
     }
    ],
@@ -76,87 +154,7 @@
    "refs": []
   },
   {
-   "id": "inductor-bypassed",
-   "edits": [
-    {
-     "op": "move_pin",
-     "args": {
-      "ref": "L1",
-      "pin": "1",
-      "to_net": "/OUT"
-     }
-    }
-   ],
-   "rules": [],
-   "titles": [],
-   "refs": []
-  },
-  {
-   "id": "mcu-ground-lifted",
-   "edits": [
-    {
-     "op": "move_pin",
-     "args": {
-      "ref": "U2",
-      "pin": "23",
-      "to_net": "/GND_LIFTED"
-     }
-    }
-   ],
-   "rules": [],
-   "titles": [],
-   "refs": []
-  },
-  {
-   "id": "bulk-cap-on-signal",
-   "edits": [
-    {
-     "op": "move_pin",
-     "args": {
-      "ref": "C2",
-      "pin": "1",
-      "to_net": "/SERVO_1"
-     }
-    }
-   ],
-   "rules": [],
-   "titles": [],
-   "refs": []
-  },
-  {
-   "id": "outputs-shorted",
-   "edits": [
-    {
-     "op": "move_pin",
-     "args": {
-      "ref": "U2",
-      "pin": "17",
-      "to_net": "/SERVO_1"
-     }
-    }
-   ],
-   "rules": [],
-   "titles": [],
-   "refs": []
-  },
-  {
-   "id": "ldo-in-out-swapped",
-   "edits": [
-    {
-     "op": "swap_pins",
-     "args": {
-      "ref": "U1",
-      "pin_a": "2",
-      "pin_b": "3"
-     }
-    }
-   ],
-   "rules": [],
-   "titles": [],
-   "refs": []
-  },
-  {
-   "id": "diode-reversed",
+   "id": "stm32-good:part-reversed",
    "edits": [
     {
      "op": "rotate_footprint",
@@ -184,27 +182,25 @@
    ]
   },
   {
-   "id": "extra:power-pin-on-signal-net",
+   "id": "stm32-good:value-unorderable",
    "edits": [
     {
-     "op": "move_pin",
+     "op": "set_value",
      "args": {
-      "ref": "S1",
-      "pin": "3",
-      "to_net": "/SERVO_2"
+      "ref": "R1",
+      "value": "R"
      }
     }
    ],
    "rules": [
-    "power-pin-on-signal-net"
+    "value-not-orderable"
    ],
    "titles": [
-    "S1 pin 3 is a supply pin sharing /SERVO_2 with the MCU port U2.17"
+    "R1 has value \"R\", which is not a quantity"
    ],
    "refs": [
     [
-     "S1",
-     "U2"
+     "R1"
     ]
    ]
   }

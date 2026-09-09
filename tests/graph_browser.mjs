@@ -57,9 +57,13 @@ const JOB_MARK = {
   check(out.steps.at(-1).node === "gate", "the gate runs last");
 }
 
+// A board with one defect a rule catches, so the gate has something to chase.
+// The edit is written out rather than imported from the corpus: this file tests
+// the graph's wiring, and it should not start failing because a generator
+// picked a different site on a board it does not otherwise care about.
 const broken = clone(board);
 applyEdits(broken, [
-  { op: "set_value", args: { ref: "R4", value: "R" } },
+  { op: "set_value", args: { ref: "R1", value: "R" } },
 ]);
 
 // A rule fires and nothing the model says accounts for it: loop, then give up
@@ -78,7 +82,7 @@ applyEdits(broken, [
   check(gates.length === 2, `two gate decisions, got ${gates.length}`);
   check(gates[0].decision === "again", `the first gate said ${gates[0].decision}`);
   check(
-    gates[0].unaccounted.includes("unbuildable-value"),
+    gates[0].unaccounted.includes("value-not-orderable"),
     `the gate names what is outstanding: ${gates[0].unaccounted}`
   );
 }
@@ -87,7 +91,7 @@ applyEdits(broken, [
 {
   const ask = stub({
     datasheet: {
-      findings: [{ problem: "R4 has no value", refs: ["R4"], severity: "major", why: "", fix: "Give it one." }],
+      findings: [{ problem: "R1 has no value", refs: ["R1"], severity: "major", why: "", fix: "Give it one." }],
     },
   });
   const out = await runGraph(clone(broken), ask);
@@ -102,7 +106,7 @@ applyEdits(broken, [
       findings: [
         { problem: "U9 is wrong", refs: ["U9"], severity: "major", why: "", fix: "" },
         { problem: "GND is stranded", nets: ["GND"], severity: "critical", why: "", fix: "" },
-        { problem: "R4 has no value", refs: ["R4"], severity: "major", why: "", fix: "" },
+        { problem: "R1 has no value", refs: ["R1"], severity: "major", why: "", fix: "" },
       ],
     },
   });
@@ -114,7 +118,7 @@ applyEdits(broken, [
     "a split claim the copper denies is refuted"
   );
   check(
-    out.findings.some((f) => f.title === "R4 has no value"),
+    out.findings.some((f) => f.title === "R1 has no value"),
     "and the one the board agrees with survives"
   );
 }

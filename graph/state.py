@@ -12,9 +12,13 @@ _NODE = re.compile(r"^([A-Za-z]{1,3}\d+)\.[A-Za-z0-9_]+")
 
 class ReviewState(TypedDict, total=False):
     board: dict
-    #: The distilled board. Computed once in `ingest`; every node sends it whole,
-    #: because the model has no memory between nodes.
+    #: The distilled board. Still computed for the deterministic layer and for
+    #: the record; it is no longer what a reviewer is shown.
     distilled: str
+    #: The evidence packs, keyed by the agent each belongs to. This is the only
+    #: board information any language model receives, and it is kept in state so
+    #: a scored run records exactly what was asked of each model.
+    packs: dict
     #: What the deterministic rules measured. Never produced by a model.
     deterministic: list[dict]
     #: Manufacturability findings, also measured. Reported, but kept out of the

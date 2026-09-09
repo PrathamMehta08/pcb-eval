@@ -24,7 +24,7 @@ from graph.prompts import single_prompt  # noqa: E402
 from harness.checks import run_checks  # noqa: E402
 from harness.distill import approx_tokens, distill  # noqa: E402
 from harness.ops import apply_edits, board_hash, undo  # noqa: E402
-from harness.presets import PRESETS, edits_for  # noqa: E402
+from harness.generators import defects_for  # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "ops.json"
 DISTILL_OUT = ROOT / "tests" / "fixtures" / "distill.json"
@@ -101,8 +101,8 @@ def main() -> int:
 
     cases = direct_cases(board)
     cases += [
-        {"id": f"preset:{preset['id']}", "edits": edits_for(preset, board)}
-        for preset in PRESETS
+        {"id": defect["id"], "edits": defect["edits"]}
+        for defect in defects_for(board, "stm32-good")
     ]
 
     reference = json.dumps(board, sort_keys=True)
@@ -127,48 +127,30 @@ def main() -> int:
     # has to produce it character for character or the harness would be scoring
     # a board the page never sent.
     distilled = []
-    for preset in [None] + PRESETS:
+    for defect in [None] + defects_for(board, "stm32-good"):
         work = json.loads(json.dumps(board))
-        edits = [] if preset is None else edits_for(preset, work)
+        edits = [] if defect is None else defect["edits"]
         apply_edits(work, edits)
         distilled.append(
             {
-                "id": "clean" if preset is None else preset["id"],
+                "id": "clean" if defect is None else defect["id"],
                 "edits": edits,
                 "text": distill(work),
                 "tokens": approx_tokens(distill(work)),
             }
         )
 
-    # Boards that are not presets, for rules no seeded defect happens to trip.
-    # A rule the fixture never fires is a rule whose two copies are compared
-    # only on their silence, which is no comparison at all.
-    EXTRA = [
-        {
-            # Reported from the page: the buck's input pin dropped onto a servo
-            # signal. Every rule stayed silent because `power-pin-miswired`
-            # needs the pin's library name to match a net name, and this pin is
-            # `VIN_3` against a net called `/IN`.
-            "id": "extra:power-pin-on-signal-net",
-            "edits": [_edit("move_pin", ref="S1", pin="3", to_net="/SERVO_2")],
-        }
-    ]
-
-    # The rules run in the page too, so the browser copy answers to this.
+    # The rules run in the page too, so the browser copy answers to this. Every
+    # case this board generates is included, clean first.
     rules = []
-    for preset in [None] + PRESETS + EXTRA:
+    for defect in [None] + defects_for(board, "stm32-good"):
         work = json.loads(json.dumps(board))
-        if preset is None:
-            edits = []
-        elif "edits" in preset:
-            edits = preset["edits"]
-        else:
-            edits = edits_for(preset, work)
+        edits = [] if defect is None else defect["edits"]
         apply_edits(work, edits)
         found = run_checks(work)
         rules.append(
             {
-                "id": "clean" if preset is None else preset["id"],
+                "id": "clean" if defect is None else defect["id"],
                 "edits": edits,
                 "rules": [f["rule"] for f in found],
                 "titles": [f["title"] for f in found],

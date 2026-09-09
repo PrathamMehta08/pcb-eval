@@ -191,11 +191,78 @@ def study(part: str, url: str, *, offline: bool = False) -> dict:
     return record
 
 
+#: Descriptions that mark a part as active silicon worth a datasheet fetch.
+SIGNIFICANT = re.compile(
+    r"regulat|converter|\bMCU\b|microcontroller|driver|sensor|transceiver|"
+    r"memory|flash|eeprom|\bADC\b|\bDAC\b|\bPHY\b|amplifier|comparator|"
+    r"reference|oscillator|controller|switch mode|step-down|step-up|LDO",
+    re.I,
+)
+POWER_TYPES = {"power_in", "power_out", "open_collector", "tri_state"}
+PASSIVE_PREFIX = ("R", "C", "L", "FB", "TP", "H", "Y")
+
+
+def _pins_of(board: dict) -> dict[str, list[dict]]:
+    out: dict[str, list[dict]] = {}
+    for net in board["nets"]:
+        for node in net["nodes"]:
+            out.setdefault(node["ref"], []).append({**node, "net": net["name"]})
+    return out
+
+
+def triage(board: dict) -> list[dict]:
+    """Which parts are worth a datasheet, and why. First rule that matches wins.
+
+    Fetching is cheap but not free, and a datasheet for a 10k resistor buys
+    nothing: the fact worth knowing about a passive is its value, which the
+    netlist already carries. So research is spent on parts whose behaviour is
+    not deducible from the schematic - active silicon, anything that sources or
+    switches, anything bridging power domains.
+
+    A passive is researched only when a researched part's own rules name it, and
+    that happens through the converter rather than through the capacitor: the
+    TPS563208's datasheet is what says a 0.1 uF part belongs between VBST and SW.
+    """
+    from harness.checks import is_ground, is_rail
+
+    pins = _pins_of(board)
+    out = []
+    for comp in board["components"]:
+        ref = comp["ref"]
+        mine = pins.get(ref, [])
+        rails = {
+            p["net"] for p in mine if is_rail(p["net"]) and not is_ground(p["net"])
+        }
+        why = None
+        if len(mine) >= 6:
+            why = f"{len(mine)} pins"
+        elif re.match(r"^(U|S|IC|Q)\d", ref):
+            why = f"designator {ref[0]}"
+        elif any(base_type(p.get("type", "")) in POWER_TYPES for p in mine):
+            why = "carries a power or driver pin"
+        elif SIGNIFICANT.search(f"{comp.get('description', '')} {comp.get('value', '')}"):
+            why = "description names an active part"
+        elif len(rails) > 1:
+            why = f"sits on {len(rails)} distinct rails"
+        if why is None:
+            continue
+        if ref.startswith(PASSIVE_PREFIX) and len(mine) <= 2:
+            # A two-pin passive never qualifies on its own, whatever it matched.
+            continue
+        out.append({**comp, "why": why})
+    return out
+
+
+def base_type(pintype: str) -> str:
+    """`bidirectional+no_connect` is still a bidirectional pin."""
+    return str(pintype or "").split("+", 1)[0]
+
+
 def major_parts(board: dict) -> list[dict]:
-    """The parts worth researching: anything carrying a datasheet URL."""
+    """Triaged parts that also carry a datasheet URL to fetch."""
     return [
         c
-        for c in board["components"]
+        for c in triage(board)
         if (c.get("datasheet") or "").strip().lower().startswith("http")
     ]
 

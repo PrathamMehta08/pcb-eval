@@ -37,6 +37,7 @@ from harness.datasheet_checks import run_datasheet_checks
 from harness.dfm import run_dfm
 from harness.research import brief
 from harness.distill import distill
+from harness.packs import build_packs
 
 MAX_PASSES = 2
 
@@ -44,17 +45,20 @@ MAX_PASSES = 2
 def ingest(state: ReviewState) -> dict:
     """Everything here is measured. No model has been asked anything yet."""
     board = state["board"]
+    deterministic = run_checks(board)
+    dfm = run_dfm(board)
+    datasheet = run_datasheet_checks(board, brief(board, offline=True))
     return {
         "distilled": distill(board),
-        "deterministic": run_checks(board),
+        "deterministic": deterministic,
+        # The seam. Built here, from measurements only, and handed to the
+        # reviewers instead of the board.
+        "packs": build_packs(board, brief(board, offline=True), deterministic + dfm + datasheet),
         # The fourth evaluator, and the only one that is pure geometry. It does
         # not feed the gate: a DFM finding is already complete, and looping the
         # reviewers over it would spend calls to be told what the board said.
-        "dfm": run_dfm(board),
-        # The research agent, reading from its on-disk cache. Offline on
-        # purpose: a scored sweep must not depend on a vendor CDN being up.
-        # Populate the cache with `python -m harness.research`.
-        "datasheet": run_datasheet_checks(board, brief(board, offline=True)),
+        "dfm": dfm,
+        "datasheet": datasheet,
         "findings": [],
         "confirmed": [],
         "calls": [],

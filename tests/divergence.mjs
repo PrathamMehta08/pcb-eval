@@ -27,21 +27,29 @@ const check = (ok, message) => {
   if (!ok) failures.push(message);
 };
 
-// What each defect on this board must produce. A schematic edit leaves the
-// copper where it was, so the pads it moved go stale; a copper edit strands
-// pads instead; a value change touches neither and shows only as a ring on the
-// part. Reversing a footprint is the interesting one - it never touches the
-// netlist, so the only trace of it is two pads that no longer reach their nets.
+// What each generated defect on this board must produce. A schematic edit
+// leaves the copper where it was, so the pads it moved go stale; a copper edit
+// strands pads instead; a value change touches neither and shows only as a ring
+// on the part it edited.
 //
-// Only this board's defects appear here. The corpus spans two boards now, and
-// the other one's edits name refs that do not exist on this board at all.
+// `part-reversed` is the interesting one: it never touches the netlist at all,
+// so the only trace of it is two pads that no longer reach their nets. That is
+// the case this whole view exists for.
+//
+// Only this board's defects appear. The corpus spans two boards, and the other
+// one's edits name refs that do not exist here.
 const EXPECTED = {
-  "clean:stm32-good": { stale: 0, stranded: 0 },
-  "mcu-ground-lifted": { stale: 1, stranded: 0 },
-  "bulk-cap-on-signal": { stale: 1, stranded: 0 },
-  "outputs-shorted": { stale: 1, stranded: 0 },
-  "ldo-in-out-swapped": { stale: 2, stranded: 0 },
-  "diode-reversed": { stale: 0, stranded: 2 },
+  clean: { stale: 0, stranded: 0 },
+  "stm32-good:supply-on-signal": { stale: 1, stranded: 0 },
+  "stm32-good:ground-pin-lifted": { stale: 1, stranded: 0 },
+  "stm32-good:outputs-shorted": { stale: 1, stranded: 0 },
+  "stm32-good:regulator-io-swapped": { stale: 2, stranded: 0 },
+  "stm32-good:feedback-from-input": { stale: 1, stranded: 0 },
+  "stm32-good:divider-values-swapped": { stale: 0, stranded: 0 },
+  "stm32-good:bulk-cap-undersized": { stale: 0, stranded: 0 },
+  "stm32-good:companion-cap-oversized": { stale: 0, stranded: 0 },
+  "stm32-good:part-reversed": { stale: 0, stranded: 2 },
+  "stm32-good:value-unorderable": { stale: 0, stranded: 0 },
 };
 
 for (const testCase of fixture.cases) {
@@ -58,13 +66,25 @@ for (const testCase of fixture.cases) {
     got.stranded.length === want.stranded,
     `${testCase.id}: ${got.stranded.length} stranded pads, want ${want.stranded}`
   );
-  // Every stale pad must have somewhere to point, or the ratsnest draws nothing
-  // and the edit is invisible again.
-  for (const item of got.stale) {
+  // A stale pad points at the nearest pin the schematic now says it joins, so
+  // the ratsnest shows the connection the copper does not provide.
+  //
+  // Except when there is no such pin. Reassigning a pin to a net of its own -
+  // which the editor allows and `ground-pin-lifted` does - leaves a pad that is
+  // genuinely alone on its net, and `divergence` returns `to: null` for it.
+  // `markDivergence` guards on that and draws the ring without the line, which
+  // is the honest picture: the pad has moved and there is nothing to join it
+  // to. Asserting a target always exists was the test being stricter than the
+  // renderer, not the renderer being wrong.
+  const alone = got.stale.filter((item) => item.to === null);
+  for (const item of alone) {
+    const net = work.nets.find((n) => n.name === item.wants);
     check(
-      item.to !== null,
-      `${testCase.id}: ${item.ref}.${item.pin} has no pin to draw a ratsnest to`
+      net !== undefined && net.nodes.length === 1,
+      `${testCase.id}: ${item.ref}.${item.pin} has no ratsnest target but is not alone on ${item.wants}`
     );
+  }
+  for (const item of got.stale) {
     check(
       !(item.to && item.to.ref === item.ref && item.to.pin === item.pin),
       `${testCase.id}: ${item.ref}.${item.pin} points its ratsnest at itself`
