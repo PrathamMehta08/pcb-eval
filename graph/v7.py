@@ -128,6 +128,11 @@ class PCBState(TypedDict, total=False):
     #: The single thing any model is shown about this board.
     pack: str
 
+    #: Retrieved datasheet passages, built by the browser and handed in. Empty
+    #: for every sweep in the README, and the only way anything reaches the pack
+    #: that is not the distilled board.
+    documentation: str
+
     #: What the one reviewer said, and what survived each gate after it.
     reviewer_findings: list[dict]
     validated: list[dict]
@@ -156,7 +161,7 @@ def analyse(state: PCBState) -> dict:
         "measured": result["measured"],
         "coverage": dict(result["coverage"]),
         "inputs": inputs,
-        "pack": reviewer_pack(board, research),
+        "pack": reviewer_pack(board, research, state.get("documentation") or ""),
         "passes": 1,
     }
 
@@ -357,9 +362,20 @@ def build_graph(client, second_look: bool = False):
     return graph.compile()
 
 
-def run_v7(board: dict, client, inputs: dict | None = None, second_look: bool = False) -> PCBState:
+def run_v7(
+    board: dict,
+    client,
+    inputs: dict | None = None,
+    second_look: bool = False,
+    documentation: str = "",
+) -> PCBState:
     state = build_graph(client, second_look).invoke(
-        {"board": board, "inputs": inputs or {}, "calls": []}
+        {
+            "board": board,
+            "inputs": inputs or {},
+            "documentation": documentation,
+            "calls": [],
+        }
     )
     # The runner reads these names from every detector.
     state["findings"] = state.get("reviewer_findings") or []

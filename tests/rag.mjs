@@ -138,6 +138,45 @@ for (const word of ["island", "miswired", "floating", "defect", "wrong", "missin
   );
 }
 
+// ---------------------------------------------------------------- the budget
+//
+// A chunk is 350 words because that is the unit BM25 ranks well, and sending
+// the whole thing is how the browser's pack became four fifths datasheet. What
+// is sent is now the span that earned the score, and the three properties that
+// have to hold are: it is shorter, it is a verbatim run of the original, and it
+// is the run the query terms are actually in.
+
+const LONG = [
+  "Ordering Information and Package Options " + "filler word ".repeat(120) +
+    "The bootstrap capacitor between VBST and SW supplies the high side gate driver " +
+    "and a 0.1 uF ceramic capacitor is recommended. " + "more filler ".repeat(120),
+];
+const longIdx = rag.index(rag.chunk(LONG, { part: "U9" }));
+const whole = rag.search(longIdx, "bootstrap capacitor VBST", 1);
+const narrow = rag.search(longIdx, "bootstrap capacitor VBST", 1, { words: 40 });
+
+const wordsOf = (t) => String(t).split(/\s+/).filter(Boolean).length;
+check(wordsOf(whole[0].text) > 300, `without a width the whole chunk comes back, got ${wordsOf(whole[0].text)}`);
+check(wordsOf(narrow[0].text) === 40, `with a width the passage is that many words, got ${wordsOf(narrow[0].text)}`);
+check(
+  whole[0].text.includes(narrow[0].text),
+  "the narrowed passage is a verbatim run of the chunk, so it can still be quoted to its page"
+);
+check(
+  narrow[0].text.includes("VBST") && narrow[0].text.includes("0.1"),
+  `the window is where the query terms are, got: ${narrow[0].text.slice(0, 90)}`
+);
+check(
+  narrow[0].score === whole[0].score,
+  "narrowing what is sent does not change how the chunk was ranked"
+);
+
+// Ranking still reads the whole chunk. A term two hundred words from the window
+// is still evidence this is the right chunk, and a `focus` applied before
+// scoring would have thrown that away.
+const far = rag.search(longIdx, "ordering information package", 1, { words: 40 });
+check(far.length === 1, "a term outside the window still selects the chunk");
+
 for (const failure of failures) console.error("  x " + failure);
 console.log(
   failures.length

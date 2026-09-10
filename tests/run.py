@@ -797,11 +797,28 @@ def check_sweep(c: Check) -> None:
         c.that(bool(result.get(key)), f"the result carries a {key}")
     c.equals(result["prompt_hash"], prompt_hash(), "prompt hash is current (prompts changed since the sweep?)")
     c.equals(result["schema_hash"], schema_hash(), "schema hash is current")
+    # Name the detectors the stale result actually holds. The hint used to be a
+    # fixed command line and it was wrong: it omitted --detector, which defaults
+    # to `single` and `graph`, while the committed sweep is `single` and `v8`.
+    # Following it re-ran the wrong architecture at full price and left the hash
+    # exactly as stale as before.
+    # As an alias --detector accepts, not as a list it does not: "single,v8" is
+    # a hint that fails at the argument parser, which is no better than a hint
+    # that runs the wrong thing.
+    ALIASES = {
+        ("single", "graph"): "both",
+        ("single", "v8"): "all",
+        ("single", "v7", "v8"): "ablation",
+    }
+    ran = tuple(result.get("totals") or {})
+    detectors = ALIASES.get(ran) or ALIASES.get(tuple(sorted(ran))) or (ran[0] if ran else "all")
+    trials = result.get("trials", 5)
     c.equals(
         result.get("pipeline_hash"),
         pipeline_hash(),
-        "pipeline hash is current (an evaluator was added or removed since the sweep; "
-        "rerun: python -m harness.run --trials 5 --tpm 40000 --concurrency 2)",
+        "pipeline hash is current (a detector's own code changed since the sweep; rerun: "
+        f"python -m harness.run --detector {detectors} --trials {trials} "
+        "--tpm 40000 --concurrency 2)",
     )
 
     cases = corpus()
@@ -1182,7 +1199,7 @@ def check_evidence_boundary(c: Check) -> None:
 
     # And retrieval over whatever documentation was attached to a part, whose
     # query is built from the board so that it cannot fetch the seeded defect.
-    run_node(c, "rag.mjs")
+    run_node(c, "rag.mjs", "doc_budget.mjs")
 
     # And the agent that reads parameters out of one. Its patterns predecessor
     # reported a 2002 A output current for a ULN2003A, having read the digits of

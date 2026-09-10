@@ -2608,6 +2608,22 @@ const join = (blocks) =>
   blocks.filter((b) => b && b.length).map((b) => b.join("\n")).join("\n\n");
 
 /**
+ * How much retrieved datasheet text the board is willing to carry.
+ *
+ * A share of the board rather than a fixed word count, so it means the same
+ * thing on a six-part board and a sixty-part one. At 0.35 the board keeps about
+ * three quarters of its own pack however many documents are attached, which is
+ * the property that was missing: the old section had no ceiling, and three
+ * documented parts left the board at 21% of the prompt written about it.
+ *
+ * The facts block is outside the budget on purpose. A fact is one line, it was
+ * checked back against the document it came from, and anything whose quote
+ * could not be found there never became a fact. Passages are unverified bulk by
+ * comparison, so verified text is spent first and the budget governs the rest.
+ */
+const DATASHEET_RATIO = 0.35;
+
+/**
  * What the reviewer reads: the board, then whatever its documents state.
  *
  * Nothing here describes what is wrong with the board. The deterministic
@@ -2616,11 +2632,13 @@ const join = (blocks) =>
  * and on a seeded board it is the answer.
  */
 function reviewerPack(board) {
+  const described = distill(board);
+  const budget = Math.round(described.split(/\s+/).filter(Boolean).length * DATASHEET_RATIO);
   return join([
-    [distill(board)],
+    [described],
     railBlock(board),
     factsBlock(board),
-    passagesBlock(board),
+    passagesBlock(board, budget),
   ]);
 }
 
@@ -3579,13 +3597,65 @@ function expand(wanted) {
 }
 
 /**
+ * The span of a passage that earned its score.
+ *
+ * A chunk is 350 words because that is a sensible unit to *rank*. It is a
+ * terrible unit to *send*: what answered the query is a table row or a
+ * sentence, and the other three hundred words are the paragraph it happened to
+ * sit in. Ranking wants context, a prompt does not.
+ *
+ * So the window is the contiguous run of `width` words carrying the most
+ * query-term weight, scored with the same idf the ranking used - a window full
+ * of "the" is not a window full of answer. Contiguous and in order, so what
+ * comes back is still a verbatim substring of one page and can still be quoted
+ * against it. That is the property the whole documentation path rests on, and a
+ * window stitched from the best sentences anywhere in the chunk would break it
+ * while looking better.
+ *
+ * A chunk shorter than the window is returned whole, which is the common case
+ * for the short pages a parameter table lives on.
+ */
+function focus(text, wanted, idf, width) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  if (words.length <= width) return words.join(" ");
+
+  const want = new Set(wanted);
+  // One weight per word position, so the window score is a running sum rather
+  // than a re-tokenisation per step.
+  const weight = words.map((raw) => {
+    const [token] = terms(raw);
+    return token && want.has(token) ? idf.get(token) || 0 : 0;
+  });
+
+  let running = weight.slice(0, width).reduce((a, b) => a + b, 0);
+  let best = running;
+  let at = 0;
+  for (let i = width; i < words.length; i += 1) {
+    running += weight[i] - weight[i - width];
+    // Strictly greater, so ties keep the earliest window. A datasheet puts its
+    // specification before its application notes, and a tie broken late walks
+    // the window down the page for no reason.
+    if (running > best + 1e-9) {
+      best = running;
+      at = i - width + 1;
+    }
+  }
+  return words.slice(at, at + width).join(" ");
+}
+
+/**
  * The top `k` passages for a query, best first.
  *
  * A chunk matching nothing scores zero and is dropped rather than ranked last.
  * Padding a pack with irrelevant text is worse than a shorter pack: every line
  * of it is a line the reviewer might reason from.
+ *
+ * `words` narrows each passage to the span that earned it. Ranking still reads
+ * the whole chunk - a term two hundred words away is still evidence the chunk
+ * is the right one - and only what is handed back is cut. Omit it and the whole
+ * chunk comes back, which is what the ranking tests want to see.
  */
-function search(idx, query, k = 3) {
+function search(idx, query, k = 3, { words = 0 } = {}) {
   const wanted = expand(terms(query));
   const scored = [];
   for (const doc of idx.docs) {
@@ -3600,7 +3670,9 @@ function search(idx, query, k = 3) {
     scored.push({ ...doc.chunk, score: Number(score.toFixed(PRECISION)) });
   }
   scored.sort((a, b) => b.score - a.score || a.page - b.page || a.index - b.index);
-  return scored.slice(0, k);
+  const top = scored.slice(0, k);
+  if (!words) return top;
+  return top.map((hit) => ({ ...hit, text: focus(hit.text, wanted, idx.idf, words) }));
 }
 
 /**
@@ -4142,10 +4214,10 @@ function chunkCount(boardName, ref) {
  * The query comes from `queryFor`, which reads the board and never the
  * findings. That is the whole reason retrieval is safe to put in a pack.
  */
-function passagesFor(board, ref, pins, k = 3) {
+function passagesFor(board, ref, pins, k = 3, words = 0) {
   const idx = indexFor(board.meta.name, ref);
   if (!idx) return [];
-  return search(idx, queryFor(board, ref, pins), k);
+  return search(idx, queryFor(board, ref, pins), k, { words });
 }
 
 /**
@@ -4245,15 +4317,78 @@ function factsList(boardName, ref) {
   );
 }
 
-function passagesBlock(board) {
+/**
+ * How wide a retrieved passage is, and how many any one part may contribute.
+ *
+ * A chunk is 350 words because that is the unit BM25 ranks well. `focus` cuts
+ * what is sent down to the span that earned the score, and 80 words is a
+ * parameter row with its heading and its units still attached - enough to read,
+ * short enough that five of them cost less than one whole chunk did.
+ *
+ * The per-part ceiling exists so a board with one documented part cannot spend
+ * the whole budget on it. Six passages from one datasheet is the same mistake as
+ * three from each of six, arriving from the other direction.
+ */
+const PASSAGE_WORDS = 80;
+const MOST_PER_PART = 4;
+
+/**
+ * The retrieved passages, as a pack section, inside a word budget.
+ *
+ * WHAT WENT WRONG WITHOUT ONE
+ *
+ * This used to take three whole chunks per documented part with no ceiling at
+ * all, and the arithmetic is unkind: the distilled board is 810 words and three
+ * chunks are about 970, so **one** documented part made the pack 56% datasheet,
+ * and three made it 79%. Six would have reached 89%.
+ *
+ * That is not a tuning problem, it is the architecture inverted. Every
+ * measurement this project has taken says the reviewer wants the whole board -
+ * splitting the board between specialists is what V2 through V6 lost recall
+ * doing, and "a reviewer holding half a board speculates about the other half"
+ * is the sentence the single-reviewer design is built on. Attaching datasheets
+ * was quietly doing the same thing by dilution: the board did not shrink, but
+ * its share of the reviewer's attention did, and it got worse with every
+ * document somebody helpfully added.
+ *
+ * So the budget is a share of the board rather than a count per part, and it is
+ * spent round-robin - every documented part gets its best passage before any
+ * part gets its second. Sorted by ref first, so the order is the board's and not
+ * the order somebody happened to attach documents in.
+ *
+ * Verbatim still, with the page it came from, because a reviewer that
+ * paraphrases a datasheet cannot be checked and one that quotes it can.
+ */
+function passagesBlock(board, budget = Infinity) {
   const docs = docsFor(board.meta.name);
-  if (!docs.size) return [];
+  if (!docs.size || budget <= 0) return [];
   const pins = pinsByRef(board);
+
+  const queues = [...docs.keys()]
+    .sort()
+    .map((ref) => passagesFor(board, ref, pins.get(ref) || [], MOST_PER_PART, PASSAGE_WORDS));
+
   const lines = ["RETRIEVED DOCUMENTATION  verbatim, from documents attached to this board"];
-  for (const ref of [...docs.keys()].sort()) {
-    for (const hit of passagesFor(board, ref, pins.get(ref) || [], 3)) {
+  let spent = 0;
+  for (let round = 0; round < MOST_PER_PART; round += 1) {
+    for (const queue of queues) {
+      const hit = queue[round];
+      if (!hit) continue;
+      const cost = hit.text.split(/\s+/).filter(Boolean).length;
+      // The best passage always goes in, whatever the budget says. A share of a
+      // small board can be narrower than a single passage, and dropping the
+      // section entirely is the wrong answer to that: somebody attached a
+      // document and got nothing back, silently. One passage against a 200-word
+      // board is still a board that is mostly itself; the failure this budget
+      // exists to stop is six parts contributing four passages each.
+      //
+      // After the first, stop rather than skip. Skipping a long passage to fit
+      // a short one after it silently reorders the section by length instead of
+      // by relevance, which is the one thing the ranking exists to decide.
+      if (lines.length > 1 && spent + cost > budget) return lines;
+      spent += cost;
       const where = [`${hit.source} p${hit.page}`, hit.section].filter(Boolean).join(", ");
-      lines.push(`${ref} (${where}): ${hit.text}`);
+      lines.push(`${hit.part} (${where}): ${hit.text}`);
     }
   }
   return lines.length > 1 ? lines : [];

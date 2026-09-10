@@ -213,13 +213,65 @@ export function expand(wanted) {
 }
 
 /**
+ * The span of a passage that earned its score.
+ *
+ * A chunk is 350 words because that is a sensible unit to *rank*. It is a
+ * terrible unit to *send*: what answered the query is a table row or a
+ * sentence, and the other three hundred words are the paragraph it happened to
+ * sit in. Ranking wants context, a prompt does not.
+ *
+ * So the window is the contiguous run of `width` words carrying the most
+ * query-term weight, scored with the same idf the ranking used - a window full
+ * of "the" is not a window full of answer. Contiguous and in order, so what
+ * comes back is still a verbatim substring of one page and can still be quoted
+ * against it. That is the property the whole documentation path rests on, and a
+ * window stitched from the best sentences anywhere in the chunk would break it
+ * while looking better.
+ *
+ * A chunk shorter than the window is returned whole, which is the common case
+ * for the short pages a parameter table lives on.
+ */
+export function focus(text, wanted, idf, width) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  if (words.length <= width) return words.join(" ");
+
+  const want = new Set(wanted);
+  // One weight per word position, so the window score is a running sum rather
+  // than a re-tokenisation per step.
+  const weight = words.map((raw) => {
+    const [token] = terms(raw);
+    return token && want.has(token) ? idf.get(token) || 0 : 0;
+  });
+
+  let running = weight.slice(0, width).reduce((a, b) => a + b, 0);
+  let best = running;
+  let at = 0;
+  for (let i = width; i < words.length; i += 1) {
+    running += weight[i] - weight[i - width];
+    // Strictly greater, so ties keep the earliest window. A datasheet puts its
+    // specification before its application notes, and a tie broken late walks
+    // the window down the page for no reason.
+    if (running > best + 1e-9) {
+      best = running;
+      at = i - width + 1;
+    }
+  }
+  return words.slice(at, at + width).join(" ");
+}
+
+/**
  * The top `k` passages for a query, best first.
  *
  * A chunk matching nothing scores zero and is dropped rather than ranked last.
  * Padding a pack with irrelevant text is worse than a shorter pack: every line
  * of it is a line the reviewer might reason from.
+ *
+ * `words` narrows each passage to the span that earned it. Ranking still reads
+ * the whole chunk - a term two hundred words away is still evidence the chunk
+ * is the right one - and only what is handed back is cut. Omit it and the whole
+ * chunk comes back, which is what the ranking tests want to see.
  */
-export function search(idx, query, k = 3) {
+export function search(idx, query, k = 3, { words = 0 } = {}) {
   const wanted = expand(terms(query));
   const scored = [];
   for (const doc of idx.docs) {
@@ -234,7 +286,9 @@ export function search(idx, query, k = 3) {
     scored.push({ ...doc.chunk, score: Number(score.toFixed(PRECISION)) });
   }
   scored.sort((a, b) => b.score - a.score || a.page - b.page || a.index - b.index);
-  return scored.slice(0, k);
+  const top = scored.slice(0, k);
+  if (!words) return top;
+  return top.map((hit) => ({ ...hit, text: focus(hit.text, wanted, idx.idf, words) }));
 }
 
 /**

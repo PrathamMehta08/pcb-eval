@@ -174,10 +174,10 @@ export function chunkCount(boardName, ref) {
  * The query comes from `queryFor`, which reads the board and never the
  * findings. That is the whole reason retrieval is safe to put in a pack.
  */
-export function passagesFor(board, ref, pins, k = 3) {
+export function passagesFor(board, ref, pins, k = 3, words = 0) {
   const idx = indexFor(board.meta.name, ref);
   if (!idx) return [];
-  return search(idx, queryFor(board, ref, pins), k);
+  return search(idx, queryFor(board, ref, pins), k, { words });
 }
 
 /**
@@ -277,15 +277,78 @@ export function factsList(boardName, ref) {
   );
 }
 
-export function passagesBlock(board) {
+/**
+ * How wide a retrieved passage is, and how many any one part may contribute.
+ *
+ * A chunk is 350 words because that is the unit BM25 ranks well. `focus` cuts
+ * what is sent down to the span that earned the score, and 80 words is a
+ * parameter row with its heading and its units still attached - enough to read,
+ * short enough that five of them cost less than one whole chunk did.
+ *
+ * The per-part ceiling exists so a board with one documented part cannot spend
+ * the whole budget on it. Six passages from one datasheet is the same mistake as
+ * three from each of six, arriving from the other direction.
+ */
+const PASSAGE_WORDS = 80;
+const MOST_PER_PART = 4;
+
+/**
+ * The retrieved passages, as a pack section, inside a word budget.
+ *
+ * WHAT WENT WRONG WITHOUT ONE
+ *
+ * This used to take three whole chunks per documented part with no ceiling at
+ * all, and the arithmetic is unkind: the distilled board is 810 words and three
+ * chunks are about 970, so **one** documented part made the pack 56% datasheet,
+ * and three made it 79%. Six would have reached 89%.
+ *
+ * That is not a tuning problem, it is the architecture inverted. Every
+ * measurement this project has taken says the reviewer wants the whole board -
+ * splitting the board between specialists is what V2 through V6 lost recall
+ * doing, and "a reviewer holding half a board speculates about the other half"
+ * is the sentence the single-reviewer design is built on. Attaching datasheets
+ * was quietly doing the same thing by dilution: the board did not shrink, but
+ * its share of the reviewer's attention did, and it got worse with every
+ * document somebody helpfully added.
+ *
+ * So the budget is a share of the board rather than a count per part, and it is
+ * spent round-robin - every documented part gets its best passage before any
+ * part gets its second. Sorted by ref first, so the order is the board's and not
+ * the order somebody happened to attach documents in.
+ *
+ * Verbatim still, with the page it came from, because a reviewer that
+ * paraphrases a datasheet cannot be checked and one that quotes it can.
+ */
+export function passagesBlock(board, budget = Infinity) {
   const docs = docsFor(board.meta.name);
-  if (!docs.size) return [];
+  if (!docs.size || budget <= 0) return [];
   const pins = pinsByRef(board);
+
+  const queues = [...docs.keys()]
+    .sort()
+    .map((ref) => passagesFor(board, ref, pins.get(ref) || [], MOST_PER_PART, PASSAGE_WORDS));
+
   const lines = ["RETRIEVED DOCUMENTATION  verbatim, from documents attached to this board"];
-  for (const ref of [...docs.keys()].sort()) {
-    for (const hit of passagesFor(board, ref, pins.get(ref) || [], 3)) {
+  let spent = 0;
+  for (let round = 0; round < MOST_PER_PART; round += 1) {
+    for (const queue of queues) {
+      const hit = queue[round];
+      if (!hit) continue;
+      const cost = hit.text.split(/\s+/).filter(Boolean).length;
+      // The best passage always goes in, whatever the budget says. A share of a
+      // small board can be narrower than a single passage, and dropping the
+      // section entirely is the wrong answer to that: somebody attached a
+      // document and got nothing back, silently. One passage against a 200-word
+      // board is still a board that is mostly itself; the failure this budget
+      // exists to stop is six parts contributing four passages each.
+      //
+      // After the first, stop rather than skip. Skipping a long passage to fit
+      // a short one after it silently reorders the section by length instead of
+      // by relevance, which is the one thing the ranking exists to decide.
+      if (lines.length > 1 && spent + cost > budget) return lines;
+      spent += cost;
       const where = [`${hit.source} p${hit.page}`, hit.section].filter(Boolean).join(", ");
-      lines.push(`${ref} (${where}): ${hit.text}`);
+      lines.push(`${hit.part} (${where}): ${hit.text}`);
     }
   }
   return lines.length > 1 ? lines : [];

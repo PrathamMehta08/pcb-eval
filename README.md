@@ -59,7 +59,7 @@ first pass missed.
 
 `openai/gpt-oss-120b` - 5 trials - 225 calls - prompts `29d9b80529de` -
 schema `96e5a7694704` - corpus `56602c9aa9ca` - pipeline
-`4c9f32168aaa` - full record in
+`7c696b353d19` - full record in
 [`results/latest.json`](results/latest.json)
 
 Two boards, one clean case each and thirteen seeded defects. Every seeded board
@@ -208,6 +208,64 @@ node is probably unnecessary.**
   mechanically, and it earns its place: an earlier version of this project
   opened its prompts with a description of this exact board and its recall was a
   fifth higher for it.
+
+## Attaching datasheets was unmeasured, and the fix is worth less than I thought
+
+The page lets you drop a PDF onto a part. It retrieves passages from it and puts
+them in the reviewer's pack - and the sweeps run offline with nothing attached,
+so five trials said nothing at all about the pack somebody with datasheets
+actually gets.
+
+It needed saying. On the corpus board - 810 distilled words, three cached
+datasheets - the section was three whole 350-word chunks per documented part
+with no ceiling anywhere:
+
+| documented parts | datasheet share of the pack |
+|---|---|
+| 0 | 0% |
+| 1 | 56% |
+| 3 | **78%** |
+
+The board was 22% of the prompt written about it, and every document somebody
+helpfully added made that worse. Given that this project's whole argument is
+that a reviewer wants the *whole* board - splitting it between specialists is
+what V2 through V6 lost recall doing - that looked like the architecture
+inverted by dilution.
+
+So the harness learned to carry a documentation block (`tools/doc_packs.py`
+hands it the browser's own retrieval rather than reimplementing it), and V8 ran
+three times over three packs that differ in nothing else.
+
+| on the 11 documented cases, 3 trials | no documents | unbudgeted | budgeted |
+|---|---|---|---|
+| rule-silent recall | 16/21 - 76% | 17/21 - 81% | 15/21 - 71% |
+| all defects | 25/30 - 83% | 26/30 - 87% | 24/30 - 80% |
+| findings on clean, median | 5 | 6 | 7 |
+| **prompt tokens per board** | 6,938 | **18,158** | **7,969** |
+| cost per pass | $0.0508 | $0.0670 | $0.0476 |
+
+**The recall differences are noise, and the per-trial numbers say so plainly.**
+
+| rule-silent, of 7 | trial 1 | trial 2 | trial 3 |
+|---|---|---|---|
+| no documents | 7 | 6 | 3 |
+| unbudgeted | 5 | 5 | 7 |
+| budgeted | 5 | 5 | 5 |
+
+Three draws of the same reviewer on the same prompt at temperature zero caught
+seven, six and three. That range is wider than every gap between the three
+variants put together. Stuffing four fifths of the prompt with datasheet text
+did not measurably hurt this reviewer, and taking it away did not measurably
+help it.
+
+So the budget is kept on the two things that are not sampled at all: the prompt
+is **56% smaller** on a documented board, the pass is **29% cheaper**, and the
+section is now *bounded* - six documents cost what one does, where before the
+growth was linear and had no limit. `tests/doc_budget.mjs` holds that.
+
+What it is not is a recall improvement, and the honest headline is that the
+problem I set out to fix was not the problem I found. The measurement said so
+and the measurement wins.
 
 ## What it cost
 

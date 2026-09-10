@@ -103,12 +103,17 @@ def corpus() -> list[dict]:
 
 def run_one(detector: str, case: dict, client: Client) -> dict:
     started = time.monotonic()
+    # Empty unless --documentation was given, which is every sweep the README
+    # quotes. It is per case rather than per board because the retrieval query
+    # is built from the board, and a seeded edit that moves a pin to another net
+    # moves the query with it.
+    docs = case.get("documentation", "")
     if detector == "graph":
         state = run_graph(case["board"], client)
     elif detector == "v7":
-        state = run_v7(case["board"], client)
+        state = run_v7(case["board"], client, documentation=docs)
     elif detector == "v8":
-        state = run_v7(case["board"], client, second_look=True)
+        state = run_v7(case["board"], client, second_look=True, documentation=docs)
     else:
         state = review_once(case["board"], client)
 
@@ -303,9 +308,22 @@ def main() -> int:
         help="repeat the whole sweep N times and report median and range",
     )
     ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument(
+        "--documentation",
+        type=Path,
+        default=None,
+        help="JSON of case id -> retrieved datasheet block, written by "
+        "tools/doc_packs.mjs. Absent for every scored sweep in the README.",
+    )
     args = ap.parse_args()
 
     cases = corpus()
+    if args.documentation:
+        blocks = json.loads(args.documentation.read_text(encoding="utf-8"))
+        for case in cases:
+            case["documentation"] = blocks.get(case["id"], "")
+        carrying = sum(1 for c in cases if c["documentation"])
+        print(f"documentation attached to {carrying} of {len(cases)} cases")
     if args.board:
         cases = [c for c in cases if c["id"].startswith(args.board)]
         if not cases:
@@ -398,7 +416,15 @@ def main() -> int:
         **result,
         "rows": [{k: v for k, v in row.items() if k != "packs"} for row in result["rows"]],
     }
-    (RESULTS / "latest.json").write_text(json.dumps(slim, indent=1), encoding="utf-8")
+    # A documented sweep is a benchmark variant, not the comparison the README
+    # quotes, so it never becomes `latest.json`. Without this the pack-budget
+    # runs would overwrite the committed result with a sweep whose reviewer was
+    # shown something the published one never saw, and `tests.run 14` would go
+    # on passing because the file it checks is still internally consistent.
+    if args.documentation:
+        print("documented sweep: results/latest.json left alone")
+    else:
+        (RESULTS / "latest.json").write_text(json.dumps(slim, indent=1), encoding="utf-8")
     print(f"wrote {out}")
     return 0
 

@@ -8,6 +8,10 @@ results/*.log
 # The scored sweep the README quotes is the record, and it carries the prompt,
 # schema and corpus hashes that make it re-checkable. Keep that one.
 !results/latest.json
+# And the two sweeps the README's documentation table is read off. Same reason:
+# a table nobody can check against the run that produced it is a table.
+!results/doc-before.json
+!results/doc-after.json
 .cache/
 boards/*.min.json
 dist/preview.html

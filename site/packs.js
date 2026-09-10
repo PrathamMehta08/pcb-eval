@@ -28,6 +28,22 @@ const join = (blocks) =>
   blocks.filter((b) => b && b.length).map((b) => b.join("\n")).join("\n\n");
 
 /**
+ * How much retrieved datasheet text the board is willing to carry.
+ *
+ * A share of the board rather than a fixed word count, so it means the same
+ * thing on a six-part board and a sixty-part one. At 0.35 the board keeps about
+ * three quarters of its own pack however many documents are attached, which is
+ * the property that was missing: the old section had no ceiling, and three
+ * documented parts left the board at 21% of the prompt written about it.
+ *
+ * The facts block is outside the budget on purpose. A fact is one line, it was
+ * checked back against the document it came from, and anything whose quote
+ * could not be found there never became a fact. Passages are unverified bulk by
+ * comparison, so verified text is spent first and the budget governs the rest.
+ */
+const DATASHEET_RATIO = 0.35;
+
+/**
  * What the reviewer reads: the board, then whatever its documents state.
  *
  * Nothing here describes what is wrong with the board. The deterministic
@@ -36,11 +52,13 @@ const join = (blocks) =>
  * and on a seeded board it is the answer.
  */
 export function reviewerPack(board) {
+  const described = distill(board);
+  const budget = Math.round(described.split(/\s+/).filter(Boolean).length * DATASHEET_RATIO);
   return join([
-    [distill(board)],
+    [described],
     railBlock(board),
     factsBlock(board),
-    passagesBlock(board),
+    passagesBlock(board, budget),
   ]);
 }
 

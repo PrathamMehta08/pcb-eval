@@ -269,7 +269,9 @@ def build_packs(
     return packs
 
 
-def reviewer_pack(board: dict, research: dict | None = None) -> str:
+def reviewer_pack(
+    board: dict, research: dict | None = None, documentation: str = ""
+) -> str:
     """V7's one pack: the distilled board, and nothing added to it.
 
     It carried the catalogue of deterministic checks at first, with a note not
@@ -286,7 +288,30 @@ def reviewer_pack(board: dict, research: dict | None = None) -> str:
     around the call. It also removes the last thing in the pack that a seeded
     corpus could have been leaked through, since a board's own description is
     all that is left.
+
+    WHY IT CAN NOW CARRY DOCUMENTATION, WHEN IT COULD NOT BEFORE
+
+    `documentation` is the one thing that may be appended, and only because the
+    page had it all along and the harness did not - which meant the page's pack
+    was unmeasurable. The browser attaches a datasheet to a part, retrieves
+    passages from it and puts them in front of the reviewer; the sweep runs
+    offline with nothing attached, so five trials said nothing whatever about
+    the pack a visitor with datasheets actually gets. A path the eval cannot see
+    is a path nobody can defend, and this one turned out to need defending: the
+    section had no ceiling, and three documented parts left the board at 21% of
+    its own pack.
+
+    The block is built by `site/rag.js`, not rebuilt here. There are already
+    four things written twice in this repository and each one costs a parity
+    test; retrieval is not becoming the fifth. The browser is the only place a
+    document is ever attached, so it stays the only place retrieval lives, and
+    the benchmark hands its output across rather than reimplementing it.
+
+    Empty by default, which is every scored sweep in the README.
     """
     from harness.distill import distill
 
-    return distill(board)
+    described = distill(board)
+    if not documentation:
+        return described
+    return "\n\n".join([described, documentation])
